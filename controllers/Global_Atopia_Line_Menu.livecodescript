@@ -9,17 +9,30 @@ version: 0.1
 
 --> Global | Atopia | Line | Menu
 -
-on menu_UpdateDomainErrorArray indexView
+on menu_MoveOrUpdateAtopiaArray indexView
    put the selected_Line of indexView into wikiDomain
    --
-   atopia_UpdateDomainErrorArray wikiDomain
+   atopia_UpdateArrayAndMove wikiDomain
+   put the result into resultArray
    --
-   put atopia_FetchNewFolderList() into domainNames
-   _SetDisplayDomainNames indexView, domainNames, "New Folders"
-end menu_UpdateDomainErrorArray
+   display_AtopiaUpdateResult resultArray, indexView
+end menu_MoveOrUpdateAtopiaArray
 
 on _
 end _
+
+on menu_MoveToTrash indexView
+   put the selected_Line of indexView into wikiDomain
+   --  
+   put "Move" && kwote (wikiDomain) && "to the _trash folder?" into someQuestion
+   lcw_AnswerSheet someQuestion
+   --
+   atopia_MoveToTrash wikiDomain
+   put the result into domainErrorArray
+   
+   put atopia_ListLocalBadFolders() into domainNames
+   _SetDisplayDomainNames indexView, domainNames, "Local Bad Folders"   
+end menu_MoveToTrash
 
 on menu_MoveToUnhosted indexView
    put the selected_Line of indexView into wikiDomain
@@ -30,21 +43,9 @@ on menu_MoveToUnhosted indexView
    atopia_MoveToUnhosted wikiDomain
    put the result into domainErrorArray
    
-   put atopia_ListGoodFolders() into domainNames
-   _SetDisplayDomainNames indexView, domainNames, "Good Folders"   
+   put atopia_ListLocalGoodFolders() into domainNames
+   _SetDisplayDomainNames indexView, domainNames, "Local Good Folders"   
 end menu_MoveToUnhosted
-
-on menu_MoveToTrash indexView
-   put the selected_Line of indexView into wikiDomain   
-   put "Move" && kwote (wikiDomain) && "to the _trash folder?" into someQuestion
-   lcw_AnswerSheet someQuestion
-   --
-   atopia_MoveToTrash wikiDomain
-   put the result into domainErrorArray
-   
-   put atopia_ListBadFolders() into domainNames
-   _SetDisplayDomainNames indexView, domainNames, "Bad Folders"   
-end menu_MoveToTrash
 
 on _
 end _

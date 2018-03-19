@@ -25,72 +25,61 @@ on menu_NewFolders indexView
    _SetDisplayDomainNames indexView, domainNames, "New Folders", stackLabel
 end menu_NewFolders indexView
 
-on menu_GoodFolders indexView
-   set the cursor to watch
-   put atopia_ListGoodFolders() into domainNames
-   put "atopia_ListGoodFolders()" into stackLabel
-   
-   _SetDisplayDomainNames indexView, domainNames, "Good Folders", stackLabel
-end menu_GoodFolders
-
-on menu_BadFolders indexView
-   put atopia_ListBadFolders() into domainNames
-   put "atopia_ListBadFolders()" into stackLabel
-   
-   _SetDisplayDomainNames indexView, domainNames, "Bad Folders", stackLabel
-end menu_BadFolders
-
 on _
 end _
 
-on menu_FindGoodUnhosted indexView
+on menu_LocalGoodFolders indexView
    set the cursor to watch
-   --
-   put atopia_ListGoodFolders() into goodFolders
-   put atopia_CheckUnhosted (goodFolders) into dnsArray
-   put the keys of dnsArray ["bad ip"] into domainNames
-   put "atopia_CheckUnhosted()" into stackLabel
+   put atopia_ListLocalGoodFolders() into domainNames
+   put "atopia_ListLocalGoodFolders()" into stackLabel
    
-   _SetDisplayDomainNames indexView, domainNames, "Find Good Unhosted", stackLabel
-end menu_FindGoodUnhosted
+   _SetDisplayDomainNames indexView, domainNames, "Local Good Folders", stackLabel
+end menu_LocalGoodFolders
+
+on menu_LocalBadFolders indexView
+   put atopia_ListLocalBadFolders() into domainNames
+   put "atopia_ListLocalBadFolders()" into stackLabel
+   
+   _SetDisplayDomainNames indexView, domainNames, "Local Bad Folders", stackLabel
+end menu_LocalBadFolders
+
+on menu_AllLocalWikiFolders indexView
+   put atopia_ListLocalWikiFolders() into localWikiFolders
+   put "atopia_ListLocalWikiFolders()" into stackLabel
+   
+   _SetDisplayDomainNames indexView, localWikiFolders, "All Local Wiki Folders", stackLabel
+end menu_AllLocalWikiFolders
+
+on _
+end _
 
 on menu_RemoteUnhostedFolders indexView
    put atopia_FetchAllFolderList ("_unhosted_sites") into domainNames
    put "_unhosted_sites" into stackLabel
    
-   _SetDisplayDomainNames indexView, domainNames, "Unhosted Sites", stackLabel
+   _SetDisplayDomainNames indexView, domainNames, "Remote Unhosted Sites", stackLabel
 end menu_RemoteUnhostedFolders
 
-on menu_Trash indexView
+on menu_RemoteTrash indexView
    put atopia_FetchAllFolderList ("_trash") into domainNames
    put "_trash" into stackLabel
    
-   _SetDisplayDomainNames indexView, domainNames, "Trash", stackLabel
-end menu_Trash
+   _SetDisplayDomainNames indexView, domainNames, "Remote Trash", stackLabel
+end menu_RemoteTrash
 
-on menu_OldSites indexView
+on menu_RemoteOldSites indexView
    put atopia_FetchAllFolderList ("_old_sites") into domainNames
    put "_old_sites" into stackLabel
    
-   _SetDisplayDomainNames indexView, domainNames, "Old Sites", stackLabel
-end menu_OldSites
+   _SetDisplayDomainNames indexView, domainNames, "Remote Old Sites", stackLabel
+end menu_RemoteOldSites
 
-on _
-end _
-
-on menu_LocalDomains indexView
-   put atopia_ListDomainFolders() into domainNames
-   put "atopia_ListDomainFolders()" into stackLabel
-   
-   _SetDisplayDomainNames indexView, domainNames, "Local Domains", stackLabel
-end menu_LocalDomains
-
-on menu_RemoteDomains indexView
-   put atopia_FetchAllFolderList() into domainNames
+on menu_RemoteWikiFolders indexView
+   put atopia_FetchAllFolderList() into remoteWikiFolders
    put "atopia_FetchAllFolderList()" into stackLabel
    
-   _SetDisplayDomainNames indexView, domainNames, "Remote Domains", stackLabel
-end menu_RemoteDomains
+   _SetDisplayDomainNames indexView, remoteWikiFolders, "Remote Wiki Folders", stackLabel
+end menu_RemoteWikiFolders
 
 on menu_ReservedFolders indexView
    put atopia_FetchReservedFoldersList() into domainNames
@@ -102,42 +91,59 @@ end menu_ReservedFolders
 on _
 end _
 
-on menu_AtopiaConfig
+on menu_DisplayAtopiaArray
+   display_AtopiaDomainErrorArray
+end menu_DisplayAtopiaArray
+
+on menu_DisplayAtopiaConfig
    put atopia_FetchConfigArray() into configArray
    display_Array configArray, "Atopia config.json"
-end menu_AtopiaConfig
+end menu_DisplayAtopiaConfig
 
-on menu_AtopiaInfo
+on menu_DisplayOwnershipArray indexView
+   put atopia_GetDomainOwnershipArray() into domainOwnershipArray
+   -- put dynadot_FetchIndexedDomainArray() into domainArray
+   display_Array domainOwnershipArray, "atopia_ConstructDomainOwnershipArray()", "Global | Atopia | Tree | Menu"
+end menu_DisplayOwnershipArray
+
+on menu_DisplayAtopiaDropletInfo
    put digitalOcean_GetDropletArray ("Atopia") into dropletArray
    display_Array dropletArray
-end menu_AtopiaInfo
-
-on menu_DisplayErrorArray
-   display_AtopiaDomainErrorArray
-end menu_DisplayErrorArray
-
-
---> Global | Atopia | Tree | Menu
--
-on submenu_Display
-   return "Display | Menu"
-end submenu_Display
+end menu_DisplayAtopiaDropletInfo
 
 on _
 end _
 
+on menu_FindLocalGoodUnhosted indexView
+   lcw_AnswerSheet "This is slow as we rotate through all local good folders and check they have A records for Atopia!"
+   set the cursor to watch
+   --
+   put atopia_ListLocalGoodFolders() into localGoodFolders
+   put atopia_CheckUnhosted (localGoodFolders) into dnsArray
+   put the keys of dnsArray ["bad ip"] into domainNames
+   put "atopia_CheckUnhosted()" into stackLabel
+   
+   _SetDisplayDomainNames indexView, domainNames, "Found Local Good Unhosted", stackLabel
+end menu_FindLocalGoodUnhosted
+
+
+--> Global | Atopia | Tree | Menu
+-
 on menu_ProcessNewFolders indexView
-   lcw_AnswerSheet "Check if new folders are bad?"
+   lcw_AnswerSheet "Check if new folders are bad and trash, move to unhosted and update them?"
    --
-   atopia_UpdateDomainErrorArray
-   put atopia_FetchNewFolderList() into domainNames
+   atopia_UpdateArrayAndMove
+   put the result into resultArray
    --
-   lock screen
-   set the atopia_ColouredLines of indexView to domainNames
-   set the label of the stack_Object of indexView to "atopia_FetchNewFolderList()"
-   set the title_Text of indexView to "New Folders"
-   unlock screen
+   display_AtopiaUpdateResult resultArray, indexView
 end menu_ProcessNewFolders
+
+on _
+end _
+
+on submenu_Display
+   return "Display | Menu"
+end submenu_Display
 
 on submenu_Move
    return "Move | Menu"
@@ -161,18 +167,14 @@ end submenu_Dynadot
 on _
 end _
 
-on menu_UpdateDomainErrorArray indexView
-   put the selected_Line of indexView into wikiDomain
-   atopia_UpdateDomainErrorArray wikiDomain
-   put atopia_FetchNewFolderList() into domainNames
-   _SetDisplayDomainNames indexView, domainNames, "New Folders"
-end menu_UpdateDomainErrorArray
-
 on menu_BuildOwnershipArray indexView
    -- could just get the good and bad
-   -- put atopia_ListDomainFolders() into wikiFolders
+   -- put atopia_ListLocalWikiFolders() into wikiFolders
    -- instead we get just the good ones
-   put atopia_ListGoodFolders() into wikiFolders
+   lcw_AnswerSheet "Do you want to build an ownership array for all server side (good) wiki folders?"
+   --
+   -- put atopia_ListLocalGoodFolders() into wikiFolders
+   put atopia_FetchAllFolderList() into wikiFolders
    put atopia_ConstructDomainOwnershipArray (wikiFolders) into domainOwnershipArray
    --
    atopia_SetDomainOwnershipArray domainOwnershipArray
@@ -189,7 +191,7 @@ on menu_BuildAtopiaDomainArray
    put atopia_FetchAndBuildArray() into pDomainErrorArray
    atopia_SetDomainErrorArray pDomainErrorArray   
    --
-   display_AtopiaDomainFolders
+   display_AtopiaLocalWikiFolders
    display_AtopiaDomainErrorArray
 end menu_BuildAtopiaDomainArray
 
@@ -197,7 +199,7 @@ on _
 end _
 
 on menu_Refresh indexView
-   display_AtopiaDomainFolders indexView
+   display_AtopiaLocalWikiFolders indexView
 end menu_Refresh
 
 on submenu_Dev
@@ -207,8 +209,21 @@ end submenu_Dev
 
 --> Move | Menu
 -
-on menu_MoveUnhostedFolders indexView
-   put atopia_ListBadFolders() into domainNames
+on menu_MoveBadFolders indexView
+   put atopia_ListLocalBadFolders() into domainNames
+   _SetDisplayDomainNames indexView, domainNames, "Bad Folders"   
+   lcw_AnswerWarning "Move all these bad folders to the _trash folder?"
+   --
+   atopia_MoveAllBadFoldersToTrash indexView
+   put the result into missingFolders
+   put missingFolders
+   --
+   put atopia_ListLocalBadFolders() into domainNames
+   _SetDisplayDomainNames indexView, domainNames, "Bad Folders"   
+end menu_MoveBadFolders
+
+on menu_MoveUnhostedBadFolders indexView
+   put atopia_ListLocalBadFolders() into domainNames
    _SetDisplayDomainNames indexView, domainNames, "Bad Folders"   
    lcw_AnswerSheet "Move all unhosted folders to the _unhosted_sites folder?"
    --
@@ -218,28 +233,30 @@ on menu_MoveUnhostedFolders indexView
    put the keys of domainErrorArray ["_unhosted_sites"] into domainNames
    
    _SetDisplayDomainNames indexView, domainNames, "Unhosted Folders"
-end menu_MoveUnhostedFolders
-
-on menu_MoveBadFolders indexVi
-   put atopia_ListBadFolders() into domainNames
-   _SetDisplayDomainNames indexView, domainNames, "Bad Folders"   
-   lcw_AnswerWarning "Move all these bad folders to the _trash folder?"
-   --
-   atopia_MoveAllBadFoldersToTrash indexView
-   put the result into missingFolderNames
-   put missingFolderNames
-   --
-   put atopia_ListBadFolders() into domainNames
-   _SetDisplayDomainNames indexView, domainNames, "Bad Folders"   
-end menu_MoveBadFolders
+end menu_MoveUnhostedBadFolders
 
 
 --> Check | Menu
 -
+on menu_CheckLocalUnhosted indexView
+   -- quick check
+   put atopia_ListLocalUnhostedFolders() into unhostedFolders
+   put atopia_FetchAllFolderList() into remoteWikiFolders
+   repeat for each line unhostedFolder in unhostedFolders
+      set the cursor to busy
+      if unhostedFolder is among the lines of remoteWikiFolders then
+         put unhostedFolder & CR after inGoodRemoteFolders
+      end if
+   end repeat
+   delete char -1 of inGoodRemoteFolders
+   
+   _SetDisplayDomainNames indexView, inGoodRemoteFolders, "Remove from unhosted"
+end menu_CheckLocalUnhosted
+
 on menu_CheckGoodFolders indexView
    -- let's see if they have DNS settings
    
-   put atopia_ListGoodFolders() into goodFolders
+   put atopia_ListLocalGoodFolders() into goodFolders
    --
    put atopia_GetDomainErrorArray() into domainErrorArray
    repeat for each line goodShortFolder in goodFolders
@@ -257,7 +274,7 @@ on menu_CheckGoodFolders indexView
    /*
    atopia_SetDomainErrorArray domainErrorArray
    --
-   put atopia_ListGoodFolders() into domainNames
+   put atopia_ListLocalGoodFolders() into domainNames
    _SetDisplayDomainNames indexView, domainNames, "Good Folders"
    */
    
@@ -283,7 +300,7 @@ on menu_CheckBadFolders indexView
    breakpoint
    atopia_SetDomainErrorArray domainErrorArray
    
-   put atopia_ListBadFolders() into domainNames
+   put atopia_ListLocalBadFolders() into domainNames
    _SetDisplayDomainNames indexView, domainNames, "Bad Folders"
 end menu_CheckBadFolders
 
@@ -295,13 +312,13 @@ end menu_CheckFolders
 on menu_TestFetchedSameAsLocal
    set the cursor to watch
    put atopia_FetchAllFolderList() into fetchedFolders
-   put atopia_ListDomainFolders() into localFolders
+   put atopia_ListLocalWikiFolders() into localFolders
    --
    if localFolders = fetchedFolders then
       lcw_AnswerSheet "Good server folders are the same as local folders!"
    else
       display_Lines fetchedFolders, "Fetched,atopia_FetchAllFolderList()"
-      display_Lines localFolders, "Local,atopia_ListDomainFolders()"
+      display_Lines localFolders, "Local,atopia_ListLocalWikiFolders()"
       lcw_AnswerSheet "Good server folders are different from local folders!"
    end if
 end menu_TestFetchedSameAsLocal
@@ -344,14 +361,6 @@ on menu_StoreOwnershipArray indexView
    lcw_AnswerSheet "Saved ownership array!"
 end menu_StoreOwnershipArray
 
-on menu_DisplayOwnershipArray indexView
-   put atopia_GetDomainOwnershipArray() into domainOwnershipArray
-   -- put the displayed_Data of indexView into domainOwnershipArray
-   -- put dynadot_FetchIndexedDomainArray() into domainArray
-   --
-   display_Array domainOwnershipArray, "atopia_ConstructDomainOwnershipArray()", "Global | Atopia | Tree | Menu"
-end menu_DisplayOwnershipArray
-
 
 --> Global | Atopia | Tree | Menu | Props
 -
@@ -368,3 +377,15 @@ private command _SetDisplayDomainNames indexView, domainNames, whichFolders, sta
    set the title_Text of indexView to whichFolders
    unlock screen
 end _SetDisplayDomainNames
+
+-- private command _ColourGoodBad indexView
+lock screen
+put atopia_GetDomainErrorArray() into domainErrorArray
+put domainErrorArray ["info"]["badNums"] into badNums
+put domainErrorArray ["info"]["goodNums"] into goodNums
+
+set the field_Align of indexView to "right"
+set the line_Colour [badNums] of indexView to red
+set the line_Colour [goodNums] of indexView to empty
+unlock screen
+end _ColourGoodBad
