@@ -25,10 +25,14 @@ on preOpenStack
 end preOpenStack
 
 on project_Init
+   -- if the long id of the target is not the long id of me then return false
+   -- if project_IsActive ("lcw_Server") is true then return false
+   
    set the cursor to watch
    set the loc of me to the screenloc    
    put the project_Deps of me into projectNames
    env_LoadProject projectNames
+   return true
 end project_Init
 
 
@@ -71,6 +75,11 @@ function env_ConstructProjectHomePath otherProjectName, someHomeStackPath
    put lcwRoot & otherProjectName & slash & otherProjectName & ".livecode" into projectHomeStackPath
    return projectHomeStackPath
 end env_ConstructProjectHomePath
+
+function project_IsActive projectName
+   put env_GetProjectFolder (projectName) is not empty into projectIsLoaded
+   return projectIsLoaded
+end project_IsActive
 
 function env_GetProjectFolder projectName
    put env_GetProjectArray() into envProjectArray
