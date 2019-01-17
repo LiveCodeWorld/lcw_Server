@@ -9,7 +9,16 @@ version: 0.2
 /*
 This library  is for fetchng and setting files and folders on the Atopia server.
 It uses ssh ("ssh_DoRemoteShell" to list files and folder on the server)
-And "digitalOcean_StoreFile" and "digitalOcean_FetchFile" to get stuff
+And "digitalOcean_StoreFile" and "digitalOcean_FetchFile" to get stuff.
+
+To make this work safely on the server we don't use ssh.
+Instead we refer to json files stored in wiki that provide the most up to date information about the state of the server farm available.
+Ultimately the wiki-server should provide this information live, and we should structre our development to anticiapte - indeed guide this.
+
+# Local Server
+A local wiki-server can provide safe ssh access to the wiki farm from behind the firewall.
+This would be useful for authoring purposes.
+Alternatively we could use the shell plugin to acheive the same type of thing, if a little less securely :)
 */
 
 --> Variables
@@ -18,6 +27,27 @@ constant AtopiaDropletName = "Atopia"
 constant AtopiaSshUser = "root"
 
 local AtopiaDropletIP
+
+
+--> Working on
+-
+function atopia_GetDomain topDomain
+   
+end atopia_GetDomain
+   
+function atopia_FetchDomain topDomain
+   put atopia_FetchAllFolderList() into wikiFolders
+   put "*." & topDomain into someFilter
+   --
+   set the wholematches to true
+   put topDomain is among the lines of wikiFolders into topThere
+   filter wikiFolders with someFilter
+   if topThere then
+      put topDomain & CR before wikiFolders
+      put word 1 to -1 of wikiFolders into wikiFolders
+   end if
+   return wikiFolders
+end atopia_FetchDomain
 
 
 --> Atopia | Model | Fetch
