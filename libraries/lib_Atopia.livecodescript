@@ -8,25 +8,58 @@ version: 0.3
 
 /*
 This library is for processing and interfacing with wiki folders on the Atopia server.
+Carful with it as it does a lot of moving and deleting of files and folders using ssh
 */
+
+--> Variables
+-
+constant ReservedFolderNames = "_old_sites,_unhosted_sites,_trash,fedwiki_owners"
 
 
 --> Working on
+-
+function atopia_FetchFarmStatus nsType, domainName
+   switch nsType
+      case "digitalocean"
+         put digitalocean_GetDomainArray (domainName) into domainArray
+         put domainArray ["domain_records"] into recordArray
+         repeat for each key indexNum in recordArray
+            if recordArray [indexNum]["type"] = "A" and recordArray [indexNum]["name"] begins with "*." then
+               return true
+            end if
+         end repeat
+         return false
+      case "dynadot"
+         -- while the api is down
+         return false
+      default
+         -- just a guess
+         return empty
+   end switch
+end atopia_FetchFarmStatus
+
+function atopia_FetchNameServerType domainName
+   put dig_GetNS (domainName) into nameServers
+   set the itemdelimiter to "."
+   return item -2 of nameServers
+end atopia_FetchNameServerType
+
+
+--> Atopia | Update
 -
 command atopia_UpdateArrayAndMove pWikiFolders
    -- this should step through all tests and update everything
    -- moving folders to trash or unhosted as needed
    
-   -- defaults to prcessing new folders
+   -- defaults to processing new folders
    if pWikiFolders is empty then
       put atopia_FetchNewFolderList() into pWikiFolders
    end if
-   put atopia_GetDomainErrorArray() into domainErrorArray
+   put atopia_GetData() into atopiaData
    
    -- let's update bad ones
    -- first check how many wiki pages each domain has
-   -- then update local good/bad domainErrorArray
-   atopia_AddToDomainErrorArray domainErrorArray, pWikiFolders
+   atopia_AddToDomainErrorArray atopiaData, pWikiFolders
    put the result into addedBadFolders
    -- finally move bad ones we added to trash
    atopia_MoveAllBadFoldersToTrash addedBadFolders
@@ -37,8 +70,6 @@ command atopia_UpdateArrayAndMove pWikiFolders
       put missingFolders into resultArray ["missingFolders"]
    end if
    put addedBadFolders into resultArray ["addedBadFolders"]
-   -- now store the updated with the new bad/good value
-   atopia_SetDomainErrorArray domainErrorArray
    
    -- now let's check that the good folders left are hosted
    put pWikiFolders into newGoodFoldersleft
@@ -48,17 +79,33 @@ command atopia_UpdateArrayAndMove pWikiFolders
    -- now let's move those unhosted folders
    atopi_MoveGoodToUnhosted newGoodFoldersleft
    put the result into movedToUnhosted
-   -- atopi_MoveGoodToUnhosted also does atopia_SetDomainErrorArray
+   -- atopi_MoveGoodToUnhosted also does atopia_SetData
    put movedToUnhosted into resultArray ["movedToUnhosted"]
    
    -- perhaps removed a few more
    line_DeleteIndex newGoodFoldersleft, movedToUnhosted
    if newGoodFoldersleft is empty then return resultArray
    
-   -- now update the domainOwnershipArray for the hosted good folders
-   put atopia_ConstructDomainOwnershipArray (newGoodFoldersleft) into domainOwnershipArray
-   atopia_SetDomainOwnershipArray domainOwnershipArray
+   -- now we have the good new folders
+   -- from here we add them to local good folder store
+   -- the bad ones should already be moved
+   -- these three sstages could be done as one write to the database
+   put atopia_GetData() into atopiaData
+   atopia_AddToDomainErrorArray atopiaData, newGoodFoldersleft
+   atopia_SetData atopiaData
+   
+   -- and update the ownership and dns array entries
+   --
+   -- now update the ownershipArray for the hosted good folders
+   put atopia_GetOwnershipArray() into ownershipArray
+   atopia_AddOwnershipToDomainArray ownershipArray, newGoodFoldersleft
+   atopia_SetOwnershipArray ownershipArray
    put newGoodFoldersleft into resultArray ["newGoodFoldersAdded"]
+   
+   -- and add DNS entries
+   put atopia_GetDomainDnsArray() into dnsArray
+   atopia_AddDnsToDomainArray dnsArray, newGoodFoldersleft
+   atopia_SetDomainDnsArray dnsArray
    
    return resultArray
 end atopia_UpdateArrayAndMove
@@ -66,7 +113,7 @@ end atopia_UpdateArrayAndMove
 
 --> Atopia | Model | Build
 -
-command atopia_AddToDomainErrorArray @domainErrorArray, wikiFolders, pMinNum
+command atopia_AddToDomainErrorArray @atopiaData, wikiFolders, pMinNum
    if pMinNum is empty then put 1 into pMinNum
    
    repeat for each line wikiFolder in wikiFolders
@@ -75,9 +122,11 @@ command atopia_AddToDomainErrorArray @domainErrorArray, wikiFolders, pMinNum
       --
       put atopia_FetchWikiPageList (wikiFolder) into wikiPages
       if the number of lines of wikiPages > pMinNum then
-         put wikiPages into domainErrorArray ["good"][wikiFolder]
+         put wikiPages into atopiaData ["good"][wikiFolder]
+         delete variable atopiaData ["bad"][wikiFolder]
       else
-         put wikiPages into domainErrorArray ["bad"][wikiFolder]
+         put wikiPages into atopiaData ["bad"][wikiFolder]
+         delete variable atopiaData ["good"][wikiFolder]
          put wikiFolder & CR after addedBadFolders
       end if
       add 1 to lineNum
@@ -85,10 +134,28 @@ command atopia_AddToDomainErrorArray @domainErrorArray, wikiFolders, pMinNum
    delete char -1 of addedBadFolders
    
    -- not needed now?
-   put atopia_ConstructGoodBadNumArray (domainErrorArray, pMinNum) into domainInfoArray
-   put domainInfoArray into domainErrorArray ["info"]
+   -- put atopia_ConstructGoodBadNumArray (atopiaData, pMinNum) into domainInfoArray
+   -- put domainInfoArray into atopiaData ["info"]
    return addedBadFolders
 end atopia_AddToDomainErrorArray
+
+command atopia_FilterAllFolderArray @folderArray
+   -- let's filter
+   repeat for each key folderName in folderArray
+      switch
+         case folderName begins with "."
+         case folderName begins with "_"
+         case folderName is among the items of ReservedFolderNames
+            delete variable folderArray [folderName]
+            put folderName & CR after removedFolderNames
+            break
+         default
+            -- it's ok
+      end switch
+   end repeat
+   delete char -1 of removedFolderNames
+   return removedFolderNames
+end atopia_FilterAllFolderArray
 
 function atopia_FetchAndBuildArray pMinNum, pWikiFolders
    -- really, really slow (consider using cli "tree" thing)
@@ -106,71 +173,54 @@ function atopia_FetchAndBuildArray pMinNum, pWikiFolders
       --
       put atopia_FetchWikiPageList (wikiFolder) into wikiPages
       if the number of lines of wikiPages > pMinNum then
-         put wikiPages into domainErrorArray ["good"][wikiFolder]
+         put wikiPages into atopiaData ["good"][wikiFolder]
       else
-         put wikiPages into domainErrorArray ["bad"][wikiFolder]
+         put wikiPages into atopiaData ["bad"][wikiFolder]
       end if
       add 1 to lineNum
    end repeat
    
    -- not deeded?
-   put atopia_ConstructGoodBadNumArray (domainErrorArray, pMinNum) into domainInfoArray
-   put domainInfoArray into domainErrorArray ["info"]
-     
-   return domainErrorArray
+   put atopia_ConstructGoodBadNumArray (atopiaData, pMinNum) into domainInfoArray
+   put domainInfoArray into atopiaData ["info"]
+   
+   return atopiaData
 end atopia_FetchAndBuildArray
 
 
 --> Atopia | Model | Construct
 -
-function atopia_ConstructDomainOwnershipArray wikiFolders, pDomainOwnershipArray
-   local indexedArray, domainOwnershipArray
-   
-   if pDomainOwnershipArray is not an array then
-      put atopia_GetDomainOwnershipArray() into pDomainOwnershipArray
+command atopia_ConstructDnsArray pDeleteExisting
+   put atopia_FetchAllFolderList() into wikiFolders
+   if pDeleteExisting is true then
+      atopia_SetDomainDnsArray empty
+      put empty into dnsArray
+   else
+      put atopia_GetDomainDnsArray() into dnsArray
    end if
-   
+   --
+   atopia_AddDnsToDomainArray dnsArray, wikiFolders
+   --
+   atopia_SetDomainDnsArray dnsArray
+   put the result into modelDataFile
+   return modelDataFile
+end atopia_ConstructDnsArray
+
+command atopia_AddDnsToDomainArray @dnsArray, wikiFolders
    repeat for each line wikiFolder in wikiFolders
       set the cursor to busy
+      if wikiFolder is among the items of ReservedFolderNames then next repeat
       --
-      put atopia_FindOwnerArray (wikiFolder, pConfigArray) into ownerArray
+      put dig_GetIP (wikiFolder) into testIP
+      put dig_GetNS (wikiFolder) into nsList
       --
-      put fedwiki_GetOwnerEmail (ownerArray) into ownerEmail
-      if ownerEmail is empty then
-         put "No email" into ownerEmail
-      end if
-      
-      put pDomainOwnershipArray [ownerEmail]["domains"] into indexedArray
-      --
-      array_AddToNumbered indexedArray, "domain", wikiFolder
-      put the result into newIndexNum
-      put ownerArray into indexedArray [newIndexNum]["ownerArray"]
-      --
-      put indexedArray into pDomainOwnershipArray [ownerEmail]["domains"]
+      put nsList into dnsArray [wikiFolder]["NS"]
+      put testIP into dnsArray [wikiFolder]["A record"]
    end repeat
-   return pDomainOwnershipArray
-end atopia_ConstructDomainOwnershipArray
+end atopia_AddDnsToDomainArray
 
 
 --> Atopia | Check
--
-function atopia_DomainIsBad folderName, domainErrorArray
-   put domainErrorArray ["good"] into goodArray
-   put domainErrorArray ["bad"] into badArray
-   
-   set the caseSensitive to true
-   put folderName is among the keys of badArray into isBad
-   put folderName is among the keys of goodArray into isGood
-   
-   if isGood and isbad is true then
-      breakpoint -- shoud be one or the other
-      return false
-   else if isGood is true then
-      return false
-   else if isBad is true then
-      return true
-   end if
-end atopia_DomainIsBad
 
 function atopia_RemoteWikiFolderExists folderName, pRemoteFolderArray
    if pRemoteFolderArray is empty then
@@ -180,6 +230,18 @@ function atopia_RemoteWikiFolderExists folderName, pRemoteFolderArray
    put folderName is among the keys of pRemoteFolderArray into remoteExists
    return remoteExists
 end atopia_RemoteWikiFolderExists
+
+function atopia_TrashFolderExists trashDomain
+   -- could check it is a folder and not a file
+   put atopia_FolderInTrashFolder (trashDomain) into folderInTrashFolder
+   put "ls -la" && folderInTrashFolder into remoteShell
+   _DoAtopiaShell remoteShell
+   if the result begins with "ls: cannot access" then
+      return false
+   else
+      return true
+   end if
+end atopia_TrashFolderExists
 
 function atopia_CheckUnhosted goodFolders
    -- This is slow
@@ -206,103 +268,6 @@ function atopia_CheckUnhosted goodFolders
 end atopia_CheckUnhosted
 
 
---> Display | Events
--
-on mDoubleUp_AtopiaWikiFiles indexView, pageSlug
-   if the optionKey is "down" then breakpoint
-   --
-   put the title_Text of indexView into wikiDomain
-   --
-   put fedwiki_PageUrl (wikiDomain, pageSlug) into pageURL
-   launch url pageURL
-   
-   put atopia_FindOwnerArray (wikiDomain) into ownerArray
-   display_AtopiaOwnerArray ownerArray, wikiDomain
-end mDoubleUp_AtopiaWikiFiles
-
-command mDoubleUp_AtopiaFolder indexView, wikiDomain
-   if the optionKey is "down" then breakpoint
-   
-   display_AtopiaWikiPages wikiDomain
-end mDoubleUp_AtopiaFolder
-
-
-
---> Display
--
-command display_AtopiaLocalWikiFolders pIndexView
-   -- put atopia_FetchAllFolderList() into wikiFolders
-   put atopia_ListLocalWikiFolders() into wikiFolders
-   
-   if exists (pIndexView) then
-      set the displayed_Index of pIndexView to wikiFolders
-   else
-      display_Lines wikiFolders, "Atopia Wiki Folders,atopia_FetchAllFolderList()", "mDoubleUp_AtopiaFolder"
-      put the result into pIndexView
-      set the title_Menu of pIndexView to "Global | Atopia | Tree | Menu"
-      set the line_Menu of pIndexView to "Global | Atopia | Line | Menu"
-   end if
-   
-   set the atopia_ColouredLines of pIndexView to wikiFolders
-   return pIndexView
-end display_AtopiaLocalWikiFolders
-
-command display_AtopiaWikiPages wikiDomain
-   set the cursor to watch
-   put atopia_FetchWikiPageList (wikiDomain) into wikiPages
-   
-   put wikiDomain & comma & "atopia_FetchWikiPageList()" into displayTitle
-   display_Lines wikiPages, displayTitle, "mDoubleUp_AtopiaWikiFiles"
-   put the result into displayView
-   --
-   set the title_Menu of displayView to "Global | Atopia | Tree | Menu"
-   set the line_Menu of displayView to "Global | Atopia | Line | Menu"
-   --
-   return displayView
-end display_AtopiaWikiPages
-
-command display_AtopiaDomainErrorArray
-   put atopia_GetDomainErrorArray() into domainErrorArray
-   --
-   display_Array domainErrorArray, "Domain Error Array,atopia_GetDomainErrorArray()"
-end display_AtopiaDomainErrorArray
-
-command display_AtopiaOwnerArray ownerArray, wikiDomain
-   display_Array ownerArray, (wikiDomain & ",atopia_FindOwnerArray()")
-   put fedwiki_GetOwnerEmail (ownerArray)
-end display_AtopiaOwnerArray
-
-
---> Props
--
-setprop atopia_ColouredLines allFolderNames
-   -- this will set a domain list fo an index_View
-   -- and check and colour any domains red that are marked bad in the local domainErrorArray
-   
-   put atopia_GetDomainErrorArray() into domainErrorArray
-   url_SortDomainIndex allFolderNames, true
-   --
-   repeat with lineNum = 1 to the number of lines of allFolderNames
-      put line lineNum of allFolderNames into folderName
-      if atopia_DomainIsBad (folderName, domainErrorArray) is true then
-         put empty into colourArray ["red"][lineNum]
-         put lineNum & comma after badNums
-      else
-         put empty into colourArray ["none"][lineNum]
-         put lineNum & comma after goodNums
-      end if
-   end repeat
-   delete char -1 of goodNums
-   delete char -1 of badNums
-   --
-   lock screen
-   set the field_Align of the target to "right"
-   set the view_Index of the target to allFolderNames
-   set the line_Colours of the target to colourArray
-   unlock screen
-end atopia_ColouredLines
-
-
 --> Atopia | Model | Move
 -
 command atopia_MoveAllBadFoldersToTrash pBadFolders
@@ -321,9 +286,9 @@ command atopia_MoveAllBadFoldersToTrash pBadFolders
       end if
       --
       atopia_MoveToTrash badFolderName
-      put the result into domainErrorArray
+      put the result into atopiaData
       --
-      put the result into domainErrorArray
+      put the result into atopiaData
    end repeat
    delete char -1 of missingFolders
    return missingFolders
@@ -331,9 +296,9 @@ end atopia_MoveAllBadFoldersToTrash
 
 command atopia_MoveToTrash shortWikiFolder
    -- moves a top level wiki folder to trash
-   -- checks atopia_DomainIsBad() among other things
+   -- checks atopia_DomainIsBadInDomainArray() among other things
    
-   put atopia_GetDomainErrorArray() into domainErrorArray
+   put atopia_GetData() into atopiaData
    
    -- let's do lot's of checks
    if shortWikiFolder is empty then
@@ -341,7 +306,7 @@ command atopia_MoveToTrash shortWikiFolder
       return empty
    end if
    -- we are assuming it is a bad folder
-   if atopia_DomainIsBad (shortWikiFolder, domainErrorArray) is false then
+   if atopia_DomainIsBadInDomainArray (shortWikiFolder, atopiaData) is false then
       put "This wiki is not bad!" into someQuestion
       lcw_AnswerSheet someQuestion, empty, true
       exit to top
@@ -363,22 +328,54 @@ command atopia_MoveToTrash shortWikiFolder
       lcw_WarnAndExit "Fail to move domain to wiki_trash folder"
    end if
    
-   -- tidy domainErrorArray
-   put domainErrorArray ["bad"][shortWikiFolder] into badFolderWikiFiles -- probably empty
-   delete variable domainErrorArray ["bad"][shortWikiFolder]
-   put badFolderWikiFiles into domainErrorArray ["_trash"][shortWikiFolder]
+   -- tidy atopiaData 
+   -- now that we've moved it remove from local bad
+   put atopiaData ["bad"][shortWikiFolder] into badFolderWikiFiles -- probably empty
+   delete variable atopiaData ["bad"][shortWikiFolder]
+   put badFolderWikiFiles into atopiaData ["_trash"][shortWikiFolder]
    --
-   atopia_SetDomainErrorArray domainErrorArray
+   atopia_SetData atopiaData
    --
-   return domainErrorArray
+   return atopiaData
 end atopia_MoveToTrash
 
-command atopi_MoveGoodToUnhosted pGoodFolders
+private command atopia_MoveFoldertoTrash remoteWikiFolderPath
+   -- dangerous (no checking)
+   set the itemdelimiter to slash
+   put item -1 of remoteWikiFolderPath into trashDomain
+   atopia_DeleteFolderInTrash trashDomain
+   --
+   put atopia_TrashFolder() into trashFolder
+   put "mv -f" && remoteWikiFolderPath && trashFolder into remoteShell
+   -- put space & "&& rmdir" && remoteWikiFolderPath after remoteShell
+   --
+   _DoAtopiaShell remoteShell
+   put the result into moveResult
+   return moveResult
+end atopia_MoveFoldertoTrash
+
+command atopia_DeleteFolderInTrash trashDomain
+   -- super dangerous (no checking)
+   set the itemdelimiter to slash
+   put item -1 of trashDomain into trashDomain
+   --
+   put atopia_FolderInTrashFolder (trashDomain) into folderInTrashFolder
+   put atopia_TrashFolderExists (trashDomain) into alreadyThere
+   if alreadyThere is false then return empty
+   --
+   put "rm -rf" && folderInTrashFolder into remoteShell
+   _DoAtopiaShell remoteShell
+   --
+   put the result into deleteResult
+   return deleteResult
+end atopia_DeleteFolderInTrash
+
+command atopi_MoveGoodToUnhosted pGoodFolders, pForce
    if pGoodFolders is empty then
       put atopia_ListLocalGoodFolders() into pGoodFolders
    end if
    --
-   put atopia_GetDomainErrorArray() into domainErrorArray
+   put atopia_GetData() into atopiaData
    put atopia_GetIP() into dropletIP
    --
    repeat for each line goodShortFolder in pGoodFolders
@@ -389,31 +386,21 @@ command atopi_MoveGoodToUnhosted pGoodFolders
       --
       if testIP = dropletIP then
          -- it's good so let's add some DNS information for fun
-         _AddDnsToAtopiaArray domainErrorArray, goodShortFolder, testIP
+         _AddDnsToAtopiaArray atopiaData, goodShortFolder, testIP
       else
          -- let's move it
          atopia_MoveToUnhosted goodShortFolder
          --
          put goodShortFolder & CR after goodFoldersMoved
-         put the result into domainErrorArray
+         put the result into atopiaData
       end if
    end repeat
    delete char -1 of goodFoldersMoved
    return goodFoldersMoved
 end atopi_MoveGoodToUnhosted
 
-private command _AddDnsToAtopiaArray @domainErrorArray, goodShortFolder, testIP
-   put dig_GetNS (goodShortFolder) into dnsArray
-   put dnsArray into domainErrorArray ["dns"][goodShortFolder]["NS"]
-   put testIP into domainErrorArray ["dns"][goodShortFolder]["A record"]
-   
-   -- in case we crash :)
-   atopia_SetDomainErrorArray domainErrorArray
-   return dnsArray
-end _AddDnsToAtopiaArray
-
 command atopia_MoveToUnhosted shortWikiFolder
-   put atopia_GetDomainErrorArray() into domainErrorArray
+   put atopia_GetData() into atopiaData
    
    -- let's do lot's of checks
    if shortWikiFolder is empty then
@@ -430,7 +417,7 @@ command atopia_MoveToUnhosted shortWikiFolder
    end if
    
    -- we are assuming it is a good folder
-   get atopia_DomainIsBad (shortWikiFolder, domainErrorArray)
+   get atopia_DomainIsBadInDomainArray (shortWikiFolder, atopiaData)
    if it is true then
       put "This wiki is not good!" into someQuestion
       lcw_WarnAndExit someQuestion
@@ -448,7 +435,7 @@ command atopia_MoveToUnhosted shortWikiFolder
    --
    put atopia_UnhostedFolder() into unhostedFolder
    put "mv" && domainFolder && unhostedFolder into remoteShell
-   atopia_DoRemoteShell remoteShell
+   _DoAtopiaShell remoteShell
    put the result into moveResult
    if moveResult is not empty then
       put moveResult
@@ -456,113 +443,20 @@ command atopia_MoveToUnhosted shortWikiFolder
    end if
    --
    
-   -- tidy domainErrorArray
-   put domainErrorArray ["good"][shortWikiFolder] into goodPageIndex
-   put goodPageIndex into domainErrorArray ["_unhosted_sites"][shortWikiFolder] 
-   delete variable domainErrorArray ["good"][shortWikiFolder]
+   -- tidy atopiaData
+   put atopiaData ["good"][shortWikiFolder] into goodPageIndex
+   put goodPageIndex into atopiaData ["_unhosted_sites"][shortWikiFolder] 
+   delete variable atopiaData ["good"][shortWikiFolder]
    --
-   atopia_SetDomainErrorArray domainErrorArray
+   atopia_SetData atopiaData
    --
-   return domainErrorArray
+   return atopiaData
 end atopia_MoveToUnhosted
-
-private command atopia_MoveFoldertoTrash remoteWikiFolderPath
-   -- dangerous (no checking)
-   put atopia_TrashFolder() into trashFolder
-   put "mv" && remoteWikiFolderPath && trashFolder into remoteShell
-   --
-   atopia_DoRemoteShell remoteShell
-   put the result into moveResult
-   return moveResult
-end atopia_MoveFoldertoTrash
-
-
---> Atopia | Domain | Owner
--
-function atopia_FindOwnerArray wikiDomain, pConfigArray
-   put atopia_FetchOwnerArray (wikiDomain) into ownerArray
-   if ownerArray is an array then return ownerArray
-   
-   -- let's try the config.json
-   put atopia_GetOwnerArrayFromConfig (wikiDomain, pConfigArray) into ownerArray
-   if ownerArray is an array then return ownerArray
-   
-   -- let's see if it an old persona site
-   put atopia_FetchPersonaEmail (wikiDomain) into personaEmail
-   if personaEmail is not empty then
-      put fedwiki_ConstructPersonaOwnerArray (personaEmail) into ownerArray
-      return ownerArray
-   end if
-   
-   return empty
-end atopia_FindOwnerArray
-
-function atopia_FindEmail wikiDomain, pConfigArray
-   -- looks in local owner.json and if not for id file specified in config.json
-   put atopia_FetchOwnerArray (wikiDomain) into ownerArray
-   put fedwiki_GetOwnerEmail (ownerArray) into ownerEmail
-   if ownerEmail is not empty then return ownerEmail
-   
-   -- let's try the config.json
-   put atopia_GetOwnerArrayFromConfig (wikiDomain, pConfigArray) into ownerArray
-   put fedwiki_GetOwnerEmail (ownerArray) into ownerEmail
-   return ownerEmail
-end atopia_FindEmail
-
-function atopia_GetOwnerArrayFromConfig wikiDomain, pConfigArray
-   if pConfigArray is not an array then
-      put atopia_FetchConfigArray() into pConfigArray
-   end if
-   set the itemdelimiter to "."
-   put the number of items of wikiDomain -1 into maxNum
-   put wikiDomain into testDomain
-   repeat maxNum
-      put pConfigArray ["wikiDomains"][testDomain]["id"] into ownerFilePath
-      if ownerFilePath is not empty then next repeat
-      delete item 1 of testDomain
-   end repeat
-   
-   if ownerFilePath is empty then return empty
-   --
-   put digitalOcean_FetchFile (ownerFilePath, "Atopia", "root") into ownerJSON
-   put json_ToArray (ownerJSON) into ownerArray
-   return ownerArray
-end atopia_GetOwnerArrayFromConfig
-
-function atopia_FetchOwnerArray wikiDomain
-   put atopia_FetchOwnerJson (wikiDomain) into ownerJSON
-   put json_ToArray (ownerJSON) into ownerArray
-   return ownerArray
-end atopia_FetchOwnerArray
-
-function atopia_FetchPersonaEmail wikiDomain
-   put atopia_WikiStatusFolder (wikiDomain) into wikiStatusFolder
-   put wikiStatusFolder & "persona.identity" into ownerJsonPath
-   
-   put digitalOcean_FetchFile (ownerJsonPath, "Atopia", "root") into personaData
-   return personaData
-end atopia_FetchPersonaEmail
-
-
---> Atopia | Model | Config
--
-function atopia_FetchConfigFolderList
-   put atopia_FetchConfigArray() into configArray
-   put configArray ["wikidomains"] into wikiDomainArray
-   put keys (wikiDomainArray) into wikiDomains
-   return wikiDomains
-end atopia_FetchConfigFolderList
-
-function atopia_FetchConfigArray
-   put atopia_FetchConfigJSON() into configJSON
-   put json_ToArray (configJSON) into configArray
-   return configArray
-end atopia_FetchConfigArray
 
 
 --> Private
 -
-private function atopia_ConstructGoodBadNumArray @domainErrorArray, pMinNum
+private function atopia_ConstructGoodBadNumArray @atopiaData, pMinNum
    /*
    Not needed now??
    
@@ -571,10 +465,10 @@ private function atopia_ConstructGoodBadNumArray @domainErrorArray, pMinNum
    Use numbered arrays instead? Or work out dynamically
    */
    
-   put atopia_ListLocalWikiFolders (domainErrorArray) into wikiFolders
+   put atopia_ListLocalWikiFolders (atopiaData) into wikiFolders
    put 1 into lineNum
    repeat for each line wikiFolder in wikiFolders
-      put atopia_DomainIsBad (wikiFolder, domainErrorArray) into isBad
+      put atopia_DomainIsBadInDomainArray (wikiFolder, atopiaData) into isBad
       if isBad is true then
          put lineNum & comma after badNums
       else
@@ -589,3 +483,26 @@ private function atopia_ConstructGoodBadNumArray @domainErrorArray, pMinNum
    put badNums into domainInfoArray ["badNums"]
    return domainInfoArray
 end atopia_ConstructGoodBadNumArray
+
+
+--> Private
+-
+private command _DoAtopiaShell remoteShell
+   -- carefull with this
+   -- with the right private ssh key a dangerous sheel command can wipe the entire server
+   
+   put atopia_GetIP() into dropletIP
+   ssh_DoRemoteShell AtopiaSshUser, dropletIP, remoteShell
+   put the result into shellResult
+   return shellResult
+end _DoAtopiaShell
+
+private command _AddDnsToAtopiaArray @atopiaData, goodShortFolder, testIP
+   put dig_GetNS (goodShortFolder) into dnsArray
+   put dnsArray into atopiaData ["dns"][goodShortFolder]["NS"]
+   put testIP into atopiaData ["dns"][goodShortFolder]["A record"]
+   
+   -- in case we crash :)
+   atopia_SetData atopiaData
+   return dnsArray
+end _AddDnsToAtopiaArray

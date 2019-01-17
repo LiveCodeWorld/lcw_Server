@@ -10,7 +10,7 @@ version: 0.2
 --> Global | Server | Menu
 -
 on menu_ListAtopiaFolders
-   display_AtopiaDomainFolders
+   display_AtopiaLocalWikiFolders
 end menu_ListAtopiaFolders
 
 on _

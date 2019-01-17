@@ -4,37 +4,88 @@
 copyright: David Bovill
 license: GPLv3
 name: lib_DigitalOcean
-type: script library
+type: library
 version: 0.9
 
 /*
 A library for interfacing with the DigitalOcean hosting service - http://digitalocean.com
 
 The model needs fixing.
+
+-- function digitalocean_ShellFetchListFiles ipOrDomainName, userName, somePath, pListAll, pKeyPath
+-- renamed "server_FetchFileArray"
+put "ssh" into someShell
+if pKeyPath is not empty then
+   shell_BashParamEscape pKeyPath
+   put space & "-i " && pKeyPath after someShell
+end if
+
+put space & userName & "@" & ipOrDomainname && "ls" after someShell
+if pListAll is true then put space &  "-la" after someShell
+
+shell_BashParamEscape somePath
+put space & somePath after someShell
+
+put word 1 to -1 of shell (someShell) into fileListing
+return fileListing   
+end digitalocean_ShellFetchListFiles
 */
 
 constant OceanApiRoot = "https://api.digitalocean.com/v2/"
 local OceanApiKey
 
 
---> DigitalOcean | Files | Delete
--
-command digitalocean_DeleteFile wikiPageSlug, fedwikiDomain, pDropletName, pSshUserName  
-   put digitalOcean_GetDropletIP (pDropletName) into dropletIP
-   if http_CheckIP (dropletIP) is false then return "error, fetching ip address for droplet" && dropletName
-   
-   put fedwiki_ConstructPath (fedwikiDomain, wikiPageSlug) into wikiPagePath
-   put wikiPagePath into mergeArray ["wikiPagePath"]
-   put merge ("Are you sure you want to delete this file '[[wikiPagePath]]' from the server it can't be undone?") into someQuestion
-   lcw_AnswerWarning someQuestion
-   
-   shell_DeleteFile pSshUserName, dropletIP, wikiPagePath
-   put the result into shellResult
-   return shellResult
-end digitalocean_DeleteFile
-
-
 --> Working on
+-
+function http_CheckIP dropletIP
+   -- rough check for now. Improve please!
+   -- this checks to see if it is a valid IP adresss
+   set the itemdelimiter to "."
+   if the number of items of dropletIP is not 4 then return false
+   repeat for each item testItem in dropletIP
+      if testItem is not a number then return false
+   end repeat
+   return true
+end http_CheckIP
+
+
+--> DigitalOcean | Account
+-
+function digitalOcean_FetchAccountJSON
+   -- curl -X GET -H "Content-Type: application/json" -H "Authorization: Bearer 65a97f6607b896379439cba3ae0d895a701eb11e78a6dd74240e0c1025806bb7" 
+   -- "https://api.digitalocean.com/v2/account" 
+   
+   put digitalocean_FetchJson ("account") into accountJSON
+   return accountJSON
+end digitalOcean_FetchAccountJSON
+
+function digitalOcean_FetchAccountJSON
+   -- curl -X GET -H "Content-Type: application/json" -H "Authorization: Bearer 65a97f6607b896379439cba3ae0d895a701eb11e78a6dd74240e0c1025806bb7" 
+   -- "https://api.digitalocean.com/v2/account" 
+   
+   put digitalocean_FetchJsonArray ("account") into resultArray
+   return resultArray
+end digitalOcean_FetchAccountJSON
+
+
+--> DigitalOcean | Fetch
+-
+function digitalocean_FetchDropletName someTLD, pDomainArray
+   /*
+   This looks for the "@" address of type "A" int the DNS records
+   */
+   local pDropletInfoArray
+   if pDomainArray is not an array then
+      -- put digitalocean_GetDomainArray (someTLD) into domainArray
+      put digitalocean_FetchDomainArray (someTLD) into pDomainArray
+   end if
+   put digitalocean_ExtractIpAddessFrom (pDomainArray) into someIP
+   put digitalocean_TranslateIP (someIP, pDropletInfoArray) into dropletName
+   return dropletName
+end digitalocean_FetchDropletName
+
+
+--> DigitalOcean | Find
 -
 function digitalOcean_FindServerFarms pDomainInfoArray
    local allDomainNames, serverFarms, notServerFarms
@@ -73,51 +124,6 @@ command digitalocean_SplitIntoFarms @allDomainNames, @serverFarms, @notServerFar
 end digitalocean_SplitIntoFarms
 
 
---> DigitalOcean | Authentication
--
-command digitalocean_SetAuthHeaders
-   -- http_SetBasicAuthentication "Bearer", somePassWord, moreHeaders
-   put digitalocean_GetApiKey() into OceanApiKey
-   
-   put "Content-Type: application/json" into someHeader
-   put CR & "Authorization: Bearer" && OceanApiKey after someHeader
-   set the httpheaders to someHeader
-end digitalocean_SetAuthHeaders
-
-function digitalocean_GetApiKey
-   if OceanApiKey is not empty then return OceanApiKey
-   
-   put pref_FetchValue ("OceanApiKey") into OceanApiKey
-   return OceanApiKey
-end digitalocean_GetApiKey
-
-
---> DigitalOcean | Model | Update
--
-command digitalocean_UpdateDomainInfoArray
-   put digitalocean_FetchDomainInfoArray() into domainInfoArray
-   digitalocean_SetDomainInfoArray domainInfoArray
-   return domainInfoArray
-end digitalocean_UpdateDomainInfoArray
-
-command digitalocean_UpdateDropletInfoArray
-   put digitalocean_FetchDropletInfoArray() into dropletInfoArray
-   
-   -- error checking
-   if dropletInfoArray ["id"] = "unauthorized" then
-      breakpoint
-   end if
-   
-   digitalOcean_SetDropletInfoArray dropletInfoArray
-   return dropletInfoArray
-end digitalocean_UpdateDropletInfoArray
-
-command digitalOcean_FetchAndSetDropletArrays
-   digitalocean_UpdateDropletInfoArray
-   digitalocean_UpdateDomainInfoArray
-end digitalOcean_FetchAndSetDropletArrays
-
-
 --> DigitalOcean | Wiki
 -
 function digitalocean_FetchWikiFolders dropletName, pListAll
@@ -152,295 +158,6 @@ function digitalocean_FetchWikiFiles fedwikiDomain, dropletName, pListAll
    put word 1 to -1 of shell (someShell) into wikiPageFiles
    return wikiPageFiles
 end digitalocean_FetchWikiFiles
-
-
---> DigitalOcean | Model
--
-/*
-This model should use stored array and not custom properties of a random stack.
-*/
-
-function digitalOcean_GetDropletInfoArray
-   set the droplet_InfoArray of me to empty
-   put the droplet_InfoArray of me into dropletInfoArray
-   if dropletInfoArray is not an array then
-      -- put digitalocean_FetchDropletInfoArray() into dropletInfoArray
-      digitalocean_UpdateDropletInfoArray
-      put the droplet_InfoArray of me into dropletInfoArray
-   end if
-   return dropletInfoArray
-end digitalOcean_GetDropletInfoArray
-
-command digitalOcean_SetDropletInfoArray dropletInfoArray
-   set the droplet_InfoArray of me to dropletInfoArray
-end digitalOcean_SetDropletInfoArray
-
-function digitalocean_GetDomainInfoArray
-   put the digitalocean_DomainInfoArray of me into domainInfoArray
-   return domainInfoArray
-end digitalocean_GetDomainInfoArray
-
-command digitalocean_SetDomainInfoArray domainInfoArray
-   set the digitalocean_DomainInfoArray of me to domainInfoArray
-end digitalocean_SetDomainInfoArray
-
-function digitalOcean_GetIndexedActionArray
-   put the digitalOcean_IndexedActionArray of me into indexedActionArray
-   return indexedActionArray
-end digitalOcean_GetIndexedActionArray
-
-command digitalOcean_SetIndexedActionArray indexedActionArray
-   set the digitalOcean_IndexedActionArray of me to indexedActionArray
-end digitalOcean_SetIndexedActionArray
-
-
---> DigitalOcean | Shell
--
--- function digitalocean_ShellFetchListFiles ipOrDomainName, userName, somePath, pListAll, pKeyPath
--- renamed "server_FetchFileArray"
-put "ssh" into someShell
-if pKeyPath is not empty then
-   shell_BashParamEscape pKeyPath
-   put space & "-i " && pKeyPath after someShell
-end if
-
-put space & userName & "@" & ipOrDomainname && "ls" after someShell
-if pListAll is true then put space &  "-la" after someShell
-
-shell_BashParamEscape somePath
-put space & somePath after someShell
-
-put word 1 to -1 of shell (someShell) into fileListing
-return fileListing   
-end digitalocean_ShellFetchListFiles
-
-function digitalOcean_FetchFile somePath, pDropletName, pSshUserName
-   put digitalOcean_GetDropletIP (pDropletName) into dropletIP
-   if http_CheckIP (dropletIP) is false then
-      return "Error, fetching ip address for droplet" && dropletName
-   end if
-   
-   put digitalOcean_FetchFileFromIP (somePath, dropletIP, pSshUserName) into someData
-   return someData
-end digitalOcean_FetchFile
-
-function digitalOcean_FetchFileFromIP somePath, dropletIP, pSshUserName   
-   shell_BashParamEscape somePath
-   put shell_FetchFile (pSshUserName, dropletIP, somePath) into someData
-   set the itemdelimiter to ":"
-   if (item 1 of someData = "cat" and item -1 of someData = " No such file or directory") then return empty
-   return someData
-end digitalOcean_FetchFileFromIP
-
-command digitalOcean_StoreData someData, dropletName, pathToStore, pSshUserName
-   put the tempname into localFile
-   put someData into url ("binfile://" & localFile)
-   digitalOcean_StoreFile dropletName, pathToStore, localFile, pSshUserName
-   return the result
-end digitalOcean_StoreData
-
-command digitalOcean_StoreText someData, dropletName, pathToStore, pSshUserName
-   put the tempname into localFile
-   put someData into url ("file://" & localFile)
-   digitalOcean_StoreFile dropletName, pathToStore, localFile, pSshUserName
-   return the result
-end digitalOcean_StoreText
-
-command digitalOcean_StoreFile dropletName, pathToStore, localFile, sshUserName
-   put digitalOcean_GetDropletIP (dropletName) into serverAddress
-   if http_CheckIP (serverAddress) is false then return "error, fetching ip address for droplet" && dropletName
-   
-   server_StoreFile localFile, pathToStore, serverAddress, sshUserName
-   put the result into someResult
-   return someResult
-end digitalOcean_StoreFile
-
-
---> DigitalOcean
--
-function digitalocean_FetchDropletName someTLD, pDomainArray
-   /*
-   This looks for the "@" address of type "A" int the DNS records
-   */
-   local pDropletInfoArray
-   if pDomainArray is not an array then
-      -- put digitalocean_GetDomainArray (someTLD) into domainArray
-      put digitalocean_FetchDomainArray (someTLD) into pDomainArray
-   end if
-   put digitalocean_ExtractIpAddessFrom (pDomainArray) into someIP
-   put digitalocean_TranslateIP (someIP, pDropletInfoArray) into dropletName
-   return dropletName
-end digitalocean_FetchDropletName
-
-function digitalocean_ExtractIpAddessFrom domainArray
-   put domainArray ["domain_records"] into domainRecordsArray
-   repeat for each key recordNum in domainRecordsArray
-      put domainRecordsArray [recordNum]["type"] into recordType
-      put domainRecordsArray [recordNum]["name"] into recordName
-      if recordType = "A" and recordName = "@" then
-         put domainRecordsArray [recordNum]["data"] into someIP
-         return someIP
-      end if
-   end repeat
-   return empty
-end digitalocean_ExtractIpAddessFrom
-
-function digitalocean_TranslateIP someIP, pDropletInfoArray
-   put digitalocean_ConstructDropletDictionary (pDropletInfoArray) into dropletDictionary
-   digitalocean_DeconstructDropletDictionary dropletDictionary, nameDictionary, ipDictionary
-   put ipDictionary [someIP] into dropletName
-   return dropletName
-end digitalocean_TranslateIP
-
-function digitalocean_FetchJsonArray someCommand, pRecordsPerPage
-   -- v2
-   put OceanApiRoot & someCommand into someUrl
-   if pRecordsPerPage is not empty then
-      put "?per_page=" & pRecordsPerPage after someUrl
-   end if
-   
-   digitalocean_SetAuthHeaders
-   put url someUrl into someJSON
-   put json_ToArray (someJSON) into someArray
-   return someArray
-end digitalocean_FetchJsonArray
-
-command digitalocean_RestDelete domainPath
-   -- v2
-   -- this seems slow it would be good to have async with callback?
-   
-   put OceanApiRoot & domainPath into someUrl
-   digitalocean_SetAuthHeaders
-   delete url someUrl
-   put the result into someResult
-   
-   switch someResult
-      case "error 422 Unprocessable Entity"
-         /*
-         The 422 (Unprocessable Entity) status code means the server
-         understands the content type of the request entity (hence a
-         415(Unsupported Media Type) status code is inappropriate), and the
-         syntax of the request entity is correct (thus a 400 (Bad Request)
-         status code is inappropriate) but was unable to process the contained
-         instructions.  For example, this error condition may occur if an XML
-         request body contains well-formed (i.e., syntactically correct), but
-         semantically erroneous, XML instructions.
-         */
-         return someResult & CR & CR & someJSON
-      case "invalid host address"
-         return someResult
-      default
-         dispatch "digitalocean_UpdateDomainInfoArray"
-         return someResult
-   end switch
-end digitalocean_RestDelete
-
-command digitalocean_RestPut domainPath, someJSON
-   -- v2
-   put OceanApiRoot & domainPath into someUrl
-   digitalocean_SetAuthHeaders
-   
-   put someJSON into url someUrl
-   put the result into someResult
-   return someResult
-end digitalocean_RestPut
-
-command digitalocean_RestPost domainPath, someJSON
-   -- v2
-   put OceanApiRoot & domainPath into someUrl
-   digitalocean_SetAuthHeaders
-   
-   post someJSON to url someUrl
-   put the result into someResult
-   
-   switch someResult
-      case "error 422 Unprocessable Entity"
-         /*
-         The 422 (Unprocessable Entity) status code means the server
-         understands the content type of the request entity (hence a
-         415(Unsupported Media Type) status code is inappropriate), and the
-         syntax of the request entity is correct (thus a 400 (Bad Request)
-         status code is inappropriate) but was unable to process the contained
-         instructions.  For example, this error condition may occur if an XML
-         request body contains well-formed (i.e., syntactically correct), but
-         semantically erroneous, XML instructions.
-         */
-         return someResult & CR & CR & someJSON
-      case "invalid host address"
-         return someResult
-      default
-         dispatch "digitalocean_UpdateDomainInfoArray"
-         return someResult
-   end switch
-end digitalocean_RestPost
-
-
---> DigitalOcean | Actions
--
-function digitalocean_FetchIndexedActionArray
-   -- curl -X GET "https://api.digitalocean.com/v2/actions" -H "Authorization: Bearer $TOKEN" 
-   put digitalocean_FetchJsonArray ("actions") into indexedActionArray
-   return indexedDropletArray
-end digitalocean_FetchIndexedActionArray
-
-
---> DigitalOcean | Droplets
--
-function digitalocean_FetchDropletInfoArray
-   -- curl -X GET "https://api.digitalocean.com/v2/droplets" -H "Authorization: Bearer $TOKEN" 
-   put digitalocean_FetchJsonArray ("droplets") into dropletArray
-   return dropletArray
-end digitalocean_FetchDropletInfoArray
-
-function digitalOcean_GetDropletNames pDropletInfoArray
-   if pDropletInfoArray is not an array then
-      put digitalOcean_GetDropletInfoArray () into pDropletInfoArray
-   end if
-   put digitalocean_ConstructDropletDictionary (pDropletInfoArray) into dropletDictionary
-   
-   digitalocean_DeconstructDropletDictionary dropletDictionary, nameDictionary, ipDictionary
-   put keys (nameDictionary) into dropletNames
-   sort dropletNames
-   return dropletNames
-end digitalOcean_GetDropletNames
-
-command digitalocean_DeconstructDropletDictionary dropletDictionary, @nameDictionary, @ipDictionary
-   put dropletDictionary ["name"] into nameDictionary
-   put dropletDictionary ["ip_address"] into ipDictionary
-end digitalocean_DeconstructDropletDictionary
-
-function digitalocean_ConstructDropletDictionary pIndexedDropletArray
-   if pIndexedDropletArray is not an array then
-      put digitalOcean_GetDropletInfoArray() into pIndexedDropletArray
-   end if
-   put pIndexedDropletArray ["droplets"] into indexedArray
-   repeat for each key dropletNum in indexedArray
-      put indexedArray [dropletNum]["name"] into dropletName
-      -- what if it's more than 1 network???
-      put indexedArray [dropletNum]["networks"]["v4"][1]["ip_address"] into ipAddress
-      put ipAddress into nameDictionary [dropletName]
-      put dropletName into ipDictionary [ipAddress]
-   end repeat
-   put nameDictionary into dropletDictionary ["name"]
-   put ipDictionary into dropletDictionary ["ip_address"]
-   return dropletDictionary
-end digitalocean_ConstructDropletDictionary
-
-function digitalOcean_GetDropletIP dropletName, pIndexedDropletArray
-   if pIndexedDropletArray is not an array then
-      put digitalOcean_GetDropletInfoArray() into pIndexedDropletArray
-   end if
-   put pIndexedDropletArray ["droplets"] into indexedArray
-   repeat for each key dropletNum in indexedArray
-      put indexedArray [dropletNum]["name"] into testDropletName
-      if testDropletName = dropletName then
-         -- what would you do if there was more than one entry ???
-         put indexedArray [dropletNum]["networks"]["v4"][1]["ip_address"] into ipAddress
-         return ipAddress
-      end if
-   end repeat
-   return empty
-end digitalOcean_GetDropletIP
 
 
 --> DigitalOcean | NS Record
@@ -703,6 +420,9 @@ command digitalocean_CreateDomain domainName, someIP
    return jsonResult
 end digitalocean_CreateDomain
 
+
+--> DigitalOcean | REST | Array
+-
 function digitalocean_FetchDomainArray oceanDomainName
    -- see "digitalocean_GetDomainArray" 
    -- which gets same (cached) information without being wrapped in "domain" key
@@ -725,110 +445,183 @@ function digitalocean_FetchDomainInfoArray pRecordsPerPage
    return domainInfoArray
 end digitalocean_FetchDomainInfoArray
 
+function digitalocean_FetchIndexedActionArray
+   -- curl -X GET "https://api.digitalocean.com/v2/actions" -H "Authorization: Bearer $TOKEN" 
+   put digitalocean_FetchJsonArray ("actions") into indexedActionArray
+   return indexedDropletArray
+end digitalocean_FetchIndexedActionArray
 
---> DigitalOcean | Model | Wrappers
+function digitalocean_FetchDropletInfoArray
+   -- curl -X GET "https://api.digitalocean.com/v2/droplets" -H "Authorization: Bearer $TOKEN" 
+   put digitalocean_FetchJsonArray ("droplets") into dropletArray
+   return dropletArray
+end digitalocean_FetchDropletInfoArray
+
+
+--> DigitalOcean | REST
 -
-function digitalocean_GetIndexedDomainArray 
-   put digitalocean_GetDomainInfoArray() into domainInfoArray
-   put domainInfoArray ["domains"] into indexedDomainArray
-   return indexedDomainArray
-end digitalocean_GetIndexedDomainArray
+function digitalocean_FetchJsonArray someCommand, pRecordsPerPage
+   put digitalocean_FetchJson (someCommand, pRecordsPerPage) into someJSON
+   put json_ToArray (someJSON) into someArray
+   return someArray
+end digitalocean_FetchJsonArray
 
-function digitalocean_GetDomainArray oceanDomainName, pDomainInfoArray
-   put digitalocean_GetDomainNameArray (pDomainInfoArray) into oceanDomainNameArray
-   put oceanDomainNameArray [oceanDomainName] into domainArray
-   return domainArray
-end digitalocean_GetDomainArray
-
-function digitalocean_GetDomainNames
-   put digitalocean_GetDomainNameArray() into oceanDomainNameArray
-   put keys (oceanDomainnameArray) into oceanDomainNames
-   url_SortDomainIndex oceanDomainNames   
-   return oceanDomainNames
-end digitalocean_GetDomainNames
-
-function digitalOcean_FindDropletIP oceanDomainName, pDomainInfoArray
-   -- could be smart with "*"
-   -- for now it is just a match
-   local domainNameArray, dnsDictionary
-   
-   if pDomainInfoArray is not an array then
-      put digitalocean_GetDomainInfoArray() into pDomainInfoArray
+function digitalocean_FetchJson someCommand, pRecordsPerPage
+   -- v2
+   put OceanApiRoot & someCommand into someUrl
+   if pRecordsPerPage is not empty then
+      put "?per_page=" & pRecordsPerPage after someUrl
    end if
-   digitalocean_ConstructNameArrays pDomainInfoArray, domainNameArray, dnsDictionary
-   put dnsDictionary [oceanDomainName] into someIP
-   return someIP
-end digitalOcean_FindDropletIP
-
-function digitalOcean_GetDnsDictionary pDomainInfoArray
-   local domainNameArray, dnsDictionary
-   if pDomainInfoArray is not an array then put digitalocean_GetDomainInfoArray() into pDomainInfoArray
-   digitalocean_ConstructNameArrays pDomainInfoArray, domainNameArray, dnsDictionary
-   return dnsDictionary
-end digitalOcean_GetDnsDictionary
-
-function digitalOcean_ListTopLevelDomains pDomainInfoArray
-   put digitalOcean_GetDnsDictionary (pDomainInfoArray) into dnsDictionary
-   put keys (dnsDictionary) into allDomainNames
-   set the itemdelimiter to "."
-   repeat for each key domainName in dnsDictionary
-      if the number of items of domainName = 2 then
-         put dnsDictionary [domainName] into topDomainDictionary [domainName]
-      end if
-   end repeat
-   put keys (topDomainDictionary) into topDomains
-   url_SortDomainIndex topDomains   
-   return topDomains
-end digitalOcean_ListTopLevelDomains
-
-function digitalOcean_ListAllDomainNames pDomainInfoArray
-   put digitalOcean_GetDnsDictionary (pDomainInfoArray) into dnsDictionary
-   put keys (dnsDictionary) into allDomainNames
-   url_SortDomainIndex allDomainNames
-   return allDomainNames
-end digitalOcean_ListAllDomainNames
-
-function digitalocean_GetDomainNameArray pDomainInfoArray
-   if pDomainInfoArray is not an array then
-      put digitalocean_GetDomainInfoArray() into pDomainInfoArray
-   end if
-   put digitalocean_ConstructDomainNameArray (pDomainInfoArray) into oceanDomainNameArray
-   return oceanDomainNameArray
-end digitalocean_GetDomainNameArray
-
-function digitalocean_ConstructDomainNameArray domainInfoArray
-   local domainNameArray, dnsDictionary
-   digitalocean_ConstructNameArrays domainInfoArray, domainNameArray, dnsDictionary
-   return domainNameArray
-end digitalocean_ConstructDomainNameArray
-
-command digitalocean_ConstructNameArrays domainInfoArray, @domainNameArray, @dnsDictionary
-   local zoneFileArray
    
-   put domainInfoArray ["domains"] into domainArray
-   repeat for each key domainNum in domainArray
-      put domainArray [domainNum]["name"] into domainName
-      put domainName into domainNameArray [domainName]["name"]
-      put domainArray [domainNum]["ttl"] into domainNameArray [domainName]["ttl"]
-      put word 1 to -1 of domainArray [domainNum]["zone_file"] into zoneText
-      put zoneText into domainNameArray [domainName]["zone_file"]
-      
-      -- put dns_ConstructZoneFileArray (zoneText) into zoneFileArray
-      dns_ConstructZoneInfoArray zoneText, zoneFileArray, dnsDictionary
-      put zoneFileArray into domainNameArray [domainName]["domain_records"]
-      put empty into zoneFileArray
-   end repeat
-end digitalocean_ConstructNameArrays
+   digitalocean_SetAuthHeaders
+   put url someUrl into someJSON
+   return someJSON
+end digitalocean_FetchJson
 
-function digitalOcean_GetDropletArray dropletName
-   put digitalOcean_GetDropletInfoArray() into dropletInfoArray
-   put dropletInfoArray ["droplets"] into indexedDropletArray
-   repeat for each key dropletNum in indexedDropletArray
-      put indexedDropletArray [dropletNum] into dropletArray
-      put dropletArray ["name"] into testDropletName
-      if testDropletName = dropletName then
-         return dropletArray
-      end if
-   end repeat
-   return empty
-end digitalOcean_GetDropletArray
+command digitalocean_RestDelete domainPath
+   -- v2
+   -- this seems slow it would be good to have async with callback?
+   
+   put OceanApiRoot & domainPath into someUrl
+   digitalocean_SetAuthHeaders
+   delete url someUrl
+   put the result into someResult
+   
+   switch someResult
+      case "error 422 Unprocessable Entity"
+         /*
+         The 422 (Unprocessable Entity) status code means the server
+         understands the content type of the request entity (hence a
+         415(Unsupported Media Type) status code is inappropriate), and the
+         syntax of the request entity is correct (thus a 400 (Bad Request)
+         status code is inappropriate) but was unable to process the contained
+         instructions.  For example, this error condition may occur if an XML
+         request body contains well-formed (i.e., syntactically correct), but
+         semantically erroneous, XML instructions.
+         */
+         return someResult & CR & CR & someJSON
+      case "invalid host address"
+         return someResult
+      default
+         dispatch "digitalocean_UpdateDomainInfoArray"
+         return someResult
+   end switch
+end digitalocean_RestDelete
+
+command digitalocean_RestPut domainPath, someJSON
+   -- v2
+   put OceanApiRoot & domainPath into someUrl
+   digitalocean_SetAuthHeaders
+   
+   put someJSON into url someUrl
+   put the result into someResult
+   return someResult
+end digitalocean_RestPut
+
+command digitalocean_RestPost domainPath, someJSON
+   -- v2
+   put OceanApiRoot & domainPath into someUrl
+   digitalocean_SetAuthHeaders
+   
+   post someJSON to url someUrl
+   put the result into someResult
+   
+   switch someResult
+      case "error 422 Unprocessable Entity"
+         /*
+         The 422 (Unprocessable Entity) status code means the server
+         understands the content type of the request entity (hence a
+         415(Unsupported Media Type) status code is inappropriate), and the
+         syntax of the request entity is correct (thus a 400 (Bad Request)
+         status code is inappropriate) but was unable to process the contained
+         instructions.  For example, this error condition may occur if an XML
+         request body contains well-formed (i.e., syntactically correct), but
+         semantically erroneous, XML instructions.
+         */
+         return someResult & CR & CR & someJSON
+      case "invalid host address"
+         return someResult
+      default
+         dispatch "digitalocean_UpdateDomainInfoArray"
+         return someResult
+   end switch
+end digitalocean_RestPost
+
+
+--> DigitalOcean | REST | Authentication
+-
+function digitalocean_GetApiKey
+   put secret_Get ("OceanApiKey", "apiKey") into oAuthToken
+   return oAuthToken 
+end digitalocean_GetApiKey
+
+command digitalocean_SetApiKey oAuthToken
+   secret_Set "OceanApiKey", "apiKey", oAuthToken
+   put the result into modelDataFile
+   return modelDataFile
+end digitalocean_SetApiKey
+
+command digitalocean_SetAuthHeaders
+   -- http_SetBasicAuthentication "Bearer", somePassWord, moreHeaders
+   put digitalocean_GetApiKey() into OceanApiKey
+   
+   put "Content-Type: application/json" into someHeader
+   put CR & "Authorization: Bearer" && OceanApiKey after someHeader
+   set the httpheaders to someHeader
+end digitalocean_SetAuthHeaders
+
+
+--> DigitalOcean | Shell
+-
+function digitalOcean_FetchFileFromIP somePath, dropletIP, pSshUserName   
+   shell_BashParamEscape somePath
+   put ssh_FetchFile (pSshUserName, dropletIP, somePath) into someData
+   set the itemdelimiter to ":"
+   if (item 1 of someData = "cat" and item -1 of someData = " No such file or directory") then return empty
+   return someData
+end digitalOcean_FetchFileFromIP
+
+command digitalOcean_StoreData someData, dropletName, pathToStore, pSshUserName
+   put the tempname into localFile
+   put someData into url ("binfile://" & localFile)
+   digitalOcean_StoreFile pathToStore, localFile, dropletName, pSshUserName
+   return the result
+end digitalOcean_StoreData
+
+command digitalOcean_StoreText someData, dropletName, pathToStore, pSshUserName
+   put the tempname into localFile
+   put someData into url ("file://" & localFile)
+   digitalOcean_StoreFile pathToStore, localFile, dropletName, pSshUserName
+   return the result
+end digitalOcean_StoreText
+
+function digitalOcean_FetchFile somePath, pDropletName, pSshUserName
+   put digitalOcean_GetDropletIP (pDropletName) into dropletIP
+   if http_CheckIP (dropletIP) is false then
+      return "Error, fetching ip address for droplet" && pDropletName
+   end if
+   
+   put digitalOcean_FetchFileFromIP (somePath, dropletIP, pSshUserName) into someData
+   return someData
+end digitalOcean_FetchFile
+
+command digitalOcean_StoreFile pathToStore, localFile, dropletName, sshUserName
+   put digitalOcean_GetDropletIP (dropletName) into serverAddress
+   if http_CheckIP (serverAddress) is false then return "error, fetching ip address for droplet" && dropletName
+   
+   server_StoreFile localFile, pathToStore, serverAddress, sshUserName
+   put the result into someResult
+   return someResult
+end digitalOcean_StoreFile
+
+
+--> DigitalOcean | Files | Delete
+-
+command digitalOcean_DeleteFile pathToDelete, dropletName, sshUserName
+   put digitalOcean_GetDropletIP (dropletName) into serverAddress
+   if http_CheckIP (serverAddress) is false then return "error, fetching ip address for droplet" && dropletName
+   
+   server_DeleteFile pathToDelete, serverAddress, sshUserName
+   put the result into someResult
+   return someResult
+end digitalOcean_DeleteFile

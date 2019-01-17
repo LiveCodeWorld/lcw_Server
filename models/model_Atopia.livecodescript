@@ -8,62 +8,134 @@ version: 0.1
 
 /*
 Here we provide handlers to build and do CRUD operations on the Atopia Fedwiki server wiki model.
+The model should be changed to use model_Array and not user_GetArray()
+
+
 
 All the constants below are only used by handlers in this model.
-
 config.json is not a folder and should not show up in any case. Keep here just in case
 Rename fedwiki_owners when we have automatic control over owner files
 */
 
-constant AtopiaModelShortFile = "atopia_FetchError.array"
-constant AtopiaDropletName = "Atopia"
-constant AtopiaSshUser = "root"
-constant ReservedFolderNames = "_old_sites,_unhosted_sites,_trash,fedwiki_owners"
 
-local AtopiaDropletIP
+--> Atopia | Model
+-
+/*
+Models should use model_Array, rather than user_GetArray
+*/
+
+function atopia_GetData
+   put user_GetArray ("atopia_FetchError.array") into atopiaData
+   return atopiaData
+end atopia_GetData
+
+command atopia_SetData atopiaData
+   atopia_FilterGoodAndBad atopiaData -- just in case???
+   user_SetArray "atopia_FetchError.array", atopiaData
+   put the result into modelDataFile
+   return modelDataFile
+end atopia_SetData
 
 
 --> Working on
 -
-function atopia_GetIP
-   -- cached
-   if AtopiaDropletIP is empty then
-      put digitalOcean_GetDropletIP (AtopiaDropletName) into AtopiaDropletIP
-      if AtopiaDropletIP is empty then
-         -- something is broken
-         breakpoint
-         exit to top
-      end if
-   end if
-   return AtopiaDropletIP
-end atopia_GetIP
+function atopia_GetTopDomains
+   put atopia_GetFilteredDomainArray() into domainArray
+   put keys (domainArray) into topDomains
+   sort topDomains
+   return topDomains
+end atopia_GetTopDomains
 
-command display_AtopiaUpdateResult resultArray, pIndexView
-   display_Array resultArray
-   --
-   put array_ToMarkdown (resultArray) into mdText
-   if exists (pIndexView) is false then
-      put mdText
-      return pIndexView
-   end if
-   --
+function atopia_GetFilteredDomainArray
+   put url_ListTopDomains (goodDomainArray)
    
-   lock screen
-   set the atopia_ColouredLines of pIndexView to mdText
-   set the label of the stack_Object of pIndexView to "atopia_UpdateArrayAndMove"
-   set the title_Text of pIndexView to "Update Result"
-   unlock screen
-   return mdText
-end display_AtopiaUpdateResult
-
-function array_ToMarkdown markDownArray
-   repeat for each key someTitle in markDownArray
-      put "#" && someTitle & CR after mdText
-      put markDownArray [someTitle] into mdBody
-      put mdBody & CR & CR after mdText
+   put atopia_GetGoodDomainArray() into goodDomainArray
+   set the itemdelimiter to "."
+   repeat for each key someDomain in goodDomainArray
+      put goodDomainArray [someDomain] into wikiPageIndex
+      -- let's strip the topDoamin bit
+      put item -2 to -1 of someDomain into topDomain
+      delete item -2 to -1 of someDomain
+      
+      -- now create a reverse array key
+      -- split someDomain with "." -- this is in the wrong order
+      if someDomain is empty then
+         put "www" into keyArray
+      else
+         put the number of items of someDomain into maxItemNum
+         repeat with itemNum = 1 to maxItemNum
+            put item itemNum of someDomain into domainBit
+            put maxItemNum - itemNum + 1 into indexNum
+            put domainBit into keyArray [indexNum]
+         end repeat
+      end if
+      put wikiPageIndex into domainArray [topDomain][keyArray]
+      delete variable keyArray
    end repeat
-   return word 1 to -1 of mdText
-end array_ToMarkdown
+   return domainArray
+end atopia_GetFilteredDomainArray
+
+
+--> Atopia | Model | Wrappers
+-
+function atopia_GetArray topKey
+   put atopia_GetData() into atopiaData
+   put atopiaData [topKey] into atopiaArray
+   return atopiaArray
+end atopia_GetArray
+
+command atopia_SetArray atopiaArray, topKey
+   put atopia_GetData() into atopiaData
+   put atopiaArray into atopiaData [topKey]
+   atopia_SetData atopiaData
+   put the result into modelDataFile
+   return modelDataFile
+end atopia_SetArray
+
+function atopia_GetDomainDnsArray
+   put atopia_GetArray ("dns") into dnsArray
+   return dnsArray
+end atopia_GetDomainDnsArray
+
+command atopia_SetDomainDnsArray dnsArray
+   atopia_SetArray dnsArray, "dns"
+   put the result into modelDataFile
+   return modelDataFile
+end atopia_SetDomainDnsArray
+
+function atopia_GetGoodDomainArray
+   put atopia_GetArray ("good") into goodDomainArray
+   return goodDomainArray
+end atopia_GetGoodDomainArray
+
+command atopia_SetGoodDomainArray goodDomainArray
+   atopia_SetArray goodDomainArray, "good"
+   put the result into modelDataFile
+   return modelDataFile
+end atopia_SetGoodDomainArray
+
+function atopia_GetOwnershipArray
+   put atopia_GetArray ("owner") into ownershipArray
+   return ownershipArray
+end atopia_GetOwnershipArray
+
+command atopia_SetOwnershipArray ownershipArray
+   atopia_SetArray ownershipArray, "owner"
+   put the result into modelDataFile
+   return modelDataFile
+end atopia_SetOwnershipArray
+
+private command atopia_FilterGoodAndBad @atopiaData
+   repeat for each item keyName in "good,bad"
+      put atopiaData [keyname] into goodArray
+      atopia_FilterAllFolderArray goodArray
+      put the result into filteredDomainNames
+      put goodArray into atopiaData [keyname]
+      put filteredDomainNames & CR after filteredNames
+   end repeat
+   delete char -1 of filteredNames
+   return filteredNames
+end atopia_FilterGoodAndBad
 
 
 --> Atopia | Model | Filter
@@ -102,15 +174,15 @@ end atopia_MissingRemoteFolderArray
 
 --> Atopia | Model | Local | List
 -
-function atopia_ListLocalWikiFolders pDomainErrorArray
+function atopia_ListLocalWikiFolders pAtopiaData
    -- reconstruct from array  
-   if pDomainErrorArray is empty then
-      put atopia_GetDomainErrorArray() into pDomainErrorArray
+   if pAtopiaData is empty then
+      put atopia_GetData() into pAtopiaData
    end if
-   if pDomainErrorArray is empty then return empty -- ideally should not be?
+   if pAtopiaData is empty then return empty -- ideally should not be?
    
-   put atopia_GetLocalGoodArray (pDomainErrorArray) into allArray
-   put atopia_GetLocalBadArray (pDomainErrorArray) into badArray
+   put atopia_GetLocalGoodArray (pAtopiaData) into allArray
+   put atopia_GetLocalBadArray (pAtopiaData) into badArray
    union allArray with badArray
    
    -- make a cononical sorted list
@@ -146,252 +218,49 @@ function atopia_ListLocalUnhostedFolders
    return word 1 to -1 of unhostedFolders
 end atopia_ListLocalUnhostedFolders
 
+function atopia_ListLocalDomainOwners
+   put atopia_GetOwnershipArray() into ownershipArray
+   put keys (ownershipArray) into domainOwners
+   sort domainOwners
+   return domainOwners
+end atopia_ListLocalDomainOwners
+
+
+--> Atopia | Model | Local | Remove
+-
+/*
+Remove from daomainArray
+*/
+
+command atopia_RemoveLocalBad badDomainName
+   put atopia_GetData() into atopiaData
+   delete variable atopiaData ["bad"][badDomainName]
+   atopia_SetData atopiaData
+end atopia_RemoveLocalBad
+
 
 --> Atopia | Model | Local | Wrappers
 -
-function atopia_GetLocalGoodArray pDomainErrorArray
-   if pDomainErrorArray is empty then
-      put atopia_GetDomainErrorArray() into pDomainErrorArray
+function atopia_GetLocalGoodArray pAtopiaData
+   if pAtopiaData is empty then
+      put atopia_GetData() into pAtopiaData
    end if
-   put pDomainErrorArray ["good"] into goodArray
+   put pAtopiaData ["good"] into goodArray
    return goodArray
 end atopia_GetLocalGoodArray
 
-function atopia_GetLocalBadArray pDomainErrorArray
-   if pDomainErrorArray is empty then
-      put atopia_GetDomainErrorArray() into pDomainErrorArray
+function atopia_GetLocalBadArray pAtopiaData
+   if pAtopiaData is empty then
+      put atopia_GetData() into pAtopiaData
    end if
-   put pDomainErrorArray ["bad"] into badArray
+   put pAtopiaData ["bad"] into badArray
    return badArray
 end atopia_GetLocalBadArray
 
-function atopia_GetLocalUnhostedArray pDomainErrorArray
-   if pDomainErrorArray is empty then
-      put atopia_GetDomainErrorArray() into pDomainErrorArray
+function atopia_GetLocalUnhostedArray pAtopiaData
+   if pAtopiaData is empty then
+      put atopia_GetData() into pAtopiaData
    end if
-   put pDomainErrorArray ["_unhosted_sites"] into unhostedArray
+   put pAtopiaData ["_unhosted_sites"] into unhostedArray
    return unhostedArray
 end atopia_GetLocalUnhostedArray
-
-
---> Atopia | Model | Local
--
-function atopia_GetDomainOwnershipArray
-   put user_GetArray (AtopiaModelShortFile) into domainErrorArray
-   put domainErrorArray ["owner"] into domainOwnershipArray
-   return domainOwnershipArray
-end atopia_GetDomainOwnershipArray
-
-command atopia_SetDomainOwnershipArray domainOwnershipArray
-   put user_GetArray (AtopiaModelShortFile) into domainErrorArray
-   put domainOwnershipArray into domainErrorArray ["owner"]
-   user_SetArray AtopiaModelShortFile, domainErrorArray
-   put the result into modelDataFile
-   return modelDataFile
-end atopia_SetDomainOwnershipArray
-
-function atopia_GetDomainErrorArray
-   put user_GetArray (AtopiaModelShortFile) into domainErrorArray
-   return domainErrorArray
-end atopia_GetDomainErrorArray
-
-command atopia_SetDomainErrorArray domainErrorArray
-   atopia_FilterGoodAndBad domainErrorArray -- just in case???
-   user_SetArray AtopiaModelShortFile, domainErrorArray
-   put the result into modelDataFile
-   return modelDataFile
-end atopia_SetDomainErrorArray
-
-private command atopia_FilterGoodAndBad @domainErrorArray
-   repeat for each item keyName in "good,bad"
-      put domainErrorArray [keyname] into goodArray
-      atopia_FilterAllFolderArray goodArray
-      put the result into filteredDomainNames
-      put goodArray into domainErrorArray [keyname]
-      put filteredDomainNames & CR after filteredNames
-   end repeat
-   delete char -1 of filteredNames
-   return filteredNames
-end atopia_FilterGoodAndBad
-
-
---> Atopia | Model | Remote | Fetch
--
-function atopia_FetchNewFolderList
-   -- prefer to use arrays as faster
-   -- put atopia_FetchAllFolderList() into remoteDomainNames
-   
-   put atopia_FetchFilteredFolderLsArray() into remoteFolderArray
-   if item 1 of it is "error" then return empty
-   
-   put atopia_ListLocalWikiFolders() into localDomainNames
-   
-   -- let's remove localDomainNames
-   repeat for each line localDomainName in localDomainNames
-      delete variable remoteFolderArray [localDomainName]
-   end repeat
-   
-   -- extract new folders
-   put keys (remoteFolderArray) into newRemoteDomains
-   url_SortDomainIndex newRemoteDomains, true
-   return newRemoteDomains
-end atopia_FetchNewFolderList
-
-
---> Atopia | Model | Fetch | Page
--
-function atopia_FetchWikiPageList wikiDomain
-   put atopia_FetchWikiPageFileArray (wikiDomain) into fileArray
-   put keys (fileArray) into wikiPages
-   return wikiPages
-end atopia_FetchWikiPageList
-
-function atopia_FetchWikiPageFileArray wikiDomain
-   -- fetch a list of files in the pages folder of an individual wiki domain folder
-   put fedwiki_PagesFolder (wikiDomain) into serverPath
-   put atopia_FetchLsArray (serverPath) into infoArray
-   put infoArray ["file"] into fileArray
-   return fileArray
-end atopia_FetchWikiPageFileArray
-
-function atopia_FetchDomainLsArray wikiDomain
-   -- fetch a file+folder array for an individual wiki domain folder
-   
-   put atopia_WikiDomainFolder (wikiDomain) into serverPath
-   put atopia_FetchLsArray (serverPath) into fileArray 
-   return fileArray
-end atopia_FetchDomainLsArray
-
-
---> Atopia | Model | Fetch | Folders
--
-function atopia_FetchAllFolderList
-   -- fetch all folders, then filter out reserved names
-   put atopia_FetchFilteredFolderLsArray() into folderArray
-   put keys (folderArray) into wikiDomains
-   url_SortDomainIndex wikiDomains, true
-   return wikiDomains
-end atopia_FetchAllFolderList
-
-function atopia_FetchReservedFoldersList
-   -- here we fetch a list of all the reserved folders that filtering will remove
-   -- can use to check / visualise how the efiltering works
-   put atopia_FetchWikiRootLsFolderArray() into filteredFolderArray
-   atopia_FilterAllFolderArray filteredFolderArray
-   put the result into removedFolderNames
-   return removedFolderNames
-end atopia_FetchReservedFoldersList
-
-function atopia_FetchFilteredFolderLsArray
-   put atopia_FetchWikiRootLsFolderArray() into filteredFolderArray
-   atopia_FilterAllFolderArray filteredFolderArray
-   return filteredFolderArray
-end atopia_FetchFilteredFolderLsArray
-
-command atopia_FilterAllFolderArray @folderArray
-   -- let's filter
-   repeat for each key folderName in folderArray
-      switch
-         case folderName begins with "."
-         case folderName begins with "_"
-         case folderName is among the items of ReservedFolderNames
-            delete variable folderArray [folderName]
-            put folderName & CR after removedFolderNames
-            break
-         default
-            -- it's ok
-      end switch
-   end repeat
-   delete char -1 of removedFolderNames
-   return removedFolderNames
-end atopia_FilterAllFolderArray
-
-function atopia_FetchWikiRootLsFolderArray
-   put fedwiki_WikiRootFolder() into wikiRootFolder
-   put atopia_FetchLsArray (wikiRootFolder) into infoArray
-   put infoArray ["folder"] into folderArray
-   return folderArray
-end atopia_FetchWikiRootLsFolderArray
-
-function atopia_FetchLsArray serverPath
-   put atopia_GetIP() into dropletIP
-   --
-   put server_FetchFileList (dropletIP, serverPath, true, AtopiaSshUser) into lsResult
-   put shell_ConstructLSArray (lsResult, true) into infoArray
-   --
-   return infoArray
-end atopia_FetchLsArray
-
-
---> Atopia | Model | Fetch | JSON
--
-function atopia_FetchOwnerJson wikiDomain
-   put atopia_WikiStatusFolder (wikiDomain) into wikiStatusFolder
-   put wikiStatusFolder & "owner.json" into ownerJsonPath
-   
-   put digitalOcean_FetchFile (ownerJsonPath, AtopiaDropletName, AtopiaSshUser) into someJSON
-   return someJSON
-end atopia_FetchOwnerJson
-
-function atopia_FetchConfigJSON
-   put ".wiki/config.json" into somePath
-   put digitalOcean_FetchFile (somePath, AtopiaDropletName, AtopiaSshUser) into someJSON
-   return someJSON
-end atopia_FetchConfigJSON
-
-function atopia_FetchWikiJson wikiPageSlug, fedwikiDomain
-   -- was "fedwiki_FetchRemoteFile"
-   put fedwiki_ConstructPath (fedwikiDomain, wikiPageSlug) into wikiPagePath
-   put digitalOcean_FetchFile (wikiPagePath, AtopiaDropletName, AtopiaSshUser) into someJSON
-   return someJSON
-end atopia_FetchWikiJson
-
-
---> Atopia | Model | Files and Folders
--
-function atopia_WikiStatusFolder wikiDomain
-   -- absolute path for safety
-   put atopia_WikiDomainFolder (wikiDomain) & "/status/" into wikiStatusFolder
-   return wikiStatusFolder
-end atopia_WikiStatusFolder
-
-function atopia_UnhostedFolder
-   return "/root/.wiki/_unhosted_sites/"
-end atopia_UnhostedFolder
-
-function atopia_TrashFolder
-   -- hard wired absolute path for safety
-   return "/root/.wiki/_trash/"
-end atopia_TrashFolder
-
-function atopia_WikiDomainFolder wikiDomain
-   -- absolute path for safety
-   put "/root/.wiki/" & wikiDomain & slash into domainFolder
-   return domainFolder
-end atopia_WikiDomainFolder
-
-function atopia_WikiPageFolder wikiDomain
-   -- absolute path for safety
-   put atopia_WikiDomainFolder (wikiDomain) & "/pages/" into wikiPageFolder
-   return wikiPageFolder
-end atopia_WikiPageFolder
-
-
---> Atopia | Shell
--
-command atopia_StoreFile fedwikiDomain, wikiPageSlug, localFile
-   -- was "atopia_StoreFile"
-   put fedwiki_ConstructPath (fedwikiDomain, wikiPageSlug) into wikiPagePath
-   digitalOcean_StoreFile "Atopia", wikiPagePath, localFile
-   return the result
-end atopia_StoreFile
-
-command atopia_DoRemoteShell remoteShell
-   -- carefull with this
-   -- with the right private ssh key a dangerous sheel command can wipe the entire server
-   
-   put atopia_GetIP() into dropletIP
-   ssh_DoRemoteShell AtopiaSshUser, dropletIP, remoteShell
-   put the result into shellResult
-   return shellResult
-end atopia_DoRemoteShell

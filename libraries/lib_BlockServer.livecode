@@ -110,7 +110,7 @@ command fedwiki_ActionAdd pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolde
       case "factory"
          -- fedwiki_AddFactoryToPageArray pageArray, itemID
          put fedwiki_ConstructFactoryArray (itemID) into itemArray
-         fedwiki_PageArrayAddToEnd itemArray, pageArray
+         fedwiki_AddItemArrayToStoryEnd itemArray, pageArray
          break
       default
          display_Array actionArray, ("Add undefined" && itemType)

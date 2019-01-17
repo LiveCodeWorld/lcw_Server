@@ -38,6 +38,31 @@ local LocalArray, Server_URL, SSH_KeyPath, SSH_UserName, Server_Address, Server_
 
 --> Working on
 -
+function server_FetchFileArray serverAddress, sshUser, serverPath, pSshKeyPath
+   if the environment = "server" then
+      breakpoint
+   else
+      put server_FetchFileList (serverAddress, serverPath, true, sshUser, pSshKeyPath) into lsResult
+      switch lsResult
+         case "Host key verification failed."
+            /*
+            This is usually because the server fingerprint has changed. need to research more about whu this happens.
+            Head over to the terminal and try:
+            
+            The authenticity of host 'rest.livecode.world (188.166.10.234)' can't be established.
+            ECDSA key fingerprint is SHA256:ZN82d23HRwxbvElysl8dHvTsCFHwfnsv+xUKL5EeLGQ.
+            Are you sure you want to continue connecting (yes/no)? yes
+            Warning: Permanently added 'rest.livecode.world' (ECDSA) to the list of known hosts.
+            */
+            breakpoint
+            return exmpty
+         default
+            put shell_ConstructLSArray (lsResult, true) into fileArray
+      end switch
+   end if
+   return fileArray
+end server_FetchFileArray
+
 function rig_GetServerApplicationFolder
    -- gets from array stored in prefs and loaded
    /*
@@ -64,18 +89,8 @@ function server_FetchFileList serverAddress, serverPath, pListAll, sshUser, pSsh
    put space & serverPath after someShell
    
    put word 1 to -1 of shell (someShell) into fileListing
-   return fileListing   
+   return fileListing
 end server_FetchFileList
-
-function server_FetchFileArray serverAddress, sshUser, serverPath, pSshKeyPath
-   if the environment = "server" then
-      
-   else
-      put server_FetchFileList (serverAddress, serverPath, true, sshUser, pSshKeyPath) into lsResult
-      put shell_ConstructLSArray (lsResult, true) into fileArray
-   end if
-   return fileArray
-end server_FetchFileArray
 
 function server_FileInfoArray someFile
    put server_GetURL() into remoteDomain
@@ -247,7 +262,7 @@ function server_FetchFile pathToFetch, serverAddress, sshUser
    end if
    shell_BashParamEscape fullPath
    
-   put shell_FetchFile (sshUser, serverAddress, fullPath) into someData
+   put ssh_FetchFile (sshUser, serverAddress, fullPath) into someData
    set the itemdelimiter to ":"
    if (item 1 of someData = "cat" and item -1 of someData = " No such file or directory") then return empty
    return someData
@@ -265,8 +280,7 @@ end server_StoreData
 command server_StoreFile localFile, pathToStore, serverAddress, sshUser, pSshKeyPath
    -- uses "scp" and private keys for security
    if serverAddress is empty or sshUser is empty then
-      breakpoint
-      return empty
+      return "Error, serverAddress is empty or sshUser is empty"
    end if
    
    if char 1 of pathToStore is "/" then
@@ -279,6 +293,19 @@ command server_StoreFile localFile, pathToStore, serverAddress, sshUser, pSshKey
    return shellResult
 end server_StoreFile
 
+command server_DeleteFile pathToDelete, serverAddress, sshUser
+   -- do we want to check if the file exists?
+   if serverAddress is empty or sshUser is empty then
+      return "Error, serverAddress is empty or sshUser is empty"
+   end if
+   
+   -- relatively safe no recursive delete
+   -- put "rm" && somePath into remoteCommand 
+   ssh_DeleteFile sshUser, serverAddress, pathToDelete
+   put the result into shellResult
+   return shellResult
+end server_DeleteFile
+   
 
 --> Server | Remote | Model | Utils
 -

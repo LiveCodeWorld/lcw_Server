@@ -14,6 +14,14 @@ Scripts specific to revIgnter can be found in lib_RevIgniter.livecode
 
 --> Server | Arrays
 -
+function server_GetUserAgent
+   -- HTTP_USER_AGENT Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:62.0) Gecko/20100101 Firefox/62.0
+   -- HTTP_USER_AGENT Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36
+   
+   rigLoaderLoadLibrary "Useragent"
+   return rigBrowser() -- ie "Chrome" or "Firefox"
+end server_GetUserAgent
+
 command server_ReturnEncodedArray someArray
    put server_EncodeArray (someArray)
 end server_ReturnEncodedArray

@@ -12,6 +12,216 @@ This script only stack contains the latest genral utility handlers for dealing w
 */
 
 
+--> HTML | Link
+-
+function html_ExtractLink someLine
+   html_DeconstructLink someLine, someText, someLink
+   return someLink
+end html_ExtractLink
+
+command html_DeconstructRefLink someLine, @someText, @someLink
+    -- <a href="/Users/david/Movies/crossingTheBridge.mp4">Crossing The Bridge</a>
+    
+    put "<a href=" & quote & "([^>]*)" & quote & ">([^<]*)</a>" into someReg
+    if matchtext(someLine, someReg, someLink, someText) is false then
+        put someLine into someText
+        put empty into someLink
+    end if
+end html_DeconstructRefLink
+
+function html_ConstructRefLink someText, someLink, pTarget
+   if someLink is empty then return someText
+   replace quote with "&quot;" in someLink
+   put "<a href=" & quote & someLink & quote  into someLink
+   if pTarget is not empty then
+      -- "_blank" -- for opening in a new window
+      put space & "target=" &quote& pTarget &quote after someLink
+   end if
+   put ">" & someText & "</a>" after someLink
+   return someLink
+end html_ConstructRefLink
+
+function html_ExtractHREF someHtml
+   /*
+   This one is prob better:
+   
+   <a[\s]+[^>]*?href[\s]?=[\s\"\']+(.*?)[\"\']+.*?>([^<]+|.*?)?<\/a>
+         
+   from http://regexlib.com/REDetails.aspx?regexp_id=968
+   based on http://regexlib.com/REDetails.aspx?regexp_id=774
+   
+   Pattern:  href[\s]*=[\s]*&quot;[^\n&quot;]*&quot;
+         RegExp Author:  Tony Hawe
+   Matching Text:	href =&quot;http://www.theregister.com/&quot;|||href=&quot;http://theregister.co.uk&quot;|||hre
+   Non-Matching Text:	href=http://theregister.co.uk
+   Description:	A very short pattern for extracting hrefs from HTML, does not validate they are within a tag
+   */
+   
+   local urlIndex
+   replace lineFeed with empty in someHtml -- seems necessary
+   
+   put "href[\s]*=[\s]*'([^\n']*)'" into someReg
+   replace "'" with quote in someReg -- for now to make regExp readable
+   
+   if matchtext(someHtml, someReg, someUrl) is false then
+      return empty
+   else
+      return someUrl
+   end if
+end html_ExtractHREF
+
+
+--> HTML | Links
+-
+function html_ExtractLinks someHtml
+   -- Not all links have "http://"
+   
+   replace CR with empty in someHtml -- text is now one line
+   replace "href=" with "href=" & CR in someHtml
+   replace "</a" with "</a" & CR in someHtml
+   filter someHtml with "*http://*"
+   
+   set the itemdel to ">"
+   put empty into newLinkList
+   repeat for each line linkLine in someHtml
+      put item 1 of linkLine & CR after newLinkList
+   end repeat
+   delete last char of newLinkList
+   return newLinkList
+end html_ExtractLinks
+    
+function html_ExtractLinkNumArray htmlLines
+   /*
+   Requires each link on a new line
+   The regular expressions do not require that - and if you use XML handlers we get one big single line
+   So could make more robust by deleting at end of each repeat
+   
+   <li><a href="/wiki/Victoria_Tower" title="Victoria Tower">Victoria Tower</a></li>
+   <li><a href="/wiki/Big_Ben_Aden" title="Big Ben Aden">Big Ben Aden</a></li>
+   
+   -- U is for non-greedy
+   put "(?miU)(<span style='color:).*(</span>)" into someReg
+   put "(?Uim)(<\s*" & tagName & someEnding & ")" into openingReg
+   */
+   
+   put "a" into tagName
+   --
+   put "([^>]*)" into notClosingBracket
+   put "([^<]*)" into notOpeningBracket
+   put "([^" & quote & "'" & "]*)" into notQuote
+   put "(?Uim)" into ungreedyMultiReg
+   put "['" & quote & "]" into anyQuote
+   put "\s+" into someSpace
+   put "<\s*/\s*" & tagName & "\s*>" into closingTagReg
+   
+   -- put quote into anyQuote
+   -- put "\s*" into maybeSpace
+   -- put "(" & ">" & "|" & "\s+.*>" & ")" into someEnding
+   -- put "(<\s*" & tagName & someEnding & ")" into openingReg
+   
+   put "<" & tagName & someSpace & notClosingBracket & ">" & notOpeningBracket & closingTagReg into hrefReg
+   put "href\s*=\s*" & anyQuote & notQuote & anyQuote into hrefAttributeReg
+   --
+   put 1 into linkNum
+   repeat for each line htmlLine in htmlLines -- can just repeat
+      if matchchunk (htmlLine, hrefReg, startAttributeBit, endAttributeBit, startTagContents, endTagContents) is false then exit repeat
+      if startTagContents is not a number then exit repeat -- for bug safetey???
+      --
+      put char startTagContents to endTagContents of htmlLine into taggedText
+      put char startAttributeBit to endAttributeBit of htmlLine into attributeBit
+      -- href="/wiki/Apella" title="Apella"
+      if matchtext (attributeBit, hrefAttributeReg, someLink) is false then exit repeat
+      --
+      put someLink into linkNumArray [linkNum]["link"]
+      put taggedText into linkNumArray [linkNum]["text"]
+      
+      put "- [[" & taggedText & "]]" & CR after markdownTOC
+      
+      -- put taggedText into linkArray [taggedText]
+      
+      -- could delete char 1 to closingTagReg of htmlLines
+      add 1 to linkNum
+   end repeat
+   delete char -1 of markdownTOC
+   
+   put markdownTOC into resultArray ["markdownTOC"]
+   put linkNumArray into resultArray ["linkNumArray"]
+   return resultArray
+end html_ExtractLinkNumArray
+
+function html_ExtractAllLinks someHtml
+    /*
+    This one is prob better:
+    
+    <a[\s]+[^>]*?href[\s]?=[\s\"\']+(.*?)[\"\']+.*?>([^<]+|.*?)?<\/a>
+    
+    from http://regexlib.com/REDetails.aspx?regexp_id=968
+    
+    
+    based on http://regexlib.com/REDetails.aspx?regexp_id=774
+    
+    Pattern:  href[\s]*=[\s]*&quot;[^\n&quot;]*&quot;
+    RegExp Author:  Tony Hawe
+    Matching Text:	href =&quot;http://www.theregister.com/&quot;|||href=&quot;http://theregister.co.uk&quot;|||hre
+    Non-Matching Text:	href=http://theregister.co.uk
+    Description:	A very short pattern for extracting hrefs from HTML, does not validate they are within a tag
+    */
+    
+    local urlIndex
+    replace lineFeed with empty in someHtml -- seems necessary
+    
+    put "href[\s]*=[\s]*'([^\n']*)'" into someReg
+    replace "'" with quote in someReg -- for now to make regExp readable
+    
+    repeat
+        if matchchunk(someHtml, someReg, startCharNum, endCharNum) is false then
+            delete last char of urlIndex
+            return urlIndex
+        else
+            put char startCharNum to endCharNum of someHtml into someUrl
+            put someUrl & CR after urlIndex
+            delete char 1 to endCharNum + 1 of someHtml
+        end if
+    end repeat
+end html_ExtractAllLinks
+
+
+--> HTML | Nodes
+-
+function html_ExtractNode someNode, someHTML
+   -- similar as "xml_ExtractNode" (differs in strictness of "revXMLCreateTree") 
+   -- could tidy someHTML first
+   if someHTML is empty then return empty
+   put revXMLCreateTree (someHTML, false, true, false) into treeID
+   put revXMLText (treeID, someNode) into nodeXml
+   revDeleteXMLTree treeID
+   return nodeXml
+end html_ExtractNode
+
+function html_ExtractNodeContents someNode, someHTML
+   if someHTML is empty then return empty
+   put revXMLCreateTree (someHTML, false, true, false) into treeID
+   put revXMLNodeContents (treeID, someNode) into innerContent -- this is not what I think of as "contents" :)
+   revDeleteXMLTree treeID
+   return innerContent
+end html_ExtractNodeContents
+
+function html_ExtractChildNodeNames someNode, someHTML
+   put revXMLCreateTree (someHTML, false, true, false) into treeID
+   put revXMLChildNames (treeID, someNode, CR, empty, true) into tNodeNames
+   revDeleteXMLTree treeID
+   return tNodeNames
+end html_ExtractChildNodeNames
+
+function html_ListNodes someHTML
+   put revXMLCreateTree (someHTML, false, true, false) into treeID
+   put revXMLRootNode (treeID) into rootNode
+   put revXMLTree (treeID, rootNode, CR, space, true, -1) into allNodes
+   revDeleteXMLTree treeID
+   return allNodes
+end html_ListNodes
+
+
 --> HTML | CLI
 -
 function html_FetchTidy someURL
@@ -168,28 +378,6 @@ command html_DeconstructNameLink someLine, @someText, @someLink
         put empty into someLink
     end if
 end html_DeconstructNameLink
-
-command html_DeconstructRefLink someLine, @someText, @someLink
-    -- <a href="/Users/david/Movies/crossingTheBridge.mp4">Crossing The Bridge</a>
-    
-    put "<a href=" & quote & "([^>]*)" & quote & ">([^<]*)</a>" into someReg
-    if matchtext(someLine, someReg, someLink, someText) is false then
-        put someLine into someText
-        put empty into someLink
-    end if
-end html_DeconstructRefLink
-
-function html_ConstructRefLink someText, someLink, pTarget
-   if someLink is empty then return someText
-   replace quote with "&quot;" in someLink
-   put "<a href=" & quote & someLink & quote  into someLink
-   if pTarget is not empty then
-      -- "_blank" -- for opening in a new window
-      put space & "target=" &quote& pTarget &quote after someLink
-   end if
-   put ">" & someText & "</a>" after someLink
-   return someLink
-end html_ConstructRefLink
 
 function html_ConstructNameLink someText, someLink, pSomeColour
    if someLink is empty then return someText
@@ -382,93 +570,6 @@ function html_ExtractAnchors someHtml
     return newLinkList
 end html_ExtractAnchors
 
-function html_ExtractLink someLine
-   html_DeconstructLink someLine, someText, someLink
-   return someLink
-end html_ExtractLink
-
-function html_ExtractLinks someHtml
-    -- Not all links have "http://"
-    
-    replace CR with empty in someHtml -- text is now one line
-    replace "href=" with "href=" & CR in someHtml
-    replace "</a" with "</a" & CR in someHtml
-    filter someHtml with "*http://*"
-    
-    set the itemdel to ">"
-    put empty into newLinkList
-    repeat for each line linkLine in someHtml
-        put item 1 of linkLine & CR after newLinkList
-    end repeat
-    delete last char of newLinkList
-    return newLinkList
-end html_ExtractLinks
-    
-function html_ExtractHREF someHtml
-   /*
-   This one is prob better:
-   
-   <a[\s]+[^>]*?href[\s]?=[\s\"\']+(.*?)[\"\']+.*?>([^<]+|.*?)?<\/a>
-   
-   from http://regexlib.com/REDetails.aspx?regexp_id=968
-   based on http://regexlib.com/REDetails.aspx?regexp_id=774
-   
-   Pattern:  href[\s]*=[\s]*&quot;[^\n&quot;]*&quot;
-   RegExp Author:  Tony Hawe
-   Matching Text:	href =&quot;http://www.theregister.com/&quot;|||href=&quot;http://theregister.co.uk&quot;|||hre
-   Non-Matching Text:	href=http://theregister.co.uk
-   Description:	A very short pattern for extracting hrefs from HTML, does not validate they are within a tag
-   */
-   
-   local urlIndex
-   replace lineFeed with empty in someHtml -- seems necessary
-   
-   put "href[\s]*=[\s]*'([^\n']*)'" into someReg
-   replace "'" with quote in someReg -- for now to make regExp readable
-   
-   if matchtext(someHtml, someReg, someUrl) is false then
-      return empty
-   else
-      return someUrl
-   end if
-end html_ExtractHREF
-
-function html_ExtractAllLinks someHtml
-    /*
-    This one is prob better:
-    
-    <a[\s]+[^>]*?href[\s]?=[\s\"\']+(.*?)[\"\']+.*?>([^<]+|.*?)?<\/a>
-    
-    from http://regexlib.com/REDetails.aspx?regexp_id=968
-    
-    
-    based on http://regexlib.com/REDetails.aspx?regexp_id=774
-    
-    Pattern:  href[\s]*=[\s]*&quot;[^\n&quot;]*&quot;
-    RegExp Author:  Tony Hawe
-    Matching Text:	href =&quot;http://www.theregister.com/&quot;|||href=&quot;http://theregister.co.uk&quot;|||hre
-    Non-Matching Text:	href=http://theregister.co.uk
-    Description:	A very short pattern for extracting hrefs from HTML, does not validate they are within a tag
-    */
-    
-    local urlIndex
-    replace lineFeed with empty in someHtml -- seems necessary
-    
-    put "href[\s]*=[\s]*'([^\n']*)'" into someReg
-    replace "'" with quote in someReg -- for now to make regExp readable
-    
-    repeat
-        if matchchunk(someHtml, someReg, startCharNum, endCharNum) is false then
-            delete last char of urlIndex
-            return urlIndex
-        else
-            put char startCharNum to endCharNum of someHtml into someUrl
-            put someUrl & CR after urlIndex
-            delete char 1 to endCharNum + 1 of someHtml
-        end if
-    end repeat
-end html_ExtractAllLinks
-
 function html_ExtractImages someHtml
     /*
     Not all 'img' tags are in link tags
@@ -621,51 +722,8 @@ end html_StripTags
 end stripHtmlTags
 
 
---> HTML | Nodes
+--> HTML | Attributes
 -
-function html_ExtractNode someNode, someHTML
-   -- similar as "xml_ExtractNode" (differs in strictness of "revXMLCreateTree") 
-   -- could tidy someHTML first
-   if someHTML is empty then return empty
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLText (treeID, someNode) into nodeXml
-   revDeleteXMLTree treeID
-   return nodeXml
-end html_ExtractNode
-
-function html_ExtractNodeContents someNode, someHTML
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLNodeContents (treeID, someNode) into innerContent -- this is not what I think of as "contents" :)
-   revDeleteXMLTree treeID
-   return innerContent
-   
-   /*  
-   put html_ExtractNode (someNode, someHTML) into someXML
-   
-   -- hack:  now get rid of that tag
-   set the itemdelimiter to slash
-   put item -1 of someNode into tagName
-   local startTag, endTag, someTag, tagContents
-   xml_TagOffsets someXML, tagName, startTag, endTag, someTag, tagContents
-   return tagContents
-   */
-end html_ExtractNodeContents
-
-function html_ExtractChildNodeNames someNode, someHTML
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLChildNames (treeID, someNode, CR, empty, true) into tNodeNames
-   revDeleteXMLTree treeID
-   return tNodeNames
-end html_ExtractChildNodeNames
-
-function html_ListNodes someHTML
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLRootNode (treeID) into rootNode
-   put revXMLTree (treeID, rootNode, CR, space, true, -1) into allNodes
-   revDeleteXMLTree treeID
-   return allNodes
-end html_ListNodes
-
 function html_ExtractAttribute attributeName, someNode, someHTML
    -- similar as "xml_ExtractNode" (differs in strictness of "revXMLCreateTree") 
    -- could tidy someHTML first
