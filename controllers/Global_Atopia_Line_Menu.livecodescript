@@ -9,6 +9,13 @@ version: 0.1
 
 --> Global | Atopia | Line | Menu
 -
+on submenu_Google
+   return "Global | Google | Console | Title | Line | Menu"
+end submenu_Google
+
+on _
+end _
+
 on menu_SetFarm indexView
    put the selected_Line of indexView into domainName
    --
@@ -85,6 +92,22 @@ end disabled_DeleteFromOwnership
 on _
 end _
 
+on menu_CheckDomain indexView
+   set the cursor to watch
+   put the selected_Line of indexView into domainName
+   put the line_Number [domainName] of indexView into lineNum
+   --
+   if atopia_WikiHasPages (domainName) then
+      if atopia_WikiIsHosted (domainName) then
+         set the line_Colour [lineNum] of indexView to green
+      else
+         set the line_Colour [lineNum] of indexView to blue
+      end if
+   else
+      set the line_Colour [lineNum] of indexView to red
+   end if
+end menu_CheckDomain
+
 on menu_MoveOrUpdateAtopiaArray indexView
    put the selected_Line of indexView into wikiDomain
    --
@@ -100,11 +123,12 @@ on menu_MoveToTrash indexView
    put "Move" && kwote (wikiDomain) && "to the _trash folder?" into someQuestion
    lcw_AnswerSheet someQuestion
    --
+   set the cursor to watch
+   --
    atopia_MoveToTrash wikiDomain
    put the result into atopiaArray
-   
-   put atopia_ListLocalBadFolders() into domainNames
-   _SetDisplayDomainNames indexView, domainNames, "Local Bad Folders"   
+   --
+   set the deleted_Line of indexView to wikiDomain
 end menu_MoveToTrash
 
 on menu_MoveToUnhosted indexView
@@ -116,8 +140,7 @@ on menu_MoveToUnhosted indexView
    atopia_MoveToUnhosted wikiDomain
    put the result into atopiaArray
    
-   put atopia_ListLocalGoodFolders() into domainNames
-   _SetDisplayDomainNames indexView, domainNames, "Local Good Folders"   
+   set the deleted_Line of indexView to wikiDomain
 end menu_MoveToUnhosted
 
 on _

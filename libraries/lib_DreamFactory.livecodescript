@@ -6,6 +6,12 @@ name: lib_DreamFactory
 type: library
 version: 0.2
 
+/*
+This library is for working with [[]]Dreamfactory]] in [[Livecode]].
+
+It includes a number of handlers for maniulting [[Fedwiki]] files on a Dreamfactory server.
+*/
+
 
 --> Test
 -
@@ -25,10 +31,71 @@ on menu_TestUploadImage
    dreamfactory_TransferFile relImageFile, imageURL
 end menu_TestUploadImage
 
+private command _Login @apiKey, @sToken
+   -- put dreamfactory_FileApiKey() into apiKey  
+   put dreamfactory_WikiApiKey() into apiKey
+   
+   -- if sToken is empty then
+   -- put dreamfactory_GetSessionToken() into sToken
+   -- if sToken is empty then
+   
+   -- dreamfactory_Login "david@feast.fm", "bosmeg", apiKey
+   dreamfactory_AdminLogin "david.bovill@gmail.com", "b05m3g", apiKey
+   put the result into sToken
+   
+   -- end if
+   -- end if
+   return sToken
+end _Login
+
+command dreamfactory_Login uMail, pWord, pApiKey
+   put dreamfactory_WikiApiKey() into pApiKey
+   
+   put dreamfactory_FetchLoginArray ("david@feast.fm", "bosmeg", pApiKey) into loginArray
+   -- display_Array loginArray
+   
+   put loginArray ["session_id"] into sID
+   put loginArray ["session_token"] into sToken
+   --
+   dreamfactory_SetSessionToken sToken
+   --
+   return sToken
+end dreamfactory_Login
+
+function dreamfactory_WikiApiKey
+   return "c29ece1b26738412c261dc6884ac3dc14b4f24ef4910fc1ab7d370e3902b989c"
+end dreamfactory_WikiApiKey
+
+function dreamfactory_FileApiKey
+   return "b5cb82af7b5d4130f36149f90aa2746782e59a872ac70454ac188743cb55b0ba"
+end dreamfactory_FileApiKey
+
+function dreamfactory_GET apiPath
+   put "36fda24fe5588fa4285ac6c6c2fdfbdb6b6bc9834699774c9bf777f706d05a88" into apiKey
+   get "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhY2E0ODdjMDlhNzA0OWFiNjc4YTM3ODQ4ZGNmYTI4NSIsImlzcyI6Imh0dHA6Ly9jdWx0dXJlY29sbGVjdGl2ZS5jYy9hcGkvdjIvc3lzdGVtL2FkbWluL3Nlc3Npb24iLCJpYXQiOjE1MDIyNzE1MzUsImV4cCI6MTUwMjI3NTEzNSwibmJmIjoxNTAyMjcxNTM1LCJqdGkiOiJNZndkUld0ak5EMWNqVEdXIiwidXNlcl9pZCI6MywiZm9yZXZlciI6ZmFsc2V9.aq9zQRiEqVCJsXwHHkBx_iDqhlzkkXxGhNc-wVe5dXY"
+   put it into pSessionToken
+   
+   put "david@feast.fm" into paramArray ["email"]
+   put "bosmeg" into paramArray ["password"]
+   put json_FromArray (paramArray) into someJSON
+   
+   /*
+   {
+   "email": "david@feast.fm",
+   "password": "bosmeg"
+   }
+   'http://culturecollective.cc/api/v2/user/session
+   */
+   
+   rest_SetDreamFactoryHeaders apiKey, pSessionToken   
+   put url someUrl into someJson
+   return someJson
+end dreamfactory_GET
+
 
 --> Fedwiki | DreamFactory
 -
-function fedwiki_FetchFolderArray domainFolderName, pSessionToken
+function dreamfactory_FetchWikiFolderArray domainFolderName, pSessionToken
    -- http://culturecollective.cc/api/v2/files/%2Fwiki%2Fdavid.icotopia.io%2Fpages%2F
    -- /?include_properties=true&include_folders=true&include_files=true&full_tree=false&zip=false
    
@@ -44,19 +111,19 @@ function fedwiki_FetchFolderArray domainFolderName, pSessionToken
    put jsonReply
    display_Array responseArray
    return responseArray
-end fedwiki_FetchFolderArray
+end dreamfactory_FetchWikiFolderArray
 
-function fedwiki_ListPageSlugs domainFolderName
-   put fedwiki_FetchFolderResourceArray (domainFolderName) into resourceArray
+function dreamfactory_ListWikiPageSlugs domainFolderName
+   put dreamfactory_FetchWikiFolderResourceArray (domainFolderName) into resourceArray
    repeat for each key itemNum in resourceArray
       put resourceArray [itemNum]["name"] into someKey
       put resourceArray [itemNum]["path"] into nameArray [someKey]
    end repeat
    return keys (nameArray)
-end fedwiki_ListPageSlugs
+end dreamfactory_ListWikiPageSlugs
 
-function fedwiki_FetchPageListArray domainFolderName
-   put fedwiki_FetchFolderResourceArray (domainFolderName) into resourceArray
+function dreamfactory_FetchWikiPageListArray domainFolderName
+   put dreamfactory_FetchWikiFolderResourceArray (domainFolderName) into resourceArray
    repeat for each key itemNum in resourceArray
       put resourceArray [itemNum]["name"] into pageSlug
       put fedwiki_ConstructTitle (pageSlug) into pageTitle
@@ -66,38 +133,38 @@ function fedwiki_FetchPageListArray domainFolderName
       put pageSlug into nameArray [pageTitle]["slug"] 
    end repeat
    return nameArray
-end fedwiki_FetchPageListArray
+end dreamfactory_FetchWikiPageListArray
 
-function fedwiki_FetchFolderResourceArray domainFolderName
+function dreamfactory_FetchWikiFolderResourceArray domainFolderName
    put "wiki/" & domainFolderName & "/pages/" into someFolder
    put dreamfactory_ListFiles (someFolder) into someJSON
    put json_ToArray (someJSON) into pageListArray
    put pageListArray ["resource"] into resourceArray
    return resourceArray
-end fedwiki_FetchFolderResourceArray
+end dreamfactory_FetchWikiFolderResourceArray
 
-function fedwiki_FetchPage pageSlug, wikiDomain, pSessionToken
+function dreamfactory_FetchWikiPage pageSlug, wikiDomain, pSessionToken
    put "/wiki/" & wikiDomain & "/pages/" & pageSlug into relPath
    put dreamfactory_FetchFile (relPath, pSessionToken) into pageJSON
    return pageJSON
-end fedwiki_FetchPage
-   
-command fedwiki_StorePage pageSlug, wikiDomain, fileData, pSessionToken
+end dreamfactory_FetchWikiPage
+
+command dreamfactory_StoreWikiPage pageSlug, wikiDomain, fileData, pSessionToken
    put "/wiki/" & wikiDomain & "/pages/" & pageSlug into relPath
    -- put "files/" & wikiDomain & "/pages/" & pageSlug into relPath
    dreamfactory_StoreFile relPath, fileData, pSessionToken
    return the result
-end fedwiki_StorePage
+end dreamfactory_StoreWikiPage
 
-command fedwiki_DeletePage pageSlug, wikiDomain, pSessionToken
+command dreamfactory_DeleteWikiPage pageSlug, wikiDomain, pSessionToken
    put "/wiki/" & wikiDomain & "/pages/" & pageSlug into relPath
    dreamfactory_DeleteFile relPath, pSessionToken
    return the result
-end fedwiki_DeletePage
+end dreamfactory_DeleteWikiPage
 
-command fedwiki_CreateThemeFolder domainFolderName
+command dreamfactory_CreateWikiThemeFolder domainFolderName
    dreamfactory_CreateFolder relPath
-end fedwiki_CreateThemeFolder
+end dreamfactory_CreateWikiThemeFolder
 
 
 --> DreamFactory | Upload
@@ -203,39 +270,8 @@ command dreamfactory_CreateFolder relPath
 end dreamfactory_CreateFolder
 
 
---> Working on
+--> Dreamfactory | Login
 -
-private command _Login @apiKey, @sToken
-   -- put dreamfactory_FileApiKey() into apiKey  
-   put dreamfactory_WikiApiKey() into apiKey
-   
-   -- if sToken is empty then
-   -- put dreamfactory_GetSessionToken() into sToken
-   -- if sToken is empty then
-   
-   -- dreamfactory_Login "david@feast.fm", "bosmeg", apiKey
-   dreamfactory_AdminLogin "david.bovill@gmail.com", "b05m3g", apiKey
-   put the result into sToken
-   
-   -- end if
-   -- end if
-   return sToken
-end _Login
-
-command dreamfactory_Login uMail, pWord, pApiKey
-   put dreamfactory_WikiApiKey() into pApiKey
-   
-   put dreamfactory_FetchLoginArray ("david@feast.fm", "bosmeg", pApiKey) into loginArray
-   -- display_Array loginArray
-   
-   put loginArray ["session_id"] into sID
-   put loginArray ["session_token"] into sToken
-   --
-   dreamfactory_SetSessionToken sToken
-   --
-   return sToken
-end dreamfactory_Login
-
 command dreamfactory_AdminLogin uMail, pWord, pApiKey
    /*
    curl -X POST --header 'Content-Type: application/json' --header 'Accept: application/json' --header 'X-DreamFactory-Api-Key: 36fda24fe5588fa4285ac6c6c2fdfbdb6b6bc9834699774c9bf777f706d05a88' --header 'X-DreamFactory-Session-Token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhY2E0ODdjMDlhNzA0OWFiNjc4YTM3ODQ4ZGNmYTI4NSIsImlzcyI6Imh0dHA6Ly9jdWx0dXJlY29sbGVjdGl2ZS5jYy9hcGkvdjIvc3lzdGVtL2FkbWluL3Nlc3Npb24iLCJpYXQiOjE1MDIyODc5MDgsImV4cCI6MTUwMjI5MTUwOCwibmJmIjoxNTAyMjg3OTA4LCJqdGkiOiJOOGVkV1JhQXo3RlJjNXhhIiwidXNlcl9pZCI6MywiZm9yZXZlciI6ZmFsc2V9.ekGzrfCKswH4L4enXyNmQSuoR19uAGciTmxO21cWNo4' -d '{
@@ -286,14 +322,6 @@ command dreamfactory_SetApiKey apiKey
    put apiKey into DreamFactoryApiKey
 end dreamfactory_SetApiKey
 
-function dreamfactory_WikiApiKey
-   return "c29ece1b26738412c261dc6884ac3dc14b4f24ef4910fc1ab7d370e3902b989c"
-end dreamfactory_WikiApiKey
-
-function dreamfactory_FileApiKey
-   return "b5cb82af7b5d4130f36149f90aa2746782e59a872ac70454ac188743cb55b0ba"
-end dreamfactory_FileApiKey
-
 
 --> DreamFactory | Files | List
 -
@@ -303,7 +331,7 @@ function dreamfactory_FetchFileArray
    display_Array jsonArray
    return jsonArray
 end dreamfactory_FetchFileArray
- 
+
 function dreamfactory_ListFilesAndFolders
    /*
    curl -X GET --header 'Accept: application/json' --header 'X-DreamFactory-Api-Key: 36fda24fe5588fa4285ac6c6c2fdfbdb6b6bc9834699774c9bf777f706d05a88' --header 'X-DreamFactory-Session-Token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhY2E0ODdjMDlhNzA0OWFiNjc4YTM3ODQ4ZGNmYTI4NSIsImlzcyI6Imh0dHA6Ly9jdWx0dXJlY29sbGVjdGl2ZS5jYy9hcGkvdjIvc3lzdGVtL2FkbWluL3Nlc3Npb24iLCJpYXQiOjE1MDIyODc5MDgsImV4cCI6MTUwMjI5MTUwOCwibmJmIjoxNTAyMjg3OTA4LCJqdGkiOiJOOGVkV1JhQXo3RlJjNXhhIiwidXNlcl9pZCI6MywiZm9yZXZlciI6ZmFsc2V9.ekGzrfCKswH4L4enXyNmQSuoR19uAGciTmxO21cWNo4' 'http://culturecollective.cc/api/v2/files?include_folders=true&include_files=true&full_tree=true&zip=false'
@@ -401,13 +429,6 @@ command dreamfactory_DeleteFile relPath, sToken
 end dreamfactory_DeleteFile
 
 function dreamfactory_FetchLoginArray uMail, pWord, apiKey
-   /*
-   put "36fda24fe5588fa4285ac6c6c2fdfbdb6b6bc9834699774c9bf777f706d05a88" into apiKey
-   -- put "http://culturecollective.cc/api/v2/user/session" into restURL
-   
-   {"session_token":"[[api key]]","id":4,"name":"david","first_name":null,"last_name":null,"email":"david@feast.fm","is_sys_admin":false,"last_login_date":"2017-08-09 11:07:39","host":"Trevor"}
-   */
-   
    put dreamfactory_ConstructLoginJSON (uMail, pWord) into someJSON
    dreamfactory_POST "user/session", someJSON, apiKey
    put the result into loginJSON
@@ -426,14 +447,6 @@ end dreamfactory_ConstructLoginJSON
 --> DreamFactory | RSET
 -
 command dreamfactory_POST apiPath, someJSON, apiKey, pSessionToken   
-   /*
-   {
-   "email": "david@feast.fm",
-   "password": "bosmeg"
-   }
-   'http://culturecollective.cc/api/v2/user/session
-   */
-   
    put "http://culturecollective.cc/api/v2/" into restURL
    put apiPath after restURL
    --
@@ -443,28 +456,6 @@ command dreamfactory_POST apiPath, someJSON, apiKey, pSessionToken
    --
    return postResult
 end dreamfactory_POST
-
-function dreamfactory_GET apiPath
-   put "36fda24fe5588fa4285ac6c6c2fdfbdb6b6bc9834699774c9bf777f706d05a88" into apiKey
-   get "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhY2E0ODdjMDlhNzA0OWFiNjc4YTM3ODQ4ZGNmYTI4NSIsImlzcyI6Imh0dHA6Ly9jdWx0dXJlY29sbGVjdGl2ZS5jYy9hcGkvdjIvc3lzdGVtL2FkbWluL3Nlc3Npb24iLCJpYXQiOjE1MDIyNzE1MzUsImV4cCI6MTUwMjI3NTEzNSwibmJmIjoxNTAyMjcxNTM1LCJqdGkiOiJNZndkUld0ak5EMWNqVEdXIiwidXNlcl9pZCI6MywiZm9yZXZlciI6ZmFsc2V9.aq9zQRiEqVCJsXwHHkBx_iDqhlzkkXxGhNc-wVe5dXY"
-   put it into pSessionToken
-   
-   put "david@feast.fm" into paramArray ["email"]
-   put "bosmeg" into paramArray ["password"]
-   put json_FromArray (paramArray) into someJSON
-   
-   /*
-   {
-   "email": "david@feast.fm",
-   "password": "bosmeg"
-   }
-   'http://culturecollective.cc/api/v2/user/session
-   */
-   
-   rest_SetDreamFactoryHeaders apiKey, pSessionToken   
-   put url someUrl into someJson
-   return someJson
-end dreamfactory_GET
 
 function dreamfactory_ConstructRestURL serviceName, firstParam, pParamArray
    -- put "http://culturecollective.cc/api/v2/files/wiki/pages/hello?download=false" into someURL
@@ -491,22 +482,6 @@ end dreamfactory_ConstructRestURL
 --> REST
 -
 command rest_SetDreamFactoryHeaders apiKey, pSessionToken
-   /*
-   POST /api/v2/user/session HTTP/1.1
-   > Host: culturecollective.cc
-   > User-Agent: curl/7.51.0
-   > Content-Type: application/json
-   > Accept: application/json
-   > X-DreamFactory-Api-Key: 36fda24fe5588fa4285ac6c6c2fdfbdb6b6bc9834699774c9bf777f706d05a88
-   > X-DreamFactory-Session-Token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhY2E0ODdjMDlhNzA0OWFiNjc4YTM3ODQ4ZGNmYTI4NSIsImlzcyI6Imh0dHA6Ly9jdWx0dXJlY29sbGVjdGl2ZS5jYy9hcGkvdjIvc3lzdGVtL2FkbWluL3Nlc3Npb24iLCJpYXQiOjE1MDIyNzc5ODEsImV4cCI6MTUwMjI4MTU4MSwibmJmIjoxNTAyMjc3OTgxLCJqdGkiOiJ4UHNZQmtxSVJLZ05Sb2RXIiwidXNlcl9pZCI6MywiZm9yZXZlciI6ZmFsc2V9.h7dbrRHjDkEZCelCUjhT3eL8S6gPDylyQ7LohqZNiZU
-   > Content-Length: 55
-   > 
-   
-   put "36fda24fe5588fa4285ac6c6c2fdfbdb6b6bc9834699774c9bf777f706d05a88" into apiKey
-   get "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhY2E0ODdjMDlhNzA0OWFiNjc4YTM3ODQ4ZGNmYTI4NSIsImlzcyI6Imh0dHA6Ly9jdWx0dXJlY29sbGVjdGl2ZS5jYy9hcGkvdjIvc3lzdGVtL2FkbWluL3Nlc3Npb24iLCJpYXQiOjE1MDIyNzc5ODEsImV4cCI6MTUwMjI4MTU4MSwibmJmIjoxNTAyMjc3OTgxLCJqdGkiOiJ4UHNZQmtxSVJLZ05Sb2RXIiwidXNlcl9pZCI6MywiZm9yZXZlciI6ZmFsc2V9.h7dbrRHjDkEZCelCUjhT3eL8S6gPDylyQ7LohqZNiZU"
-   put it into pSessionToken
-   */
-   
    put "Content-type: application/json" into newHeaders
    put CR & "Accept: application/json" after newHeaders
    put CR & merge ("X-DreamFactory-Api-Key: [[apiKey]]") after newHeaders

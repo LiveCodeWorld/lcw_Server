@@ -111,9 +111,15 @@ command display_AtopiaFolders pDisplayTitle, pMouseUpCommand
    put "Global | Atopia | Line | Menu" into mLineTitle
    
    switch pDisplayTitle
-      -- case "Wiki Page List"
-      -- put atopia_FetchWikiPageList (wikiDomain) into wikiFolders
-      -- break
+      case "Stored Atopia Roster"
+         put atopia_FetchRoster() into displayLines
+         break
+      case "Stored Atopia Json"
+         put atopia_FetchStoredDomains() into displayLines
+         break
+      case "Stored Federation"
+         put atopia_FetchFederationDomains() into displayLines
+         break
       case "Top Domains"
          put "Global | Atopia | Top | Menu" into mTitle
          put atopia_FetchTopDomains() into displayLines

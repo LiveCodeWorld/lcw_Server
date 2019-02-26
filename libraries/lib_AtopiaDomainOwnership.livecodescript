@@ -174,22 +174,6 @@ command atopia_AddOwnershipToDomainArray @ownershipArray, wikiFolders, pIndexVie
    end repeat
 end atopia_AddOwnershipToDomainArray
 
-private command _AddDomainToOwnershipArray @ownershipArray, wikiFolder, configArray
-   put atopia_FetchAndFindOwnerArray (wikiFolder, configArray) into ownerArray
-   put atopia_GetOwnerEmail (ownerArray) into ownerEmail
-   if ownerEmail is empty then
-      put "No email" into ownerEmail
-   end if
-   
-   -- could add to fedray here
-   
-   put ownershipArray [ownerEmail]["domains"] into indexedArray
-   array_AddToNumbered indexedArray, "domain", wikiFolder
-   put the result into newIndexNum
-   put ownerArray into indexedArray [newIndexNum]["ownerArray"]
-   put indexedArray into ownershipArray [ownerEmail]["domains"]
-end _AddDomainToOwnershipArray
-
 function atopia_DomainIsBadInDomainArray folderName, atopiaData
    put atopiaData ["good"] into goodArray
    put atopiaData ["bad"] into badArray
@@ -312,6 +296,22 @@ end atopia_FetchConfigArray
 
 --> Private
 -
+private command _AddDomainToOwnershipArray @ownershipArray, wikiFolder, configArray
+   put atopia_FetchAndFindOwnerArray (wikiFolder, configArray) into ownerArray
+   put atopia_GetOwnerEmail (ownerArray) into ownerEmail
+   if ownerEmail is empty then
+      put "No email" into ownerEmail
+   end if
+   
+   -- could add to fedray here
+   
+   put ownershipArray [ownerEmail]["domains"] into indexedArray
+   array_AddToNumbered indexedArray, "domain", wikiFolder
+   put the result into newIndexNum
+   put ownerArray into indexedArray [newIndexNum]["ownerArray"]
+   put indexedArray into ownershipArray [ownerEmail]["domains"]
+end _AddDomainToOwnershipArray
+
 private command fedwiki_DeconstructOwnerArray ownerArray, @ownerEmail, @accountType, @ownerID, @ownerName
    put empty into ownerEmail
    put empty into accountType

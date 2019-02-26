@@ -9,14 +9,27 @@ version: 0.2
 
 --> Global | Atopia | Display | Menu
 -
+on menu_DisplayNewFolders
+   display_AtopiaFolders "New Folders"
+end menu_DisplayNewFolders
+
+on _
+end _
+
+on menu_DisplayStoredAtopia
+   display_AtopiaFolders "Stored Atopia"
+end menu_DisplayStoredAtopia
+
+on menu_DisplayStoredFederation
+   display_AtopiaFolders "Stored Atopia"
+end menu_DisplayStoredFederation
+
 on menu_DisplayTopDomains
    display_AtopiaFolders "Top Domains"
 end menu_DisplayTopDomains
 
 on menu_TopDomainTsv indexView, cseName
-   put cse_NameToID (cseName) into cseID
-   put atopia_GetTopDomains() into atopiaDomains
-   put google_ConstructTSV (atopiaDomains, cseID)
+   put atopia_FetchTopTSV (cseName)
 end menu_TopDomainTsv
 
 on _
@@ -32,10 +45,6 @@ on menu_DisplayOwnershipArray indexView
    -- put dynadot_FetchIndexedDomainArray() into domainArray
    display_Array ownershipArray, "atopia_GetOwnershipArray()", "Global | Atopia | Tree | Menu"
 end menu_DisplayOwnershipArray
-
-on menu_DisplayNewFolders
-   display_AtopiaFolders "New Folders"
-end menu_DisplayNewFolders
 
 on _
 end _

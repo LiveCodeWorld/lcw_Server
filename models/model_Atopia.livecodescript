@@ -4,51 +4,17 @@
 license: GPLv3
 name: model_Atopia
 type: model
-version: 0.1
+version: 0.2
 
 /*
 Here we provide handlers to build and do CRUD operations on the Atopia Fedwiki server wiki model.
 The model should be changed to use model_Array and not user_GetArray()
 
-
-
 All the constants below are only used by handlers in this model.
 config.json is not a folder and should not show up in any case. Keep here just in case
 Rename fedwiki_owners when we have automatic control over owner files
-*/
 
-
---> Atopia | Model
--
-/*
-Models should use model_Array, rather than user_GetArray
-*/
-
-function atopia_GetData
-   put user_GetArray ("atopia_FetchError.array") into atopiaData
-   return atopiaData
-end atopia_GetData
-
-command atopia_SetData atopiaData
-   atopia_FilterGoodAndBad atopiaData -- just in case???
-   user_SetArray "atopia_FetchError.array", atopiaData
-   put the result into modelDataFile
-   return modelDataFile
-end atopia_SetData
-
-
---> Working on
--
-function atopia_GetTopDomains
-   put atopia_GetFilteredDomainArray() into domainArray
-   put keys (domainArray) into topDomains
-   sort topDomains
-   return topDomains
-end atopia_GetTopDomains
-
-function atopia_GetFilteredDomainArray
-   put url_ListTopDomains (goodDomainArray)
-   
+function atopia_GetFilteredDomainArray   
    put atopia_GetGoodDomainArray() into goodDomainArray
    set the itemdelimiter to "."
    repeat for each key someDomain in goodDomainArray
@@ -74,6 +40,48 @@ function atopia_GetFilteredDomainArray
    end repeat
    return domainArray
 end atopia_GetFilteredDomainArray
+*/
+
+
+--> Atopia | Model
+-
+/*
+Models should use model_Array, rather than user_GetArray
+*/
+
+function atopia_GetData
+   put user_GetArray ("atopia_FetchError.array") into atopiaData
+   return atopiaData
+end atopia_GetData
+
+command atopia_SetData atopiaData
+   atopia_FilterGoodAndBad atopiaData -- just in case???
+   user_SetArray "atopia_FetchError.array", atopiaData
+   put the result into modelDataFile
+   return modelDataFile
+end atopia_SetData
+
+
+--> Working on
+-
+function atopia_FetchTopTSV cseName
+   put cse_NameToID (cseName) into cseID
+   put atopia_FetchTopDomains() into atopiaDomains
+   put cse_ConstructTSV (atopiaDomains, cseID) into topTSV
+   return topTSV
+end atopia_FetchTopTSV
+
+function atopia_FetchTopDomains
+   put atopia_FetchRoster() into atopiaDomainNames
+   put url_ListTopDomains (atopiaDomainNames) into topDomains
+   return topDomains
+end atopia_FetchTopDomains
+
+function atopia_GetTopDomains
+   put atopia_ListLocalGoodFolders() into domainNames
+   put url_ListTopDomains (domainNames) into topDomains
+   return topDomains
+end atopia_GetTopDomains
 
 
 --> Atopia | Model | Wrappers
@@ -124,18 +132,6 @@ command atopia_SetOwnershipArray ownershipArray
    put the result into modelDataFile
    return modelDataFile
 end atopia_SetOwnershipArray
-
-private command atopia_FilterGoodAndBad @atopiaData
-   repeat for each item keyName in "good,bad"
-      put atopiaData [keyname] into goodArray
-      atopia_FilterAllFolderArray goodArray
-      put the result into filteredDomainNames
-      put goodArray into atopiaData [keyname]
-      put filteredDomainNames & CR after filteredNames
-   end repeat
-   delete char -1 of filteredNames
-   return filteredNames
-end atopia_FilterGoodAndBad
 
 
 --> Atopia | Model | Filter
@@ -264,3 +260,39 @@ function atopia_GetLocalUnhostedArray pAtopiaData
    put pAtopiaData ["_unhosted_sites"] into unhostedArray
    return unhostedArray
 end atopia_GetLocalUnhostedArray
+
+
+--> Filter
+-
+command atopia_FilterAllFolderArray @folderArray
+   -- let's filter
+   repeat for each key folderName in folderArray
+      switch
+         case folderName begins with "."
+         case folderName begins with "_"
+         case folderName is among the items of ReservedFolderNames
+            delete variable folderArray [folderName]
+            put folderName & CR after removedFolderNames
+            break
+         default
+            -- it's ok
+      end switch
+   end repeat
+   delete char -1 of removedFolderNames
+   return removedFolderNames
+end atopia_FilterAllFolderArray
+
+
+--> Private
+-
+private command atopia_FilterGoodAndBad @atopiaData
+   repeat for each item keyName in "good,bad"
+      put atopiaData [keyname] into goodArray
+      atopia_FilterAllFolderArray goodArray
+      put the result into filteredDomainNames
+      put goodArray into atopiaData [keyname]
+      put filteredDomainNames & CR after filteredNames
+   end repeat
+   delete char -1 of filteredNames
+   return filteredNames
+end atopia_FilterGoodAndBad

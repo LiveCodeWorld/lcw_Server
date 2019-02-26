@@ -18,6 +18,25 @@ constant ReservedFolderNames = "_old_sites,_unhosted_sites,_trash,fedwiki_owners
 
 --> Working on
 -
+function fedwiki_FetchSiteIndexJSON wikiDomain
+   put merge ("http://[[wikiDomain]]/view/welcome-visitors") into lineUpURL
+   put fedwiki_ConstructFlagDropJson (lineUpURL) into someJSON
+   fedwiki_PostJSON someJSON, "http://home.c2.com:4010/cite"
+   put the result into pageJSON
+   return pageJSON
+end fedwiki_FetchSiteIndexJSON
+
+function fedwiki_ConstructFlagDropJson lineUpURL
+   set the itemdelimiter to slash
+   put item 1 to 3 of lineUpURL into wikiDomain
+   get merge ("{'text':'','html':'<meta http-equiv=\'Content-Type\' content=\'text/html;charset=UTF-8\'><img src=\'http://[[wikiDomain]]/favicon.png\' height=\'32px\' class=\'favicon\'>','url':'[[lineUpURL]]'}")
+   replace "'" with quote in it
+   return it
+end fedwiki_ConstructFlagDropJson
+
+
+--> Fedwiki | Farm
+-
 function atopia_FetchFarmStatus nsType, domainName
    switch nsType
       case "digitalocean"
@@ -134,28 +153,10 @@ command atopia_AddToDomainErrorArray @atopiaData, wikiFolders, pMinNum
    delete char -1 of addedBadFolders
    
    -- not needed now?
-   -- put atopia_ConstructGoodBadNumArray (atopiaData, pMinNum) into domainInfoArray
+   -- put _ConstructGoodBadNumArray (atopiaData, pMinNum) into domainInfoArray
    -- put domainInfoArray into atopiaData ["info"]
    return addedBadFolders
 end atopia_AddToDomainErrorArray
-
-command atopia_FilterAllFolderArray @folderArray
-   -- let's filter
-   repeat for each key folderName in folderArray
-      switch
-         case folderName begins with "."
-         case folderName begins with "_"
-         case folderName is among the items of ReservedFolderNames
-            delete variable folderArray [folderName]
-            put folderName & CR after removedFolderNames
-            break
-         default
-            -- it's ok
-      end switch
-   end repeat
-   delete char -1 of removedFolderNames
-   return removedFolderNames
-end atopia_FilterAllFolderArray
 
 function atopia_FetchAndBuildArray pMinNum, pWikiFolders
    -- really, really slow (consider using cli "tree" thing)
@@ -169,7 +170,6 @@ function atopia_FetchAndBuildArray pMinNum, pWikiFolders
    repeat for each line wikiFolder in pWikiFolders
       set the cursor to busy
       if wikiFolder is among the items of ReservedFolderNames then next repeat
-      put wikiFolder
       --
       put atopia_FetchWikiPageList (wikiFolder) into wikiPages
       if the number of lines of wikiPages > pMinNum then
@@ -181,7 +181,7 @@ function atopia_FetchAndBuildArray pMinNum, pWikiFolders
    end repeat
    
    -- not deeded?
-   put atopia_ConstructGoodBadNumArray (atopiaData, pMinNum) into domainInfoArray
+   put _ConstructGoodBadNumArray (atopiaData, pMinNum) into domainInfoArray
    put domainInfoArray into atopiaData ["info"]
    
    return atopiaData
@@ -221,6 +221,28 @@ end atopia_AddDnsToDomainArray
 
 
 --> Atopia | Check
+-
+function atopia_WikiHasPages wikiFolder, pMinNum
+   if pMinNum is empty then put 1 into pMinNum
+   put atopia_FetchWikiPageList (wikiFolder) into wikiPages
+   put the number of lines of wikiPages > pMinNum into hasPages
+   return hasPages
+end atopia_WikiHasPages
+
+function atopia_WikiIsHosted wikiFolder
+   put atopia_GetIP() into dropletIP
+   put dig_GetIP (wikiFolder) into testIP
+   if testIP = dropletIP then return true
+   --
+   put dig_GetNS (wikiFolder) into testDNS
+   if testDNS is empty then
+      
+   else
+      
+   end if
+   --
+   return false
+end atopia_WikiIsHosted
 
 function atopia_RemoteWikiFolderExists folderName, pRemoteFolderArray
    if pRemoteFolderArray is empty then
@@ -235,7 +257,7 @@ function atopia_TrashFolderExists trashDomain
    -- could check it is a folder and not a file
    put atopia_FolderInTrashFolder (trashDomain) into folderInTrashFolder
    put "ls -la" && folderInTrashFolder into remoteShell
-   _DoAtopiaShell remoteShell
+   atopia_DoRemoteShell remoteShell
    if the result begins with "ls: cannot access" then
       return false
    else
@@ -305,13 +327,16 @@ command atopia_MoveToTrash shortWikiFolder
       breakpoint
       return empty
    end if
+   
+   /*
    -- we are assuming it is a bad folder
    if atopia_DomainIsBadInDomainArray (shortWikiFolder, atopiaData) is false then
       put "This wiki is not bad!" into someQuestion
       lcw_AnswerSheet someQuestion, empty, true
       exit to top
    end if
-   --
+   */
+   
    -- /root/.wiki/sub.domain.wiki/ -- absolute path for safety
    put atopia_WikiDomainFolder (shortWikiFolder) into remoteWikiFolderPath
    if remoteWikiFolderPath begins with "/root/.wiki/" is false then
@@ -341,15 +366,17 @@ end atopia_MoveToTrash
 
 private command atopia_MoveFoldertoTrash remoteWikiFolderPath
    -- dangerous (no checking)
+   -- does not seem to delete folder with space in the name
+   
    set the itemdelimiter to slash
    put item -1 of remoteWikiFolderPath into trashDomain
    atopia_DeleteFolderInTrash trashDomain
    --
    put atopia_TrashFolder() into trashFolder
-   put "mv -f" && remoteWikiFolderPath && trashFolder into remoteShell
-   -- put space & "&& rmdir" && remoteWikiFolderPath after remoteShell
+   -- shell_BashParamEscape remoteWikiFolderPath
+   put "mv -f" && kwote (remoteWikiFolderPath) && kwote (trashFolder) into remoteShell
    --
-   _DoAtopiaShell remoteShell
+   atopia_DoRemoteShell remoteShell
    put the result into moveResult
    return moveResult
 end atopia_MoveFoldertoTrash
@@ -359,12 +386,12 @@ command atopia_DeleteFolderInTrash trashDomain
    set the itemdelimiter to slash
    put item -1 of trashDomain into trashDomain
    --
-   put atopia_FolderInTrashFolder (trashDomain) into folderInTrashFolder
    put atopia_TrashFolderExists (trashDomain) into alreadyThere
    if alreadyThere is false then return empty
    --
+   put atopia_FolderInTrashFolder (trashDomain) into folderInTrashFolder
    put "rm -rf" && folderInTrashFolder into remoteShell
-   _DoAtopiaShell remoteShell
+   atopia_DoRemoteShell remoteShell
    --
    put the result into deleteResult
    return deleteResult
@@ -435,7 +462,7 @@ command atopia_MoveToUnhosted shortWikiFolder
    --
    put atopia_UnhostedFolder() into unhostedFolder
    put "mv" && domainFolder && unhostedFolder into remoteShell
-   _DoAtopiaShell remoteShell
+   atopia_DoRemoteShell remoteShell
    put the result into moveResult
    if moveResult is not empty then
       put moveResult
@@ -456,7 +483,17 @@ end atopia_MoveToUnhosted
 
 --> Private
 -
-private function atopia_ConstructGoodBadNumArray @atopiaData, pMinNum
+private command _AddDnsToAtopiaArray @atopiaData, goodShortFolder, testIP
+   put dig_GetNS (goodShortFolder) into dnsArray
+   put dnsArray into atopiaData ["dns"][goodShortFolder]["NS"]
+   put testIP into atopiaData ["dns"][goodShortFolder]["A record"]
+   
+   -- in case we crash :)
+   atopia_SetData atopiaData
+   return dnsArray
+end _AddDnsToAtopiaArray
+
+private function _ConstructGoodBadNumArray @atopiaData, pMinNum
    /*
    Not needed now??
    
@@ -482,27 +519,4 @@ private function atopia_ConstructGoodBadNumArray @atopiaData, pMinNum
    put goodNums into domainInfoArray ["goodNums"]
    put badNums into domainInfoArray ["badNums"]
    return domainInfoArray
-end atopia_ConstructGoodBadNumArray
-
-
---> Private
--
-private command _DoAtopiaShell remoteShell
-   -- carefull with this
-   -- with the right private ssh key a dangerous sheel command can wipe the entire server
-   
-   put atopia_GetIP() into dropletIP
-   ssh_DoRemoteShell AtopiaSshUser, dropletIP, remoteShell
-   put the result into shellResult
-   return shellResult
-end _DoAtopiaShell
-
-private command _AddDnsToAtopiaArray @atopiaData, goodShortFolder, testIP
-   put dig_GetNS (goodShortFolder) into dnsArray
-   put dnsArray into atopiaData ["dns"][goodShortFolder]["NS"]
-   put testIP into atopiaData ["dns"][goodShortFolder]["A record"]
-   
-   -- in case we crash :)
-   atopia_SetData atopiaData
-   return dnsArray
-end _AddDnsToAtopiaArray
+end _ConstructGoodBadNumArray

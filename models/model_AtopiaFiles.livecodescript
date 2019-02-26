@@ -14,6 +14,13 @@ As this server is a Fedwiki Farm, most of these files are page-json files for wi
 
 --> Atopia | Shell
 -
+command atopia_StoreWikiPageArray fedwikiDomain, pageSlug, pageArray
+   put json_FromArray (pageArray) into pageJSON
+   atopia_StoreWikiJson fedwikiDomain, pageSlug, pageJSON
+   put the result into shellResult
+   return shellResult -- should be empty unless an error
+end atopia_StoreWikiPageArray
+
 function atopia_FetchWikiJson pageSlug, fedwikiDomain, pUseSSH
    if pUseSSH is true then
       put fedwiki_ConstructPath (fedwikiDomain, pageSlug) into wikiPagePath
@@ -23,13 +30,6 @@ function atopia_FetchWikiJson pageSlug, fedwikiDomain, pUseSSH
    end if
    return someJSON
 end atopia_FetchWikiJson
-
-command atopia_StoreWikiPageArray fedwikiDomain, pageSlug, pageArray
-   put json_FromArray (pageArray) into pageJSON
-   atopia_StoreWikiJson fedwikiDomain, pageSlug, pageJSON
-   put the result into shellResult
-   return shellResult -- should be empty unless an error
-end atopia_StoreWikiPageArray
 
 command atopia_StoreWikiJson fedwikiDomain, pageSlug, pageJSON
    put fedwiki_ConstructPath (fedwikiDomain, pageSlug) into wikiPagePath
@@ -90,6 +90,7 @@ end atopia_UnhostedFolder
 function atopia_FolderInTrashFolder wikiDomain
    -- hard wired absolute path for safety
    put atopia_TrashFolder() & wikiDomain & slash into folderInTrashFolder
+   shell_BashParamEscape folderInTrashFolder
    return folderInTrashFolder
 end atopia_FolderInTrashFolder
 

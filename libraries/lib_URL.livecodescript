@@ -7,6 +7,29 @@ type: library
 version: 0.3
 
 
+--> Working on
+-
+command url_DeconstructTopDomain domainString, @topDomainName, @subDomainBit
+   -- a quick hack
+   -- could check it is a url first
+   
+   set the itemdelimiter to ":"
+   put item 1 of domainString into domainName
+   -- put item 2 of domainString into somePort
+   
+   set the itemdelimiter to "."
+   switch
+      case item -2 to -1 of domainName = "co.uk"
+         put item -3 to -1 of domainName into topDomainName
+         put item 1 to -4 of domainName into subDomainBit
+         break
+      default
+         put item -2 to -1 of domainName into topDomainName
+         put item 1 to -3 of domainName into subDomainBit
+   end switch
+end url_DeconstructTopDomain
+
+
 --> URL | Top
 -
 /*
@@ -14,6 +37,15 @@ It is very hard to actually extract the "top" conanical domain - the thing you r
 There are complex libraries to this effect
 So this is a quick hack
 */
+
+function url_ExtractDomainNames urlIndex
+   set the itemdelimiter to slash
+   repeat for each line someURL in urlIndex
+      put item 3 of someURL & CR after domainNames
+   end repeat
+   delete char -1 of domainNames
+   return domainNames
+end url_ExtractDomainNames
 
 function url_GetTopDomain domainName
    url_DeconstructTopDomain domainName, topDomainName, subDomainBit
@@ -27,19 +59,6 @@ function url_ListTopDomains domainNames
    return topDomainNames
 end url_ListTopDomains
 
-command url_DeconstructTopDomain domainName, @topDomainName, @subDomainBit
-   set the itemdelimiter to "."
-   switch
-      case item -2 to -1 of domainName = "co.uk"
-         put item -3 to -1 of domainName into topDomainName
-         put item 1 to -4 of domainName into subDomainBit
-         break
-      default
-         put item -2 to -1 of domainName into topDomainName
-         put item 1 to -3 of domainName into subDomainBit
-   end switch
-end url_DeconstructTopDomain
-
 function url_ConstructTopLevelDomainArray domainNames
    /*
    gets a reverse-polish style array of domain names
@@ -48,16 +67,26 @@ function url_ConstructTopLevelDomainArray domainNames
    */
    
    set the itemdelimiter to "."
-   repeat for each line domainName in domainNames 
+   repeat for each line domainName in domainNames
+      set the cursor to busy
       url_DeconstructTopDomain domainName, topDomainName, subDomainBit
       
       -- let's reverse the order
       put 1 into keyNum
+      put true into isIpAdress
       repeat with itemNum = the number of items of subDomainBit down to 1
          put item itemNum of subDomainBit into domainBit
+         if domainBit is not a number then
+            put false into isIpAdress
+         end if
          put domainBit into keyArray [keyNum]
          add 1 to keyNum
       end repeat
+      
+      if isIpAdress is true then
+         next repeat
+      end if
+      
       if keyArray is an array then
          put domainName into domainNameArray [topDomainName]["subdomain"][keyArray]["domain name"]
       else
@@ -99,21 +128,6 @@ command url_SortDomainIndex @domainNames
    -- sort domainNames by item -2 of each & item -3 of each & item -4 of each & item -1 of each
    sort domainNames by item -2 of each & item -3 of each & item -4 of each
    return word 1 to -1 of domainNames
-   
-   /*
-   -- not right
-   repeat for each line domainName in domainNames
-      put the number of items of domainName & comma after maxItemList
-   end repeat
-   put max (maxItemList) into maxNum
-   
-   -- sort domainNames by item 1 of each 
-   repeat with sortItemNum = 1 to maxNum
-      put -1 * sortItemNum into backItemNum
-      sort domainNames by item backItemNum of each
-   end repeat
-   put word 1 to -1 of domainNames into domainNames
-   */
 end url_SortDomainIndex
 
 function url_ListSubdomains domainName, domainNameIndex

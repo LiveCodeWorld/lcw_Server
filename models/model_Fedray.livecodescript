@@ -7,6 +7,189 @@ type: model
 version: 0.1
 
 
+--> Working on
+-
+function fedray_FetchAllDomainArrayFromWard
+   -- bit of a complex format. Probaly better to use "fedray_FetchWardsSiteArray()"
+   breakpoint
+   put fedray_FetchAllDomainTable() into someIndex
+   repeat for each line someLine in someIndex
+      -- put word 1 of "admin.asia.wiki.org, 42 pages"
+      -- 7800ec3b.ngrok.io, sitemap: 743: unexpected token at 'Tunnel 7800ec3b.ngrok.io not found'
+      
+      put item 1 of someLine into someDomain
+      get word 1 of item 2 of someLine
+      if it is not a number then next repeat
+      
+      put it into pageNumber
+      if pageNumber < 2 then next repeat
+      
+      put pageNumber into domainArray [someDomain]
+   end repeat
+   return domainArray
+end fedray_FetchAllDomainArrayFromWard
+
+
+--> Fedwiki | Fetch
+-
+function fedwiki_FetchOwnerName fedwikiDomain
+   /*
+   get "https://fedwiki.rodwell.me/view/narrative-chart/view/coffeehouse-culture"
+   set the itemdelimiter to slash
+   put item 3 of it into fedwikiDomain
+   */
+   put "http://" & fedwikiDomain & "/welcome-visitors.html" into someURL
+   put url someURL into someHTML
+   --
+   put "//*[@id='site-owner']" into someXPath 
+   replace "'" with quote in someXPath
+   put scrape_WithXPath (someHTML, someXPath, true) into contentSection
+   put line 2 to 3 of contentSection into someName
+   replace CR with space in someName
+   return word 1 to -1 of someName
+end fedwiki_FetchOwnerName
+
+
+--> Fedwiki | Fetch | Ward
+-
+command atopia_StoreServerDomainArray pAtopiaDomains
+   put atopia_ConstructServerDomainArray() into serverDomainArray
+   --
+   if serverDomainArray is not an array then
+      breakpoint
+      return "Error, serverDomainArray is not an array"
+   end if
+   
+   atopia_StoreServerArray "Atopia Domains", serverDomainArray
+   put the result into putError
+   return putError
+end atopia_StoreServerDomainArray
+
+function atopia_ConstructServerDomainArray pAtopiaDomains
+   -- return in Ward-compatible format
+   put atopia_TestAndConstructServerDomainArray (pAtopiaDomains) into goodBadArray
+   put goodBadArray ["good"] into newServerDomainArray
+   return newServerDomainArray
+end atopia_ConstructServerDomainArray
+
+function atopia_TestAndConstructServerDomainArray pAtopiaDomains
+   if pAtopiaDomains is empty then
+      set the cursor to watch
+      resetall -- otherwise things tend to stop working
+      put atopia_FetchAllFolderList() into pAtopiaDomains
+   end if
+   --
+   url_SortDomainIndex pAtopiaDomains
+   repeat for each line atopiaDomain in pAtopiaDomains
+      set the cursor to busy
+      put fedwiki_FetchSitemapArray (atopiaDomain) into sitemapArray
+      if sitemapArray is not an array then
+         put true into goodBadArray ["bad"][atopiaDomain] 
+         next repeat
+      end if
+      put keys (sitemapArray) into pageSlugs
+      put the number of lines of pageSlugs into pageNum
+      put pageNum into goodBadArray ["good"][atopiaDomain]["pages"]
+   end repeat
+   return goodBadArray
+end atopia_TestAndConstructServerDomainArray
+
+function atopia_FetchNewServerDomainArray pFetchAtopiaDomains
+   -- return in Ward-compatible format
+   set the cursor to watch   
+   put fedray_FetchWardsSiteArray() into fedDomainArray
+   if pFetchAtopiaDomains then
+      -- slow
+      put atopia_FetchAllFolderList() into atopiaDomains
+   else
+      -- fast
+      put atopia_FetchRoster() into atopiaDomains
+   end if
+   repeat for each line atopiaDomain in atopiaDomains
+      set the cursor to busy
+      put fedDomainArray [atopiaDomain] into domainArray
+      if domainArray is empty then
+         put fedwiki_FetchSitemapArray (atopiaDomain) into sitemapArray
+         put keys (sitemapArray) into pageSlugs
+         put the number of lines of pageSlugs into pageNum
+         --
+         put pageNum into newServerDomainArray [atopiaDomain]["pages"]
+      end if
+   end repeat
+   return newServerDomainArray
+end atopia_FetchNewServerDomainArray
+
+function fedray_FetchNewAtopiaDomainNames pSort
+   set the cursor to watch
+   -- put atopia_FetchAllFolderList() into atopiaDomains -- slow
+   
+   put fedray_FetchWardsSiteArray() into fedDomainArray
+   put atopia_FetchStoredDomains() into atopiaDomains -- fast
+   repeat for each line atopiaDomain in atopiaDomains
+      set the cursor to busy
+      put fedDomainArray [atopiaDomain] into domainArray
+      if domainArray is empty then
+         put true into newDomainArray [atopiaDomain]
+      end if
+   end repeat
+   --
+   put keys (newDomainArray) into domainNames
+   if pSort is true then
+      url_SortDomainIndex domainNames
+   end if
+   return domainNames
+end fedray_FetchNewAtopiaDomainNames
+
+
+--> Fedray | Federation | Fetch
+-
+function fedray_FetchTopFederationDomains
+   -- fetch all federation domains from wards scrape
+   -- set the cursor to watch
+   put fedray_FetchAllDomainNames() into federationDomains
+   put url_ListTopDomains (federationDomains) into topFederationDomains
+   return topFederationDomains
+end fedray_FetchTopFederationDomains
+
+function fedray_FetchAllDomainNames pSort
+   -- takes betewwn 40 to 17 seconds to fetch
+   -- see also "fedray_ListAllDomainNames()"
+   
+   put fedray_FetchWardsSiteArray() into siteArray
+   put keys (siteArray) into domainNames
+   if pSort is true then
+      url_SortDomainIndex domainNames
+   end if
+   return domainNames
+end fedray_FetchAllDomainNames
+
+function fedray_FetchWardsSiteArray
+   put fedray_FetchWardsSiteJson() into siteJSON
+   put json_ToArray (siteJSON) into siteArray
+   return siteArray
+end fedray_FetchWardsSiteArray
+
+function fedray_FetchWardsSiteJson
+   put url "http://search.fed.wiki.org:3030/site-web.json" into siteJSON
+   return siteJSON
+end fedray_FetchWardsSiteJson
+
+function fedray_FetchAllDomainTable
+   put url "http://search.fed.wiki.org:3030/logs" into folderHTML
+   get line 1 of folderHTML
+   -- <a href="/logs/Thu-2000.txt">Thu-2000</a><br>
+   put "<a href='/logs/(.+)'>.+</a><br>" into someReg
+   replace "'" with quote in someReg
+   if matchText (it, someReg, shortFile) is false then
+      breakpoint
+   end if
+   
+   put "http://search.fed.wiki.org:3030/logs/" & shortFile into someURL
+   put url someURL into someTable
+   return someTable
+end fedray_FetchAllDomainTable
+
+
 --> Atopia | Farm | Model
 -
 function atopia_GetFarmArray
@@ -222,12 +405,12 @@ end fedray_GetArrayFile
 
 --> Fedray | Model | Local
 -
-function fedwiki_FetchSlugLinks pageSlug, wikiDomain
+function fedray_GetSlugLinks pageSlug, wikiDomain
    --- here we fetch from wards export added locally to the hard disk
    put fedray_GetSitesFolder() & wikiDomain & "/pages/" & pageSlug & "/links.txt" into linksFile
    put url ("file:" & linksFile) into slugLinks
    return word 1 to -1 of slugLinks
-end fedwiki_FetchSlugLinks
+end fedray_GetSlugLinks
 
 function fedray_GetSitesFolder
    put "/Users/BabyBlue/Desktop/git-repos/sites/sites/" into sitesFolder
@@ -278,23 +461,6 @@ function fedwiki_ExtractDomainNames federationArray
    return domainNames
 end fedwiki_ExtractDomainNames
 
-function fedwiki_FetchOwnerName fedwikiDomain
-   /*
-   get "https://fedwiki.rodwell.me/view/narrative-chart/view/coffeehouse-culture"
-   set the itemdelimiter to slash
-   put item 3 of it into fedwikiDomain
-   */
-   put "http://" & fedwikiDomain & "/welcome-visitors.html" into someURL
-   put url someURL into someHTML
-   --
-   put "//*[@id='site-owner']" into someXPath 
-   replace "'" with quote in someXPath
-   put scrape_WithXPath (someHTML, someXPath, true) into contentSection
-   put line 2 to 3 of contentSection into someName
-   replace CR with space in someName
-   return word 1 to -1 of someName
-end fedwiki_FetchOwnerName
-
 function fedray_ListAllDomainNames   
    put fedray_GetSitesFolder() into sitesFolder
    put folders (sitesFolder) into fedrayDomains
@@ -310,59 +476,6 @@ function fedray_ListAllDomainNames
    if line 1 of fedrayDomains = ".." then delete line 1 of fedrayDomains
    return word 1 to -1 of fedrayDomains
 end fedray_ListAllDomainNames
-
-
---> Fedray | Fetch
--
-function fedray_FetchAllDomainArrayFromWard
-   -- ward has a bug at the moment in his online listing
-   breakpoint
-   put fedwiki_FetchAllDomainTable() into someIndex
-   repeat for each line someLine in someIndex
-      -- put word 1 of "admin.asia.wiki.org, 42 pages"
-      -- 7800ec3b.ngrok.io, sitemap: 743: unexpected token at 'Tunnel 7800ec3b.ngrok.io not found'
-      
-      put item 1 of someLine into someDomain
-      get word 1 of item 2 of someLine
-      if it is not a number then next repeat
-      
-      put it into pageNumber
-      if pageNumber < 2 then next repeat
-      
-      put pageNumber into domainArray [someDomain]
-   end repeat
-   return domainArray
-end fedray_FetchAllDomainArrayFromWard
-
-function fedwiki_FetchAllDomainNames
-   return fedray_ListAllDomainNames()
-   
-   put fedray_FetchAllDomainArrayFromWard() into domainArray
-   -- let's add all the domains on the Atoia server which may not be indexed
-   put atopia_FetchAllFolderList() into atopiaDomains
-   repeat for each line atopiaDomain in atopiaDomains
-      -- no need to be a number of pages here
-      put true into domainArray [atopiaDomain]
-   end repeat
-   put keys (domainArray) into allDomainNames
-   sort allDomainNames
-   return allDomainNames
-end fedwiki_FetchAllDomainNames
-
-function fedwiki_FetchAllDomainTable
-   put url "http://search.fed.wiki.org:3030/logs" into folderHTML
-   get line 1 of folderHTML
-   -- <a href="/logs/Thu-2000.txt">Thu-2000</a><br>
-   put "<a href='/logs/(.+)'>.+</a><br>" into someReg
-   replace "'" with quote in someReg
-   if matchText (it, someReg, shortFile) is false then
-      breakpoint
-   end if
-   
-   put "http://search.fed.wiki.org:3030/logs/" & shortFile into someURL
-   put url someURL into someTable
-   return someTable
-end fedwiki_FetchAllDomainTable
 
 
 --> Fedray | Add
@@ -450,7 +563,7 @@ command fedwiki_AddSlugArrayToFederationArray @federationArray, sitemapArray, fe
       fedwiki_AddSlugForksToDomainArray federationArray, fedwikiDomain, pageSlug
       
       -- now fetch local links (from wards scrape) and add to array
-      put fedwiki_FetchSlugLinks (pageSlug, fedwikiDomain) into slugLinks
+      put fedray_GetSlugLinks (pageSlug, fedwikiDomain) into slugLinks
       if slugLinks is not empty then
          put slugLinks into federationArray ["domain"][fedwikiDomain][pageSlug]["links"]
       end if
