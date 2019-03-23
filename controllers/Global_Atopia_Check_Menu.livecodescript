@@ -26,7 +26,7 @@ on menu_CheckWithoutOwners indexView
    --
    put atopia_GetOwnershipArray() into ownershipArray
    --
-   put atopia_FetchAllFolderList() into remoteWikiFolders
+   put atopia_FetchFolders() into remoteWikiFolders
    repeat for each line remoteWikiFolder in remoteWikiFolders
       set the cursor to busy
       put ownershipArray [remoteWikiFolder] into ownerArray
@@ -84,7 +84,7 @@ on menu_CheckLocalUnhosted indexView
    dispatch "lcw_AnswerSheet" to indexView with someQuestion
    --
    put atopia_ListLocalUnhostedFolders() into unhostedFolders
-   put atopia_FetchAllFolderList() into remoteWikiFolders
+   put atopia_FetchFolders() into remoteWikiFolders
    repeat for each line unhostedFolder in unhostedFolders
       set the cursor to busy
       if unhostedFolder is among the lines of remoteWikiFolders then
@@ -145,17 +145,17 @@ on menu_CheckLocalBadFolders indexView
 end menu_CheckLocalBadFolders
 
 on menu_TestFetchedSameAsLocal
-   put "Check atopia_ListLocalWikiFolders() = atopia_FetchAllFolderList() ?" into someQuestion
+   put "Check atopia_ListLocalWikiFolders() = atopia_FetchFolders() ?" into someQuestion
    dispatch "lcw_AnswerSheet" to indexView with someQuestion
    --
    set the cursor to watch
-   put atopia_FetchAllFolderList() into fetchedFolders
+   put atopia_FetchFolders() into fetchedFolders
    put atopia_ListLocalWikiFolders() into localFolders
    --
    if localFolders = fetchedFolders then
       lcw_AnswerSheet "Good server folders are the same as local folders!"
    else
-      display_Lines fetchedFolders, "Fetched,atopia_FetchAllFolderList()"
+      display_Lines fetchedFolders, "Fetched,atopia_FetchFolders()"
       display_Lines localFolders, "Local,atopia_ListLocalWikiFolders()"
       lcw_AnswerSheet "Good server folders are different from local folders!"
    end if

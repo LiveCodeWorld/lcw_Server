@@ -4,7 +4,7 @@
 license: GPLv3
 name: model_Secret
 type: model
-version: 0.2
+version: 0.3
 
 /*
 This library is for storing and fetching secrets. Passwords and REST authentication secrets.
@@ -18,58 +18,20 @@ The idea is that there would be two libraries that we can swap in and out for di
 as each platform stores secrets in different ways.
 
 For now we use the environment switch to allow a single interface to stroing secrets on all platforms.
+
+At the moment we store secrets in the config.lc file on the server
+and don't use specific files or database keys.
+
+But on the desktop we usually use a separate array file per project.
+This is something that eventualy the server should probably use as well.
 */
-
-
---> Variables
--
-local SecretArray
 
 
 --> Secret
 -
-function secret_Get secretName, arrayKey
-   /*
-   At the moment we store secrets in the config.lc file on the server
-   and don't use specific files or database keys.
-   
-   But on the desktop we usually use a separate array file per project.
-   This is something that eventualy the server should probably use as well.
-   */
-   
+function secret_Get secretName
    if the environment = "server" then
-      -- at the moment does not use arrayKey
       put rigFetchConfigItem (secretName) into someSecret
-   else
-      put _ConstructShortArrayFile (arrayKey) into shortFileFile
-      put user_GetValue (secretName, shortFileFile) into someSecret
    end if
    return someSecret
 end secret_Get
-
-command secret_Set secretName, arrayKey, secretValue
-   if the environment = "server" then return empty -- not working on server
-   --
-   put _ConstructShortArrayFile (arrayKey) into shortFileFile
-   user_SetValue secretName, shortFileFile, secretValue
-   put the result into modelDataFile
-   return modelDataFile
-end secret_Set
-
-function secret_GetCached secretName, arrayKey
-   put SecretArray [arrayKey][secretName] into someSecret
-   if someSecret is not empty then return someSecret -- cached
-   
-   put secret_Get (secretName, arrayKey) into someSecret
-   put someSecret into SecretArray [arrayKey][secretName]
-   return someSecret
-end secret_GetCached
-
-
---> Private
--
-private function _ConstructShortArrayFile arrayKey
-   -- "pinterest_Authentication.array"
-   put arrayKey & "_Authentication.array" into shortFileFile
-   return shortFileFile
-end _ConstructShortArrayFile

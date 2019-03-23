@@ -67,7 +67,7 @@ command fedwiki_ActionRemove pageSlug, actionArray
    
    -- add to journal
    put pageArray ["journal"] into journalArray
-   fedwiki_AddToJournalArray journalArray, actionArray, "remove"
+   journalArray_Add journalArray, actionArray, "remove"
    put journalArray into pageArray ["journal"]
    
    -- save to disk
@@ -89,7 +89,7 @@ command fedwiki_ActionMove pageSlug, actionArray, pFedwikiDomain, pLocalWikiFold
    
    -- now add a "move" to the journal
    put pageArray ["journal"] into journalArray
-   fedwiki_AddToJournalArray journalArray, actionArray, "move"
+   journalArray_Add journalArray, actionArray, "move"
    put journalArray into pageArray ["journal"]
    
    put actionArray ["date"] into pCreateMilliSeconds
@@ -108,9 +108,8 @@ command fedwiki_ActionAdd pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolde
    
    switch itemType
       case "factory"
-         -- fedwiki_AddFactoryToPageArray pageArray, itemID
-         put fedwiki_ConstructFactoryArray (itemID) into itemArray
-         fedwiki_AddItemArrayToStoryEnd itemArray, pageArray
+         put pageArray_ConstructFactory (itemID) into itemArray
+         pageArray_AddItemArray itemArray, pageArray
          break
       default
          display_Array actionArray, ("Add undefined" && itemType)
@@ -328,7 +327,7 @@ command fedwiki_PageArrayEdit @pageArray, actionArray
    
    -- update the journal
    put pageArray ["journal"] into journalArray
-   fedwiki_AddToJournalArray journalArray, itemArray, "edit"
+   journalArray_Add journalArray, itemArray, "edit"
    put journalArray into pageArray ["journal"]
    
    -- if it is the first paragraph => update the site map

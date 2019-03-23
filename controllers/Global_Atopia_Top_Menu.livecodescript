@@ -9,9 +9,9 @@ version: 0.1
 
 --> Global | Atopia | Top | Menu
 -
-on submenu_Display
+on submenu_Atopia
    return "Global | Atopia | Display | Menu"
-end submenu_Display
+end submenu_Atopia
 
 on _
 end _
@@ -26,13 +26,6 @@ on menu_CheckFarms indexView
    --
    display_Array farmArray, "Farm Array"
 end menu_CheckFarms
-
-on menu_CheckAtopiaFarms indexView
-   
-end menu_CheckAtopiaFarms
-
-on _
-end _
 
 on _
 end _
@@ -80,9 +73,10 @@ on menu_ConstructFederationArrays
 end menu_ConstructFederationArrays
 
 on menu_ConstructAtopiaArrays
+   breakpoint
    local federationArray
    --
-   put atopia_FetchAllFolderList() into atopiaDomains
+   put atopia_FetchFolders() into atopiaDomains
    -- put fedray_GetArray ("atopia.array") into federationArray
    --
    fedwiki_SetFederationArrayDomains federationArray, atopiaDomains
@@ -104,6 +98,10 @@ on menu_UpdateOceanDomainInfo
    --
    display_Array domainInfoArray, "digitalocean_UpdateDomainInfoArray"
 end menu_UpdateOceanDomainInfo
+
+on submenu_Dev
+   return "Dev | Menu"
+end submenu_Dev
 
 
 --> Global | Atopia | Top | Menu | Props
@@ -157,15 +155,7 @@ on menu_AddAtopiaForkEvents arrayView
 end menu_AddAtopiaForkEvents
 
 on menu_DisplayAtopiaArray arrayView
-   local pMouseUpCommand
-   put fedray_GetArray ("atopia.array") into federationArray
-   put federationArray ["domain"] into domainArray
-   put keys (domainArray) into domainNames
-   sort domainNames
-   display_Index domainNames, "Federation Domains", "Global | Atopia | Top | Menu", "Global | Federation | Line | Menu"
-   put the result into displayView
-   
-   display_Array federationArray, "Atopia Array", "Global | Atopia | Top | Menu"
+   display_Fedray
 end menu_DisplayAtopiaArray
 
 on menu_SaveAtopiaArray arrayView
@@ -245,7 +235,7 @@ end _
 on menu_FetchAllWikiDomains
    put fedwiki_FetchAllDomainNames() into allDomainNames
    --
-   put atopia_FetchAllFolderList() into atopiaDomains         
+   put atopia_FetchFolders() into atopiaDomains         
    repeat for each line testDomain in atopiaDomains
       set the cursor to busy
       if testDomain is among the lines of allDomainNames then

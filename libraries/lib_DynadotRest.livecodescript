@@ -33,7 +33,7 @@ function dynadot_GetApiKey
 end dynadot_GetApiKey
 
 command dynadot_SetApiKey oAuthToken
-   secret_Set "DynadotApiKey", "apiKey", oAuthToken
+   secret_Set "DynadotApiKey", oAuthToken, "apiKey"
    put the result into modelDataFile
    return modelDataFile
 end dynadot_SetApiKey

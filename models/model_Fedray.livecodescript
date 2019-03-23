@@ -6,188 +6,119 @@ name: model_Fedray
 type: model
 version: 0.1
 
+/*
+This library concerns itself with "federation arrays" or fedRay
+See also "lib_Fedray"
+*/
+
 
 --> Working on
 -
-function fedray_FetchAllDomainArrayFromWard
-   -- bit of a complex format. Probaly better to use "fedray_FetchWardsSiteArray()"
-   breakpoint
-   put fedray_FetchAllDomainTable() into someIndex
-   repeat for each line someLine in someIndex
-      -- put word 1 of "admin.asia.wiki.org, 42 pages"
-      -- 7800ec3b.ngrok.io, sitemap: 743: unexpected token at 'Tunnel 7800ec3b.ngrok.io not found'
-      
-      put item 1 of someLine into someDomain
-      get word 1 of item 2 of someLine
-      if it is not a number then next repeat
-      
-      put it into pageNumber
-      if pageNumber < 2 then next repeat
-      
-      put pageNumber into domainArray [someDomain]
-   end repeat
-   return domainArray
-end fedray_FetchAllDomainArrayFromWard
 
-
---> Fedwiki | Fetch
+--> Fedray | Add
 -
-function fedwiki_FetchOwnerName fedwikiDomain
-   /*
-   get "https://fedwiki.rodwell.me/view/narrative-chart/view/coffeehouse-culture"
-   set the itemdelimiter to slash
-   put item 3 of it into fedwikiDomain
-   */
-   put "http://" & fedwikiDomain & "/welcome-visitors.html" into someURL
-   put url someURL into someHTML
+command fedray_AddOwnershipArray ownershipArray, pShortFile
+   put fedray_GetArray (pShortFile) into fedray
    --
-   put "//*[@id='site-owner']" into someXPath 
-   replace "'" with quote in someXPath
-   put scrape_WithXPath (someHTML, someXPath, true) into contentSection
-   put line 2 to 3 of contentSection into someName
-   replace CR with space in someName
-   return word 1 to -1 of someName
-end fedwiki_FetchOwnerName
-
-
---> Fedwiki | Fetch | Ward
--
-command atopia_StoreServerDomainArray pAtopiaDomains
-   put atopia_ConstructServerDomainArray() into serverDomainArray
-   --
-   if serverDomainArray is not an array then
-      breakpoint
-      return "Error, serverDomainArray is not an array"
-   end if
-   
-   atopia_StoreServerArray "Atopia Domains", serverDomainArray
-   put the result into putError
-   return putError
-end atopia_StoreServerDomainArray
-
-function atopia_ConstructServerDomainArray pAtopiaDomains
-   -- return in Ward-compatible format
-   put atopia_TestAndConstructServerDomainArray (pAtopiaDomains) into goodBadArray
-   put goodBadArray ["good"] into newServerDomainArray
-   return newServerDomainArray
-end atopia_ConstructServerDomainArray
-
-function atopia_TestAndConstructServerDomainArray pAtopiaDomains
-   if pAtopiaDomains is empty then
-      set the cursor to watch
-      resetall -- otherwise things tend to stop working
-      put atopia_FetchAllFolderList() into pAtopiaDomains
-   end if
-   --
-   url_SortDomainIndex pAtopiaDomains
-   repeat for each line atopiaDomain in pAtopiaDomains
-      set the cursor to busy
-      put fedwiki_FetchSitemapArray (atopiaDomain) into sitemapArray
-      if sitemapArray is not an array then
-         put true into goodBadArray ["bad"][atopiaDomain] 
-         next repeat
-      end if
-      put keys (sitemapArray) into pageSlugs
-      put the number of lines of pageSlugs into pageNum
-      put pageNum into goodBadArray ["good"][atopiaDomain]["pages"]
-   end repeat
-   return goodBadArray
-end atopia_TestAndConstructServerDomainArray
-
-function atopia_FetchNewServerDomainArray pFetchAtopiaDomains
-   -- return in Ward-compatible format
-   set the cursor to watch   
-   put fedray_FetchWardsSiteArray() into fedDomainArray
-   if pFetchAtopiaDomains then
-      -- slow
-      put atopia_FetchAllFolderList() into atopiaDomains
-   else
-      -- fast
-      put atopia_FetchRoster() into atopiaDomains
-   end if
-   repeat for each line atopiaDomain in atopiaDomains
-      set the cursor to busy
-      put fedDomainArray [atopiaDomain] into domainArray
-      if domainArray is empty then
-         put fedwiki_FetchSitemapArray (atopiaDomain) into sitemapArray
-         put keys (sitemapArray) into pageSlugs
-         put the number of lines of pageSlugs into pageNum
+   repeat for each key ownerEmail in ownershipArray
+      put ownershipArray [ownerEmail]["domains"] into indexedDomainArray
+      repeat for each key indexNum in indexedDomainArray
+         put indexedDomainArray [indexNum]["domain"] into domainName
+         put indexedDomainArray [indexNum]["ownerArray"] into ownerArray
          --
-         put pageNum into newServerDomainArray [atopiaDomain]["pages"]
-      end if
-   end repeat
-   return newServerDomainArray
-end atopia_FetchNewServerDomainArray
-
-function fedray_FetchNewAtopiaDomainNames pSort
-   set the cursor to watch
-   -- put atopia_FetchAllFolderList() into atopiaDomains -- slow
-   
-   put fedray_FetchWardsSiteArray() into fedDomainArray
-   put atopia_FetchStoredDomains() into atopiaDomains -- fast
-   repeat for each line atopiaDomain in atopiaDomains
-      set the cursor to busy
-      put fedDomainArray [atopiaDomain] into domainArray
-      if domainArray is empty then
-         put true into newDomainArray [atopiaDomain]
-      end if
+         put ownerArray into fedray ["metadata"]["domain"][domainName]["ownerArray"]
+         put ownerEmail into fedray ["metadata"]["domain"][domainName]["ownerEmail"]
+      end repeat
    end repeat
    --
-   put keys (newDomainArray) into domainNames
-   if pSort is true then
-      url_SortDomainIndex domainNames
-   end if
-   return domainNames
-end fedray_FetchNewAtopiaDomainNames
+   fedray_SetArray fedray, shortFile
+   return fedray
+end fedray_AddOwnershipArray
+
+command fedwiki_AddDomainsToFederationArray @federationArray, fedwikiDomains, pReindex
+   repeat for each line fedwikiDomain in fedwikiDomains
+      set the cursor to busy
+      if pReindex is not true then
+         if fedwikiDomain is among the keys of federationArray then
+            -- don't index twice
+            next repeat
+         end if
+      end if
+      _AddDomainToArray federationArray, fedwikiDomain
+   end repeat
+end fedwiki_AddDomainsToFederationArray
+
+command fedwiki_AddDomainMetadata @federationArray, fedwikiDomain
+   put fedwiki_FetchOwnerName (fedwikiDomain) into ownerName
+   put ownerName into federationArray ["metadata"]["domain"][fedwikiDomain]["ownerName"]
+   put dig_GetIP (fedwikiDomain) into someIP
+   put someIP into federationArray ["metadata"]["domain"][fedwikiDomain]["ipAddress"]
+end fedwiki_AddDomainMetadata
 
 
---> Fedray | Federation | Fetch
+--> Fedray | Forks | Create
 -
-function fedray_FetchTopFederationDomains
-   -- fetch all federation domains from wards scrape
-   -- set the cursor to watch
-   put fedray_FetchAllDomainNames() into federationDomains
-   put url_ListTopDomains (federationDomains) into topFederationDomains
-   return topFederationDomains
-end fedray_FetchTopFederationDomains
+command fedwiki_AddForksFederationArray @federationArray
+   put federationArray ["domain"] into domainArray
+   repeat for each key fedwikiDomain in domainArray
+      fedwiki_AddForksToDomainArray federationArray, fedwikiDomain
+   end repeat
+end fedwiki_AddForksFederationArray
 
-function fedray_FetchAllDomainNames pSort
-   -- takes betewwn 40 to 17 seconds to fetch
-   -- see also "fedray_ListAllDomainNames()"
-   
-   put fedray_FetchWardsSiteArray() into siteArray
-   put keys (siteArray) into domainNames
-   if pSort is true then
-      url_SortDomainIndex domainNames
-   end if
-   return domainNames
-end fedray_FetchAllDomainNames
+command fedwiki_AddForksToDomainArray @federationArray, fedwikiDomain
+   put federationArray ["domain"][fedwikiDomain] into slugArray
+   repeat for each key pSlug in slugArray
+      fedwiki_AddSlugForksToDomainArray federationArray, fedwikiDomain, pSlug
+   end repeat
+end fedwiki_AddForksToDomainArray
 
-function fedray_FetchWardsSiteArray
-   put fedray_FetchWardsSiteJson() into siteJSON
-   put json_ToArray (siteJSON) into siteArray
-   return siteArray
-end fedray_FetchWardsSiteArray
+command fedwiki_AddSlugForksToDomainArray @federationArray, fedwikiDomain, pSlug
+   put pageJson_Fetch (fedwikiDomain, pSlug) into pageJSON
+   put json_ToArray (pageJson) into pageArray
+   put pageArray ["journal"] into journalArray
+   put item 2 of the extents of journalArray into lastJournalNum
+   put 1 into newItemNum
+   repeat with jNum = 1 to lastJournalNum
+      set the cursor to busy
+      --
+      put journalArray [jNum] into itemArray
+      if itemArray ["type"] = "fork" then
+         put itemArray ["site"] into fromSite
+         if fromSite is empty then next repeat -- self-fork
+         --
+         put fromSite into federationArray ["domain"][fedwikiDomain][pSlug]["fork"][newItemNum]["domain"]
+         put itemArray ["date"] into federationArray ["domain"][fedwikiDomain][pSlug]["fork"][newItemNum]["date"]
+         add 1 to newItemNum
+      end if
+   end repeat
+end fedwiki_AddSlugForksToDomainArray
 
-function fedray_FetchWardsSiteJson
-   put url "http://search.fed.wiki.org:3030/site-web.json" into siteJSON
-   return siteJSON
-end fedray_FetchWardsSiteJson
-
-function fedray_FetchAllDomainTable
-   put url "http://search.fed.wiki.org:3030/logs" into folderHTML
-   get line 1 of folderHTML
-   -- <a href="/logs/Thu-2000.txt">Thu-2000</a><br>
-   put "<a href='/logs/(.+)'>.+</a><br>" into someReg
-   replace "'" with quote in someReg
-   if matchText (it, someReg, shortFile) is false then
-      breakpoint
-   end if
-   
-   put "http://search.fed.wiki.org:3030/logs/" & shortFile into someURL
-   put url someURL into someTable
-   return someTable
-end fedray_FetchAllDomainTable
+command fedwiki_AddSlugArrayToFederationArray @federationArray, sitemapArray, fedwikiDomain
+   put item 2 of the extents of sitemapArray into maxNum
+   put 0 into maxUpdate
+   repeat with indexNum = 1 to maxNum
+      -- put sitemapArray [indexNum]["title"] into pageTitle
+      -- put sitemapArray [indexNum]["synopsis"] into pageSynopsis
+      --
+      put sitemapArray [indexNum]["slug"] into pageSlug
+      put sitemapArray [indexNum]["date"] into lastUpdate
+      if lastUpdate > maxUpdate then
+         put lastUpdate into maxUpdate
+      end if
+      put lastUpdate into federationArray ["domain"][fedwikiDomain][pageSlug]["date"]
+      put lastUpdate into federationArray ["slug"][pageSlug][fedwikiDomain]["date"]
+      
+      -- now add fork from the page slug
+      fedwiki_AddSlugForksToDomainArray federationArray, fedwikiDomain, pageSlug
+      
+      -- now fetch local links (from wards scrape) and add to array
+      put fedray_GetSlugLinks (pageSlug, fedwikiDomain) into slugLinks
+      if slugLinks is not empty then
+         put slugLinks into federationArray ["domain"][fedwikiDomain][pageSlug]["links"]
+      end if
+   end repeat
+   return maxUpdate
+end fedwiki_AddSlugArrayToFederationArray
 
 
 --> Atopia | Farm | Model
@@ -325,7 +256,7 @@ function fedray_SortSlugArray slugArray
 end fedray_SortSlugArray
 
 
---> Fedray | Model
+--> Fedray | Fork
 -
 function fedray_ConstructForkArray federationArray
    -- no forks no entry
@@ -466,7 +397,7 @@ function fedray_ListAllDomainNames
    put folders (sitesFolder) into fedrayDomains
    
    -- let's add all the domains on the Atoia server which may not be indexed
-   put atopia_FetchAllFolderList() into atopiaDomains
+   put atopia_FetchFolders() into atopiaDomains
    repeat for each line atopiaDomain in atopiaDomains
       if atopiaDomain is not among the lines of fedrayDomains then
          put atopiaDomain & CR before fedrayDomains
@@ -478,115 +409,7 @@ function fedray_ListAllDomainNames
 end fedray_ListAllDomainNames
 
 
---> Fedray | Add
--
-command fedray_AddOwnershipArray ownershipArray, pShortFile
-   put fedray_GetArray (pShortFile) into fedArray
-   --
-   repeat for each key ownerEmail in ownershipArray
-      put ownershipArray [ownerEmail]["domains"] into indexedDomainArray
-      repeat for each key indexNum in indexedDomainArray
-         put indexedDomainArray [indexNum]["domain"] into domainName
-         put indexedDomainArray [indexNum]["ownerArray"] into ownerArray
-         --
-         put ownerArray into fedArray ["metadata"]["domain"][domainName]["ownerArray"]
-         put ownerEmail into fedArray ["metadata"]["domain"][domainName]["ownerEmail"]
-      end repeat
-   end repeat
-   --
-   fedray_SetArray fedArray, shortFile
-   return fedArray
-end fedray_AddOwnershipArray
-
-command fedwiki_AddDomainsToFederationArray @federationArray, fedwikiDomains, pReindex
-   repeat for each line fedwikiDomain in fedwikiDomains
-      set the cursor to busy
-      if pReindex is not true then
-         if fedwikiDomain is among the keys of federationArray then
-            -- don't index twice
-            next repeat
-         end if
-      end if
-      _AddDomainToArray federationArray, fedwikiDomain
-   end repeat
-end fedwiki_AddDomainsToFederationArray
-
-command fedwiki_AddForksToDomainArray @federationArray, fedwikiDomain
-   put federationArray ["domain"][fedwikiDomain] into slugArray
-   repeat for each key pSlug in slugArray
-      fedwiki_AddSlugForksToDomainArray federationArray, fedwikiDomain, pSlug
-   end repeat
-end fedwiki_AddForksToDomainArray
-
-command fedwiki_AddSlugForksToDomainArray @federationArray, fedwikiDomain, pSlug
-   put fedwiki_FetchPageJSON (fedwikiDomain, pSlug) into pageJSON
-   put json_ToArray (pageJson) into pageArray
-   put pageArray ["journal"] into journalArray
-   put item 2 of the extents of journalArray into lastJournalNum
-   put 1 into newItemNum
-   repeat with jNum = 1 to lastJournalNum
-      set the cursor to busy
-      --
-      put journalArray [jNum] into itemArray
-      if itemArray ["type"] = "fork" then
-         /*
-         "type": "fork",
-         "site": "tools.progressivedemocracy.cc",
-         "date": 1512130297675
-         */
-         put itemArray ["site"] into fromSite
-         if fromSite is empty then next repeat -- self-fork
-         --
-         put fromSite into federationArray ["domain"][fedwikiDomain][pSlug]["fork"][newItemNum]["domain"]
-         put itemArray ["date"] into federationArray ["domain"][fedwikiDomain][pSlug]["fork"][newItemNum]["date"]
-         add 1 to newItemNum
-      end if
-   end repeat
-end fedwiki_AddSlugForksToDomainArray
-
-command fedwiki_AddSlugArrayToFederationArray @federationArray, sitemapArray, fedwikiDomain
-   put item 2 of the extents of sitemapArray into maxNum
-   put 0 into maxUpdate
-   repeat with indexNum = 1 to maxNum
-      -- put sitemapArray [indexNum]["title"] into pageTitle
-      -- put sitemapArray [indexNum]["synopsis"] into pageSynopsis
-      --
-      put sitemapArray [indexNum]["slug"] into pageSlug
-      put sitemapArray [indexNum]["date"] into lastUpdate
-      if lastUpdate > maxUpdate then
-         put lastUpdate into maxUpdate
-      end if
-      put lastUpdate into federationArray ["domain"][fedwikiDomain][pageSlug]["date"]
-      put lastUpdate into federationArray ["slug"][pageSlug][fedwikiDomain]["date"]
-      
-      -- now add fork from the page slug
-      fedwiki_AddSlugForksToDomainArray federationArray, fedwikiDomain, pageSlug
-      
-      -- now fetch local links (from wards scrape) and add to array
-      put fedray_GetSlugLinks (pageSlug, fedwikiDomain) into slugLinks
-      if slugLinks is not empty then
-         put slugLinks into federationArray ["domain"][fedwikiDomain][pageSlug]["links"]
-      end if
-   end repeat
-   return maxUpdate
-end fedwiki_AddSlugArrayToFederationArray
-
-command fedwiki_AddDomainMetadata @federationArray, fedwikiDomain
-   put fedwiki_FetchOwnerName (fedwikiDomain) into ownerName
-   put ownerName into federationArray ["metadata"]["domain"][fedwikiDomain]["ownerName"]
-   put dig_GetIP (fedwikiDomain) into someIP
-   put someIP into federationArray ["metadata"]["domain"][fedwikiDomain]["ipAddress"]
-end fedwiki_AddDomainMetadata
-
-command fedwiki_AddForksFederationArray @federationArray
-   put federationArray ["domain"] into domainArray
-   repeat for each key fedwikiDomain in domainArray
-      fedwiki_AddForksToDomainArray federationArray, fedwikiDomain
-   end repeat
-end fedwiki_AddForksFederationArray
-
-
---> Fedray | Add
+--> Fedray | Delete
 -
 command fedwiki_DeleteDomainFromFederationArray @federationArray, wikiDomain
    delete variable federationArray ["domain"][wikiDomain]

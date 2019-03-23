@@ -9,26 +9,6 @@ version: 0.9
 
 /*
 A library for interfacing with the DigitalOcean hosting service - http://digitalocean.com
-
-The model needs fixing.
-
--- function digitalocean_ShellFetchListFiles ipOrDomainName, userName, somePath, pListAll, pKeyPath
--- renamed "server_FetchFileArray"
-put "ssh" into someShell
-if pKeyPath is not empty then
-   shell_BashParamEscape pKeyPath
-   put space & "-i " && pKeyPath after someShell
-end if
-
-put space & userName & "@" & ipOrDomainname && "ls" after someShell
-if pListAll is true then put space &  "-la" after someShell
-
-shell_BashParamEscape somePath
-put space & somePath after someShell
-
-put word 1 to -1 of shell (someShell) into fileListing
-return fileListing   
-end digitalocean_ShellFetchListFiles
 */
 
 constant OceanApiRoot = "https://api.digitalocean.com/v2/"
@@ -37,16 +17,57 @@ local OceanApiKey
 
 --> Working on
 -
-function http_CheckIP dropletIP
-   -- rough check for now. Improve please!
-   -- this checks to see if it is a valid IP adresss
-   set the itemdelimiter to "."
-   if the number of items of dropletIP is not 4 then return false
-   repeat for each item testItem in dropletIP
-      if testItem is not a number then return false
-   end repeat
-   return true
-end http_CheckIP
+--> DigitalOcean | Shell
+-
+function digitalOcean_FetchFileFromIP somePath, dropletIP, pSshUserName   
+   shell_BashParamEscape somePath
+   put ssh_FetchFile (pSshUserName, dropletIP, somePath) into someData
+   set the itemdelimiter to ":"
+   if (item 1 of someData = "cat" and item -1 of someData = " No such file or directory") then return empty
+   return someData
+end digitalOcean_FetchFileFromIP
+
+command digitalOcean_StoreData someData, dropletName, pathToStore, pSshUserName
+   put the tempname into localFile
+   put someData into url ("binfile://" & localFile)
+   digitalOcean_StoreFile pathToStore, localFile, dropletName, pSshUserName
+   return the result
+end digitalOcean_StoreData
+
+command digitalOcean_StoreText someData, dropletName, pathToStore, pSshUserName
+   put the tempname into localFile
+   put someData into url ("file://" & localFile)
+   digitalOcean_StoreFile pathToStore, localFile, dropletName, pSshUserName
+   return the result
+end digitalOcean_StoreText
+
+function digitalOcean_FetchFile somePath, pDropletName, pSshUserName
+   put digitalOcean_GetDropletIP (pDropletName) into dropletIP
+   if http_CheckIP (dropletIP) is false then
+      return "Error, fetching ip address for droplet" && pDropletName
+   end if
+   
+   put digitalOcean_FetchFileFromIP (somePath, dropletIP, pSshUserName) into someData
+   return someData
+end digitalOcean_FetchFile
+
+command digitalOcean_StoreFile pathToStore, localFile, dropletName, sshUserName
+   put digitalOcean_GetDropletIP (dropletName) into serverAddress
+   if http_CheckIP (serverAddress) is false then return "error, fetching ip address for droplet" && dropletName
+   
+   server_StoreFile localFile, pathToStore, serverAddress, sshUserName
+   put the result into someResult
+   return someResult
+end digitalOcean_StoreFile
+
+command digitalOcean_DeleteFile pathToDelete, dropletName, sshUserName
+   put digitalOcean_GetDropletIP (dropletName) into serverAddress
+   if http_CheckIP (serverAddress) is false then return "error, fetching ip address for droplet" && dropletName
+   
+   server_DeleteFile pathToDelete, serverAddress, sshUserName
+   put the result into someResult
+   return someResult
+end digitalOcean_DeleteFile
 
 
 --> DigitalOcean | Account
@@ -556,7 +577,7 @@ function digitalocean_GetApiKey
 end digitalocean_GetApiKey
 
 command digitalocean_SetApiKey oAuthToken
-   secret_Set "OceanApiKey", "apiKey", oAuthToken
+   secret_Set "OceanApiKey", oAuthToken, "apiKey"
    put the result into modelDataFile
    return modelDataFile
 end digitalocean_SetApiKey
@@ -571,57 +592,15 @@ command digitalocean_SetAuthHeaders
 end digitalocean_SetAuthHeaders
 
 
---> DigitalOcean | Shell
+--> Deps
 -
-function digitalOcean_FetchFileFromIP somePath, dropletIP, pSshUserName   
-   shell_BashParamEscape somePath
-   put ssh_FetchFile (pSshUserName, dropletIP, somePath) into someData
-   set the itemdelimiter to ":"
-   if (item 1 of someData = "cat" and item -1 of someData = " No such file or directory") then return empty
-   return someData
-end digitalOcean_FetchFileFromIP
-
-command digitalOcean_StoreData someData, dropletName, pathToStore, pSshUserName
-   put the tempname into localFile
-   put someData into url ("binfile://" & localFile)
-   digitalOcean_StoreFile pathToStore, localFile, dropletName, pSshUserName
-   return the result
-end digitalOcean_StoreData
-
-command digitalOcean_StoreText someData, dropletName, pathToStore, pSshUserName
-   put the tempname into localFile
-   put someData into url ("file://" & localFile)
-   digitalOcean_StoreFile pathToStore, localFile, dropletName, pSshUserName
-   return the result
-end digitalOcean_StoreText
-
-function digitalOcean_FetchFile somePath, pDropletName, pSshUserName
-   put digitalOcean_GetDropletIP (pDropletName) into dropletIP
-   if http_CheckIP (dropletIP) is false then
-      return "Error, fetching ip address for droplet" && pDropletName
-   end if
-   
-   put digitalOcean_FetchFileFromIP (somePath, dropletIP, pSshUserName) into someData
-   return someData
-end digitalOcean_FetchFile
-
-command digitalOcean_StoreFile pathToStore, localFile, dropletName, sshUserName
-   put digitalOcean_GetDropletIP (dropletName) into serverAddress
-   if http_CheckIP (serverAddress) is false then return "error, fetching ip address for droplet" && dropletName
-   
-   server_StoreFile localFile, pathToStore, serverAddress, sshUserName
-   put the result into someResult
-   return someResult
-end digitalOcean_StoreFile
-
-
---> DigitalOcean | Files | Delete
--
-command digitalOcean_DeleteFile pathToDelete, dropletName, sshUserName
-   put digitalOcean_GetDropletIP (dropletName) into serverAddress
-   if http_CheckIP (serverAddress) is false then return "error, fetching ip address for droplet" && dropletName
-   
-   server_DeleteFile pathToDelete, serverAddress, sshUserName
-   put the result into someResult
-   return someResult
-end digitalOcean_DeleteFile
+function http_CheckIP dropletIP
+   -- lib_HTTP
+   -- this checks to see if it is a valid IP adresss (rough check)
+   set the itemdelimiter to "."
+   if the number of items of dropletIP is not 4 then return false
+   repeat for each item testItem in dropletIP
+      if testItem is not a number then return false
+   end repeat
+   return true
+end http_CheckIP

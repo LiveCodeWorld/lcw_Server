@@ -65,10 +65,10 @@ command process_GET someRoute, socketID, requestArray
          
          put "* [[Test Tool]]" into someMarkdown
          put CR & "* [[Another Tool]]" after someMarkdown
-         fedwiki_AddMarkdownToPageArray pageArray, someMarkdown
+         pageArray_AddMarkdown pageArray, someMarkdown
          
          put library_FetchHandler ("process_Get,c") into someCode
-         fedwiki_AddCodeToPageArray pageArray, someCode
+         pageArray_AddCode pageArray, someCode
          
          put json_FromArray (pageArray) into someJSON
          daemon_SendJSON socketID, someJSON
@@ -80,7 +80,7 @@ command process_GET someRoute, socketID, requestArray
          put "* [[Test Tool]]" into someMarkdown
          put CR & "* [[Another Tool]]" after someMarkdown
          
-         fedwiki_AddMarkdownToPageArray pageArray, someMarkdown
+         pageArray_AddMarkdown pageArray, someMarkdown
          
          put json_FromArray (pageArray) into someJSON
          daemon_SendJSON socketID, someJSON
@@ -175,7 +175,7 @@ put daemon_GetRouteData ("/create-a-page.json")  into pageArray
 put the milliseconds into pageArray ["journal"]["1"]["date"]
 -- custom bit
 -- put "Hello World!" into someText
--- fedwiki_AddParagraphToPageArray pageArray, someText
+-- pageArray_AddText pageArray, someText
 
 put json_FromArray (pageArray) into pageJSON
 return pageJSON

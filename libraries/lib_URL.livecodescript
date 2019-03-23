@@ -122,6 +122,20 @@ end url_ConstructDomainArray
 
 --> URL
 -
+command url_CheckDomainIndex @domainNames
+   -- quick check to remove pages without "."
+   repeat for each line domainName in domainNames
+      if domainName contains "." is true then
+         put domainName & CR after goodDomains
+      end if
+   end repeat
+   delete char -1 of goodDomains
+   put goodDomains into domainNames
+   --
+   url_SortDomainIndex domainNames
+   return true
+end url_CheckDomainIndex
+
 command url_SortDomainIndex @domainNames
    set the itemdelimiter to "."
    -- sort domainNames by item -1 of each & item -2 of each & item -3 of each & item -4 of each

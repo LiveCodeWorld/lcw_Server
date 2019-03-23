@@ -6,19 +6,20 @@ name: Global_Server_Menu
 type: controller
 version: 0.2
 
+/*
+For some strange reason this provokes recursion. Try adding it and track down the menu bug!
+
+on submenu_Dynadot
+   return "Global | Dynadot | Menu"
+end submenu_Dynadot
+*/
+
 
 --> Global | Server | Menu
 -
 on menu_ListAtopiaFolders
    display_AtopiaLocalWikiFolders
 end menu_ListAtopiaFolders
-
-on _
-end _
-
-on submenu_Dynadot
-   return "Global | Dynadot | Menu"
-end submenu_Dynadot
 
 on _
 end _
@@ -67,8 +68,3 @@ getprop disabled_DisplayServerArray
       return true
    end if
 end disabled_DisplayServerArray
-
-
-on mainStackChanged
-   
-end mainStackChanged

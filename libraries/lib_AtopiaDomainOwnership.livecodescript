@@ -13,6 +13,22 @@ These handlers hack into Atopia servers config.json and owner.json files to try 
 
 --> Working on
 -
+function atopia_ExtractDomainOwners pOwnershipArray
+   if pOwnershipArray is not an array then put atopia_GetOwnershipArray() into pOwnershipArray
+   
+   set the cursor to busy
+   repeat for each key ownerEmail in pOwnershipArray
+      put pOwnershipArray [ownerEmail]["domains"] into domainArray
+      repeat for each key indexNum in domainArray
+         put domainArray [indexNum]["domain"] into domainName
+         put ownerEmail into domainNameArray [domainName]
+      end repeat
+   end repeat
+   put keys (domainNameArray) into ownerDomainNames
+   url_SortDomainIndex ownerDomainNames
+   return ownerDomainNames
+end atopia_ExtractDomainOwners
+
 function atopia_FindFarmEmail wikiDomain
    put url_GetTopDomain (wikiDomain) into topDomainName
    put atopia_GetFarmArray() into farmArray
@@ -145,7 +161,7 @@ command atopia_AddToOwnershipArray wikiFolder
 end atopia_AddToOwnershipArray
 
 command atopia_ConstructOwnershipArray pDeleteExisting, pIndexView
-   put atopia_FetchAllFolderList() into wikiFolders
+   put atopia_FetchFolders() into wikiFolders
    if pDeleteExisting is true then
       atopia_SetOwnershipArray empty
       put empty into ownershipArray

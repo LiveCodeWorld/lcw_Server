@@ -14,29 +14,153 @@ As there are no passwords (it relies on public/private key access on the server)
 and REST accesspoints can be secured using DreamFactory, 
 this is much more secure than scripting things directly in LiveCode.
 
-The server details can be loaded by:
-
-- when displaying controllers using "display_RigControllerArray"
-- "server_LoadDetails"
-- when called during lcw_User initialisation (not active)
-- when "rig_FetchFile" is called
-
-We should probably call:
-- server_LoadDetails "rest.livecode.world"
-when the library is loaded.
+== To Do ==
+At the moment we use local variables for speed.
+I don't think spped is a requirement for server oepratiosn. Security is more important.
+We should instead use local file array based access for simplicity (and therefore secirity)
+Remove this loca vairable stuff and utilise functions that access sotred arrays instead.
 */
 
 
 --> Variables
 -
-/*
-Should probably tidy and use LocalArray
-*/
-
-local LocalArray, Server_URL, SSH_KeyPath, SSH_UserName, Server_Address, Server_DropletName, Rig_ApplicationFolder
+constant LCW_ServerURL = "rest.livecode.world"
+local LocalArray
 
 
 --> Working on
+-
+function server_FetchPrefArray pProjectName
+   if pProjectName is empty then put "Default" into pProjectName
+   put pref_FetchValue ("server_Array", pProjectName) into serverPrefArray
+   return serverPrefArray
+end server_FetchPrefArray
+
+command server_SavePrefArray serverPrefArray, pProjectName
+   if pProjectName is empty then put "Default" into pProjectName
+   pref_SaveValue "server_Array", serverPrefArray, pProjectName
+   put the result into dataArray
+   return dataArray
+end server_SavePrefArray
+
+
+--> Server | Remote | Upload
+-
+command server_UploadStacks stackNames
+   repeat for each line stackName in stackNames
+      set the cursor to busy
+      server_UploadStack stackName
+   end repeat
+end server_UploadStacks
+
+command server_UploadStack stackName, pDontNotify
+   put the filename of stack stackName into stackPath
+   set the itemdelimiter to "/"
+   put item -1 of stackPath into shortPath
+   put rig_StackPath (shortPath) into serverStackPath
+   
+   put the name of stack stackName into stackObject
+   save stackObject
+   
+   put server_GetURL() into serverAddress
+   put server_GetSshUser() into sshUser
+   put server_GetSshKeyPath() into sshKeyPath
+   server_StoreFile stackPath, serverStackPath, serverAddress, sshUser, sshKeyPath
+   put the result into someResult
+   
+   if pDontNotify is not true then
+      put merge ("Uploaded stack" && shortPath && "to [[serverAddress]]!") into someComment
+      return someComment
+   end if
+   return someResult
+end server_UploadStack
+
+
+
+--> Server | Remote | Model | Utils
+-
+command server_SetURL serverURL
+   -- use to switch server configuration
+   put serverURL into LocalArray ["serverURL"]
+end server_SetURL
+
+function server_GetURL
+   put LocalArray ["serverURL"] into serverURL
+   if serverURL is empty then put LCW_ServerURL into serverURL
+   return serverURL
+end server_GetURL
+
+function server_GetSshUser pServerURL
+   return server_GetProperty ("sshUser", pServerURL)
+end server_GetSshUser
+
+function server_GetSshKeyPath pServerURL
+   return server_GetProperty ("sshKeyPath", pServerURL)
+end server_GetSshKeyPath
+
+function server_GetDropletName pServerURL
+   return server_GetProperty ("dropletName", pServerURL)
+end server_GetDropletName
+
+function server_GetIPaddress pServerURL
+   return server_GetProperty ("serverAddress", pServerURL)
+end server_GetIPaddress
+
+
+--> Server | Remote | Model
+-
+function server_GetProperty someKey, pServerURL
+   put server_GetArray (pServerURL) into serverArray
+   put serverArray [someKey] into someValue
+   return someValue
+end server_GetProperty
+
+command server_SetProperty someKey, someValue, pServerURL
+   put server_GetArray (pServerURL) into serverArray
+   put someValue into serverArray [someKey]
+   server_SetArray serverArray, pServerURL
+   return serverArray
+end server_SetProperty
+   
+function server_GetArray pServerURL
+   if pServerURL is empty then put server_GetURL() into pServerURL
+   --
+   put server_FetchPrefArray () into serverPrefArray
+   put serverPrefArray [pServerURL] into serverArray
+   return serverArray
+end server_GetArray
+
+command server_SetArray serverArray, pServerURL
+   if pServerURL is empty then put server_GetURL() into pServerURL
+   --
+   put server_FetchPrefArray () into serverPrefArray
+   put serverArray into serverPrefArray [pServerURL]
+   server_SavePrefArray serverPrefArray
+   return serverPrefArray
+end server_SetArray
+
+command server_DeleteArray pServerURL, pProjectName
+   if pServerURL is empty then put server_GetURL() into pServerURL
+   -- 
+   put server_FetchPrefArray (pProjectName) into serverArray
+   delete variable serverArray [serverURL]
+   server_SavePrefArray serverArray, pProjectName
+end server_DeleteArray
+
+
+--> Server | Shell | Wrappers
+-
+command server_StoreData someData, pathToStore, serverAddress, sshUser, pSshKeyPath
+   -- uses "scp" and private keys
+   put the tempname into localFile
+   put someData into url ("binfile://" & localFile)
+   server_StoreFile localFile, pathToStore, serverAddress, sshUser
+   put the result into shellResult
+   return shellResult
+end server_StoreData
+
+
+--> Server | Shell
 -
 function server_FetchFileArray serverAddress, sshUser, serverPath, pSshKeyPath
    if the environment = "server" then
@@ -54,7 +178,6 @@ function server_FetchFileArray serverAddress, sshUser, serverPath, pSshKeyPath
             Are you sure you want to continue connecting (yes/no)? yes
             Warning: Permanently added 'rest.livecode.world' (ECDSA) to the list of known hosts.
             */
-            breakpoint
             return exmpty
          default
             put shell_ConstructLSArray (lsResult, true) into fileArray
@@ -63,19 +186,7 @@ function server_FetchFileArray serverAddress, sshUser, serverPath, pSshKeyPath
    return fileArray
 end server_FetchFileArray
 
-function rig_GetServerApplicationFolder
-   -- gets from array stored in prefs and loaded
-   /*
-   -- let's reload
-   put server_GetURL() into oServerURL
-   server_LoadDetails oServerURL
-   */
-   text_AddTrailing Rig_ApplicationFolder, "/"
-   return Rig_ApplicationFolder
-end rig_GetServerApplicationFolder
-
 function server_FetchFileList serverAddress, serverPath, pListAll, sshUser, pSshKeyPath
-   -- was "digitalocean_ShellFetchListFiles"
    put "ssh" into someShell
    if pSshKeyPath is not empty then
       shell_BashParamEscape pSshKeyPath
@@ -135,125 +246,6 @@ function server_FileInfoArray someFile
    end switch
 end server_FileInfoArray
 
-
---> Server | Props
--
-getprop server_Array
-   return LocalArray ["serverArray"]
-end server_Array
-
-setprop server_Array serverArray
-   put serverArray into LocalArray ["serverArray"]
-   
-   put serverArray ["serverURL"] into Server_URL
-   put serverArray ["sshKeyPath"] into SSH_KeyPath
-   put serverArray ["sshUser"] into SSH_UserName
-   put serverArray ["serverAddress"] into Server_Address
-   put serverArray ["dropletName"] into Server_DropletName
-   put serverArray ["rigApplicationFolder"] into Rig_ApplicationFolder
-   
-   return Server_URL
-end server_Array
-
-getprop server_PreferenceArray
-   return LocalArray ["server_PreferenceArray"]
-end server_PreferenceArray
-
-setprop server_PreferenceArray [serverURL] serverPrefArray
-   put serverPrefArray into LocalArray ["server_PreferenceArray"]
-   if serverURL is empty then put server_GetURL() into serverURL
-   put serverPrefArray [serverURL] into serverArray
-   set the server_Array of me to serverArray
-   return serverArray
-end server_PreferenceArray
-
-
---> Server | Model
--
-function server_FetchPrefArray pProjectName
-   if pProjectName is empty then put "Default" into pProjectName
-   put pref_FetchValue ("server_Array", pProjectName) into serverPrefArray
-   return serverPrefArray
-end server_FetchPrefArray
-
-command server_SavePrefArray serverArray, pProjectName
-   if pProjectName is empty then put "Default" into pProjectName
-   pref_SaveValue "server_Array", serverArray, pProjectName
-   put the result into dataArray
-   return dataArray
-end server_SavePrefArray
-
-
---> Server | Model | Initialisation
--
-command server_LoadDetails serverURL, pProjectName
-   put server_FetchPrefArray (pProjectName) into serverPrefArray
-   set the server_PreferenceArray [serverURL] of me to serverPrefArray
-   put the result into serverArray
-   return serverArray
-end server_LoadDetails
-
-command server_SaveDetails newServerPrefArray, pProjectName
-   put server_FetchPrefArray (pProjectName) into oldServerPrefArray
-   union newServerPrefArray with oldServerPrefArray recursively
-   server_SavePrefArray newServerPrefArray, pProjectName
-end server_SaveDetails
-
-command server_DeleteDetails serverURL, pProjectName
-   put server_FetchPrefArray (pProjectName) into serverArray
-   delete variable serverArray [serverURL]
-   server_SavePrefArray serverArray, pProjectName
-end server_DeleteDetails
-
-
---> Server | Remote | Model
--
-function server_ConstructPrefArray serverURL, sshUser, sshKeyPath, rigApplicationFolder, serverAddress, dropletName
-   put serverURL into serverPrefArray [serverURL]["serverURL"]
-   put sshUser into serverPrefArray [serverURL]["sshUser"]
-   put sshKeyPath into serverPrefArray [serverURL]["sshKeyPath"]
-   put rigApplicationFolder into serverPrefArray [serverURL]["rigApplicationFolder"]
-   
-   put serverAddress into serverPrefArray [serverURL]["serverAddress"]
-   put dropletName into serverPrefArray [serverURL]["dropletName"]
-   return serverPrefArray
-end server_ConstructPrefArray
-
-
---> Server | Remote | Upload
--
-command server_UploadStacks stackNames
-   repeat for each line stackName in stackNames
-      set the cursor to busy
-      server_UploadStack stackName
-   end repeat
-end server_UploadStacks
-
-command server_UploadStack stackName, pDontNotify
-   put the filename of stack stackName into stackPath
-   set the itemdelimiter to "/"
-   put item -1 of stackPath into shortPath
-   put rig_StackPath (shortPath) into serverStackPath
-   
-   put the name of stack stackName into stackObject
-   save stackObject
-   
-   put server_GetURL() into serverAddress
-   put server_GetSshUser() into sshUser
-   put server_GetSshKeyPath() into sshKeyPath
-   server_StoreFile stackPath, serverStackPath, serverAddress, sshUser, sshKeyPath
-   put the result into someResult
-   
-   if pDontNotify is not true then
-      put merge ("Uploaded stack" && shortPath && "to [[serverAddress]]!") into someComment
-      opn_Notify someComment
-   end if
-   return someResult
-end server_UploadStack
-
-
---> Server | Remote
--
 function server_FetchFile pathToFetch, serverAddress, sshUser
    if char 1 of pathToFetch is "/" then
       put pathToFetch into fullPath
@@ -267,15 +259,6 @@ function server_FetchFile pathToFetch, serverAddress, sshUser
    if (item 1 of someData = "cat" and item -1 of someData = " No such file or directory") then return empty
    return someData
 end server_FetchFile
-
-command server_StoreData someData, pathToStore, serverAddress, sshUser, pSshKeyPath
-   -- uses "scp" and private keys
-   put the tempname into localFile
-   put someData into url ("binfile://" & localFile)
-   server_StoreFile localFile, pathToStore, serverAddress, sshUser
-   put the result into shellResult
-   return shellResult
-end server_StoreData
 
 command server_StoreFile localFile, pathToStore, serverAddress, sshUser, pSshKeyPath
    -- uses "scp" and private keys for security
@@ -305,38 +288,3 @@ command server_DeleteFile pathToDelete, serverAddress, sshUser
    put the result into shellResult
    return shellResult
 end server_DeleteFile
-   
-
---> Server | Remote | Model | Utils
--
-function server_GetSshUser
-   return SSH_UserName
-end server_GetSshUser
-
-function server_GetSshKeyPath
-   return SSH_KeyPath
-end server_GetSshKeyPath
-
-function server_GetDropletName
-   return Server_DropletName
-end server_GetDropletName
-
-function server_GetIPaddress
-   if Server_Address is not empty then
-      return Server_Address
-   else
-      return Server_URL
-   end if
-end server_GetIPaddress
-
-function server_GetURL
-   if Server_URL is not empty then
-      return Server_URL
-   else
-      return Server_Address
-   end if
-end server_GetURL
-
-
---> Deps
--

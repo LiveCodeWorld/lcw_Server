@@ -7,39 +7,10 @@ type: model
 version: 0.2
 
 /*
-Here we provide handlers to build and do CRUD operations on the Atopia Fedwiki server wiki model.
+This model is not about files and their contents. 
+Instead, this model is for metadata about the server and should be renamed or handlers moved to make this clear.
+
 The model should be changed to use model_Array and not user_GetArray()
-
-All the constants below are only used by handlers in this model.
-config.json is not a folder and should not show up in any case. Keep here just in case
-Rename fedwiki_owners when we have automatic control over owner files
-
-function atopia_GetFilteredDomainArray   
-   put atopia_GetGoodDomainArray() into goodDomainArray
-   set the itemdelimiter to "."
-   repeat for each key someDomain in goodDomainArray
-      put goodDomainArray [someDomain] into wikiPageIndex
-      -- let's strip the topDoamin bit
-      put item -2 to -1 of someDomain into topDomain
-      delete item -2 to -1 of someDomain
-      
-      -- now create a reverse array key
-      -- split someDomain with "." -- this is in the wrong order
-      if someDomain is empty then
-         put "www" into keyArray
-      else
-         put the number of items of someDomain into maxItemNum
-         repeat with itemNum = 1 to maxItemNum
-            put item itemNum of someDomain into domainBit
-            put maxItemNum - itemNum + 1 into indexNum
-            put domainBit into keyArray [indexNum]
-         end repeat
-      end if
-      put wikiPageIndex into domainArray [topDomain][keyArray]
-      delete variable keyArray
-   end repeat
-   return domainArray
-end atopia_GetFilteredDomainArray
 */
 
 

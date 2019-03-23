@@ -18,21 +18,104 @@ constant ReservedFolderNames = "_old_sites,_unhosted_sites,_trash,fedwiki_owners
 
 --> Working on
 -
-function fedwiki_FetchSiteIndexJSON wikiDomain
-   put merge ("http://[[wikiDomain]]/view/welcome-visitors") into lineUpURL
-   put fedwiki_ConstructFlagDropJson (lineUpURL) into someJSON
-   fedwiki_PostJSON someJSON, "http://home.c2.com:4010/cite"
-   put the result into pageJSON
-   return pageJSON
-end fedwiki_FetchSiteIndexJSON
+function atopia_FetchPublicKey
+   -- put "ls -la" into someCommand
+   put "cat" into someCommand
+   --
+   put "/root/.ssh/" & "id_rsa.pub" into pubKeyPath
+   put someCommand && pubKeyPath into remoteShell
+   atopia_DoRemoteShell remoteShell
+   put the result into shellResult
+   if shellResult begins with "ls: cannot access" then
+      return empty
+   else
+      return shellResult
+   end if
+end atopia_FetchPublicKey
 
-function fedwiki_ConstructFlagDropJson lineUpURL
-   set the itemdelimiter to slash
-   put item 1 to 3 of lineUpURL into wikiDomain
-   get merge ("{'text':'','html':'<meta http-equiv=\'Content-Type\' content=\'text/html;charset=UTF-8\'><img src=\'http://[[wikiDomain]]/favicon.png\' height=\'32px\' class=\'favicon\'>','url':'[[lineUpURL]]'}")
-   replace "'" with quote in it
-   return it
-end fedwiki_ConstructFlagDropJson
+
+--> Atopia | Check
+-
+function atopia_IsInDomainArray wikiDomain
+   put atopia_FetchFedray() into domainArray
+   get domainArray [wikiDomain]
+   put it is an array into isInDomainArray
+   return isInDomainArray
+end atopia_IsInDomainArray
+
+function atopia_WikiIsHosted wikiFolder
+   put atopia_GetIP() into dropletIP
+   put dig_GetIP (wikiFolder) into testIP
+   if testIP = dropletIP then return true
+   --
+   put dig_GetNS (wikiFolder) into testDNS
+   if testDNS is empty then
+      
+   else
+      
+   end if
+   --
+   return false
+end atopia_WikiIsHosted
+
+function atopia_CheckUnhosted goodFolders
+   -- This is slow
+   -- We rotate through all goodFolders and check they have A records for Atopia
+   
+   put atopia_GetIP() into dropletIP
+   repeat for each line goodShortFolder in goodFolders
+      set the cursor to busy
+      put goodShortFolder
+      --
+      put dig_GetIP (goodShortFolder) into testIP
+      put dig_GetNS (goodShortFolder) into testDNS
+      --
+      if testIP = dropletIP then
+         -- it's good
+         put testDNS into dnsArray ["good ip"][goodShortFolder]["NS"]
+         put testIP into dnsArray ["good ip"][goodShortFolder]["A record"]
+      else
+         put testDNS into dnsArray ["bad ip"][goodShortFolder]["NS"]
+         put testIP into dnsArray ["bad ip"][goodShortFolder]["A record"]
+      end if
+   end repeat
+   return dnsArray
+end atopia_CheckUnhosted
+
+function atopia_IsInRoster wikiDomain
+   put atopia_FetchRoster() into atopiaRosterDomains
+   set the wholeMatches to true
+   put wikiDomain is among the lines of atopiaRosterDomains into isInRoster
+   return isInRoster
+end atopia_IsInRoster
+
+function atopia_WikiHasPages wikiFolder, pMinNum
+   if pMinNum is empty then put 1 into pMinNum
+   put atopia_FetchWikiPageList (wikiFolder) into wikiPages
+   put the number of lines of wikiPages > pMinNum into hasPages
+   return hasPages
+end atopia_WikiHasPages
+
+function atopia_RemoteWikiFolderExists folderName, pRemoteFolderArray
+   if pRemoteFolderArray is empty then
+      put atopia_FetchFilteredFolderLsArray() into pRemoteFolderArray
+   end if
+   
+   put folderName is among the keys of pRemoteFolderArray into remoteExists
+   return remoteExists
+end atopia_RemoteWikiFolderExists
+
+function atopia_TrashFolderExists trashDomain
+   -- could check it is a folder and not a file
+   put atopia_FolderInTrashFolder (trashDomain) into folderInTrashFolder
+   put "ls -la" && folderInTrashFolder into remoteShell
+   atopia_DoRemoteShell remoteShell
+   if the result begins with "ls: cannot access" then
+      return false
+   else
+      return true
+   end if
+end atopia_TrashFolderExists
 
 
 --> Fedwiki | Farm
@@ -72,7 +155,7 @@ command atopia_UpdateArrayAndMove pWikiFolders
    
    -- defaults to processing new folders
    if pWikiFolders is empty then
-      put atopia_FetchNewFolderList() into pWikiFolders
+      put atopia_FetchNewFolders() into pWikiFolders
    end if
    put atopia_GetData() into atopiaData
    
@@ -163,7 +246,7 @@ function atopia_FetchAndBuildArray pMinNum, pWikiFolders
    
    if pMinNum is empty then put 1 into pMinNum
    if pWikiFolders is empty then
-      put atopia_FetchAllFolderList() into pWikiFolders
+      put atopia_FetchFolders() into pWikiFolders
    end if
    
    put 1 into lineNum
@@ -191,7 +274,7 @@ end atopia_FetchAndBuildArray
 --> Atopia | Model | Construct
 -
 command atopia_ConstructDnsArray pDeleteExisting
-   put atopia_FetchAllFolderList() into wikiFolders
+   put atopia_FetchFolders() into wikiFolders
    if pDeleteExisting is true then
       atopia_SetDomainDnsArray empty
       put empty into dnsArray
@@ -218,76 +301,6 @@ command atopia_AddDnsToDomainArray @dnsArray, wikiFolders
       put testIP into dnsArray [wikiFolder]["A record"]
    end repeat
 end atopia_AddDnsToDomainArray
-
-
---> Atopia | Check
--
-function atopia_WikiHasPages wikiFolder, pMinNum
-   if pMinNum is empty then put 1 into pMinNum
-   put atopia_FetchWikiPageList (wikiFolder) into wikiPages
-   put the number of lines of wikiPages > pMinNum into hasPages
-   return hasPages
-end atopia_WikiHasPages
-
-function atopia_WikiIsHosted wikiFolder
-   put atopia_GetIP() into dropletIP
-   put dig_GetIP (wikiFolder) into testIP
-   if testIP = dropletIP then return true
-   --
-   put dig_GetNS (wikiFolder) into testDNS
-   if testDNS is empty then
-      
-   else
-      
-   end if
-   --
-   return false
-end atopia_WikiIsHosted
-
-function atopia_RemoteWikiFolderExists folderName, pRemoteFolderArray
-   if pRemoteFolderArray is empty then
-      put atopia_FetchFilteredFolderLsArray() into pRemoteFolderArray
-   end if
-   
-   put folderName is among the keys of pRemoteFolderArray into remoteExists
-   return remoteExists
-end atopia_RemoteWikiFolderExists
-
-function atopia_TrashFolderExists trashDomain
-   -- could check it is a folder and not a file
-   put atopia_FolderInTrashFolder (trashDomain) into folderInTrashFolder
-   put "ls -la" && folderInTrashFolder into remoteShell
-   atopia_DoRemoteShell remoteShell
-   if the result begins with "ls: cannot access" then
-      return false
-   else
-      return true
-   end if
-end atopia_TrashFolderExists
-
-function atopia_CheckUnhosted goodFolders
-   -- This is slow
-   -- We rotate through all goodFolders and check they have A records for Atopia
-   
-   put atopia_GetIP() into dropletIP
-   repeat for each line goodShortFolder in goodFolders
-      set the cursor to busy
-      put goodShortFolder
-      --
-      put dig_GetIP (goodShortFolder) into testIP
-      put dig_GetNS (goodShortFolder) into testDNS
-      --
-      if testIP = dropletIP then
-         -- it's good
-         put testDNS into dnsArray ["good ip"][goodShortFolder]["NS"]
-         put testIP into dnsArray ["good ip"][goodShortFolder]["A record"]
-      else
-         put testDNS into dnsArray ["bad ip"][goodShortFolder]["NS"]
-         put testIP into dnsArray ["bad ip"][goodShortFolder]["A record"]
-      end if
-   end repeat
-   return dnsArray
-end atopia_CheckUnhosted
 
 
 --> Atopia | Model | Move

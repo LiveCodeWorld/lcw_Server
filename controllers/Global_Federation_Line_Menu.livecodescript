@@ -9,20 +9,11 @@ version: 0.1
 
 --> Global | Federation | Line | Menu
 -
-on menu_DisplayDomainArray indexView
-   put the selected_Line of indexView into fedwikiDomain
-   --
-   put fedwiki_GetFederationDomainArray (fedwikiDomain, "atopia.array") into domainArray
-   display_Array domainArray
-end menu_DisplayDomainArray
-
-on menu_SetDomainArray indexView
-   put the selected_Line of indexView into fedwikiDomain
-   fedwiki_SetFederationDomainArray fedwikiDomain, "atopia.array"
-   --
-   put fedwiki_GetFederationDomainArray (fedwikiDomain, "atopia.array") into domainArray
-   display_Array domainArray
-end menu_SetDomainArray
+on menu_LaunchDomain arrayView
+   -- put the top_Array of arrayView into serverArray
+   put item 1 of the selected_Path of arrayView into domainName
+   launch url ("http://" & domainName)
+end menu_LaunchDomain
 
 
 --> Global | Federation | Line | Menu | Props
@@ -30,3 +21,10 @@ end menu_SetDomainArray
 
 --> Global | Federation | Line | Menu | Disabled
 -
+getprop disabled_LaunchDomain [arrayView]
+   if the title_Text of arrayView = "Federation Model" then
+      return false
+   else
+      return true
+   end if
+end disabled_LaunchDomain

@@ -19,116 +19,27 @@ function array_ToMarkdown markDownArray
 end array_ToMarkdown
 
 
---> Display | Events
+--> Display | Atopai
 -
-on mDoubleUp_AtopiaWikiFiles indexView, pageSlug
-   if the optionKey is "down" then breakpoint
-   --
-   put the title_Text of indexView into wikiDomain
-   --
-   put fedwiki_PageUrl (wikiDomain, pageSlug) into pageURL
-   launch url pageURL
-   
-   put atopia_FetchAndFindOwnerArray (wikiDomain) into ownerArray
-   display_AtopiaOwnerArray ownerArray, wikiDomain
-end mDoubleUp_AtopiaWikiFiles
-
-command mDoubleUp_AtopiaFolder indexView, wikiDomain
-   if the optionKey is "down" then breakpoint
-   put the title_Text of indexView into titleText
-   switch titleText
-      case "Domain Owners"
-         display_AtopiaOwnerDomains wikiDomain
-         break
-      default
-         display_AtopiaWikiPages wikiDomain
-   end switch
-end mDoubleUp_AtopiaFolder
-
-
---> Atopia | Display
--
-command atopia_DisplayConfigArray
-   put atopia_GetConfigArray() into configArray
-   display_Array configArray, "Atopia config.json", "Global | Atopia | Config | Menu",  "Global | Atopia | Config | Line | Menu"
-   return the result
-end atopia_DisplayConfigArray
-
-command display_AtopiaOwnerDomains userEmail, pIndexView
-   put atopia_GetDomainsFromEmail (userEmail) into domainNames
-   url_SortDomainIndex domainNames
-   --
-   put "" into mUpCommand
-   put userEmail & ",Owned Domains" into displayTitle
-   --
-   display_AtopiaDomains domainNames, displayTitle, mUpCommand, pIndexView
-   put the result into indexView
-   return indexView
-end display_AtopiaOwnerDomains
-
-command display_AtopiaDomains domainNames, displayTitle, mUpCommand, pIndexView
-   put "mDoubleUp_AtopiaFolder" into mDoubleUpCommand
-   put "Global | Atopia | Owner | Menu" into mTitle
-   put "Global | Atopia | Owner | Line | Menu" into mLineTitle
-   --
-   if exists (pIndexView) then
-      atopia_SetDisplay pIndexView, domainNames, displayTitle
-   else
-      display_Index domainNames, displayTitle, mTitle, mLineTitle, mUpCommand, mDoubleUpCommand
-      put the result into pIndexView
-      set the field_Style of pIndexView to "click"
-      set the event_Target of pIndexView to script_CallingObject()
-   end if
-   return pIndexView
-end display_AtopiaDomains
-
-command display_AtopiaOwners
-   put "Global | Atopia | DomainOwners | Menu" into mTitle
-   put "Global | Atopia | DomainOwners | Line | Menu" into mLineTitle
-   --
-   put "" into mUpCommand
-   put "mDoubleUp_AtopiaFolder" into mDoubleUpCommand
-   --
-   put atopia_ListLocalDomainOwners() into displayLines
-   --
-   put "Domain Owners,Atopia" into displayTitle
-   display_Index displayLines, displayTitle, mTitle, mLineTitle, mUpCommand, mDoubleUpCommand
-   put the result into indexView
-   set the field_Style of indexView to "click"
-   set the event_Target of indexView to script_CallingObject()
-   return indexView
-end display_AtopiaOwners
-
-command display_AtopiaFolders pDisplayTitle, pMouseUpCommand
-   put "Atopia" into displayStackLabel
-   put display_FindView (displayStackLabel) into indexView
-   if exists (indexView) and pDisplayTitle is empty then
-      -- let's refresh
-      put the title_Text of indexView into pDisplayTitle
-   end if
-   
-   put "Global | Atopia | Tree | Menu" into mTitle
-   put "Global | Atopia | Line | Menu" into mLineTitle
-   
-   switch pDisplayTitle
-      case "Stored Atopia Roster"
+function atopia_ListDomains listHow
+   switch listHow
+      case "Atopia Roster"
          put atopia_FetchRoster() into displayLines
          break
-      case "Stored Atopia Json"
-         put atopia_FetchStoredDomains() into displayLines
+      case "Domain Array"
+         put atopia_FetchFedrayDomains() into displayLines
+         break
+      case "Atopia Folders"
+         put atopia_FetchFolders() into displayLines         
+         break
+      case "Top Atopia Domains"
+         put atopia_FetchTopDomains() into displayLines
          break
       case "Stored Federation"
          put atopia_FetchFederationDomains() into displayLines
          break
-      case "Top Domains"
-         put "Global | Atopia | Top | Menu" into mTitle
-         put atopia_FetchTopDomains() into displayLines
-         -- put atopia_GetTopDomains() into displayLines
-         break
       case "Domain Owners"
-         -- put atopia_ListLocalDomainOwners() into displayLines
-         display_AtopiaOwners
-         return the result
+         put atopia_ListLocalDomainOwners() into displayLines
          break
       case "Local Good Folders"
          put atopia_ListLocalGoodFolders() into displayLines         
@@ -138,9 +49,6 @@ command display_AtopiaFolders pDisplayTitle, pMouseUpCommand
          break
       case "All Local Wiki Folders"
          put atopia_ListLocalWikiFolders() into displayLines
-         break
-      case "Remote Wiki Folders"
-         put atopia_FetchAllFolderList() into displayLines         
          break
       case "Remote Unhosted Sites"
          put atopia_FetchRawFolderList ("_unhosted_sites") into displayLines
@@ -155,25 +63,214 @@ command display_AtopiaFolders pDisplayTitle, pMouseUpCommand
          put atopia_FetchReservedFoldersList() into displayLines
          break
       default
-         put "New Folders" into pDisplayTitle
-         put atopia_FetchNewFolderList() into displayLines
+         put atopia_FetchNewFolders() into displayLines
    end switch
    url_SortDomainIndex displayLines, true
+   return displayLines
+end atopia_ListDomains
+
+command atopia_SetDisplay indexView, domainNames, displayTitle
+   -- used by a lot of menu-items in "Global | Atopia | Tree | Menu" and "Global | Atopia | Check | Menu"
+   lock screen
+   set the atopia_ColouredLines of indexView to domainNames
+   set the title_Text of indexView to displayTitle
+   unlock screen
+end atopia_SetDisplay
+
+private command _SetAtopiaMenus listHow, @mTitle, @mLineTitle
+   put "Global | Atopia | Tree | Menu" into mTitle
+   put "Global | Atopia | Line | Menu" into mLineTitle
+   --
+   switch listHow
+      case "Domain Owners"
+         put "Global | Atopia | DomainOwners | Menu" into mTitle
+         put "Global | Atopia | DomainOwners | Line | Menu" into mLineTitle
+         break
+      case "Top Domains"
+         put "Global | Atopia | Top | Menu" into mTitle
+         break
+      default
+         -- already set
+   end switch
+end _SetAtopiaMenus
+
+
+--> Display | Events
+-
+command mDoubleUp_Domain indexView, wikiDomain
+   if the optionKey is "down" then breakpoint
+   put the stack_Title of indexView into stackTitle
+   switch
+      case stackTitle = "Domain Owners,Atopia"
+         display_AtopiaOwnerDomains wikiDomain
+         break
+      default
+         display_AtopiaWikiPages wikiDomain
+   end switch
+end mDoubleUp_Domain
+
+on mDoubleUp_AtopiaWikiFiles indexView, pageSlug
+   if the optionKey is "down" then breakpoint
+   --
+   put the title_Text of indexView into wikiDomain
+   --
+   put fedwiki_PageUrl (wikiDomain, pageSlug) into pageURL
+   launch url pageURL
    
-   if exists (indexView) then
-      atopia_SetDisplay indexView, displayLines, pDisplayTitle
-      --
-      set the title_Menu of indexView to mTitle
-      set the line_Menu of indexView to mLineTitle
+   put atopia_FetchAndFindOwnerArray (wikiDomain) into ownerArray
+   display_AtopiaOwnerArray ownerArray, wikiDomain
+end mDoubleUp_AtopiaWikiFiles
+
+
+--> Working on
+-
+
+--> Display | Azure
+-
+command display_AzurePhrases wikiDomain
+   local someText
+   if wikiDomain is empty then return empty
+   put wikiDomain & ",Azure Phrases" into someTitle
+   --
+   put fedwiki_FetchAzureKeyPhrases (wikiDomain) into resultArray
+   display_Array resultArray, someTitle, "Global | Azure | Tree | Menu"
+   --
+   put the result into displayView
+   return displayView
+end display_AzurePhrases
+
+command display_AzureEntities wikiDomain
+   local someText
+   if wikiDomain is empty then return empty
+   --
+   put azure_FetchAndConvertSitemap (wikiDomain, "combine") into docArray
+   if docArray is empty then return empty
+   --
+   put azure_FetchRelated (docArray) into resultArray
+   put azure_ExtractUniqueEntities (resultArray) into wikipediaTitles
+   --
+   put wikiDomain & ",Azure Entities" into someTitle
+   display_Array resultArray, someTitle, "Global | Azure | Tree | Menu"
+   put the result into displayView
+   return displayView
+end display_AzureEntities
+
+
+--> Display | Federation
+-
+command display_FederationServers
+   rig_SetOveride true
+   put federation_FetchServerData() into serverData
+   --
+   put "Server Model,Federation" into stackTitle
+   put display_FindView ("Federation", "Server Model") into arrayView
+   if exists (arrayView) then -- let's refresh
+      set the displayed_Data of arrayView to serverData
    else
-      put pDisplayTitle & comma & displayStackLabel into displayTitle
-      display_Index displayLines, displayTitle, mTitle, mLineTitle, pMouseUpCommand, "mDoubleUp_AtopiaFolder"
-      put the result into indexView
-      set the field_Style of indexView to "click"
-      set the event_Target of indexView to script_CallingObject()
+      display_Array serverData, stackTitle, "Global | Federation | Menu", "Global | Federation | Server | Line | Menu"
+      put the result into displayView
    end if
+   return displayView
+end display_FederationServers
+
+command display_FederationDomains domainNames, pIndexView, pDisplayTitle, pMenuTitle, pMenuLineTitle
+   local mUpCommand
+   rig_SetOveride true
+   put "mDoubleUp_Domain" into mDoubleUpCommand
+   --
+   if exists (pIndexView) then
+      -- atopia_SetDisplay pIndexView, displayLines, pDisplayTitle
+      -- set the title_Text of pIndexView to displayTitle
+      put item 1 of pDisplayTitle into titleText
+      set the view_Index [titleText] of pIndexView to domainNames
+   else
+      display_Index domainNames, pDisplayTitle, pMenuTitle, pMenuLineTitle, mUpCommand, mDoubleUpCommand
+      put the result into pIndexView
+      set the field_Align of pIndexView to "right"
+      set the field_Style of pIndexView to "click"
+      -- set the event_Target of pIndexView to script_CallingObject()
+   end if
+   set the title_Menu of pIndexView to pMenuTitle
+   set the line_Menu of pIndexView to pMenuLineTitle
+   --
+   return pIndexView
+end display_FederationDomains
+
+
+--> Display | Atopia
+-
+command display_AtopiaDomains pDisplayTitle
+   put "Atopia" into displayStackLabel
+   if pDisplayTitle is empty then put "New Folders" into pDisplayTitle
+   --
+   put display_FindView (displayStackLabel) into indexView
+   if exists (indexView) and pDisplayTitle is empty then -- let's refresh
+      put the title_Text of indexView into pDisplayTitle
+   end if
+   --
+   _SetAtopiaMenus pDisplayTitle, mTitle, mLineTitle
+   put atopia_ListDomains (pDisplayTitle) into domainNames
+   --
+   put "," & displayStackLabel after pDisplayTitle
+   display_FederationDomains domainNames, indexView, pDisplayTitle, mTitle, mLineTitle
+   --
    return indexView
-end display_AtopiaFolders
+end display_AtopiaDomains
+
+
+--> Display | Atopia | Bits
+-
+command display_AtopiaWikiPages wikiDomain
+   rig_SetOveride true
+   set the cursor to watch
+   put atopia_FetchWikiPageList (wikiDomain) into wikiPages
+   --
+   put wikiDomain & comma & "Wiki Pages" into displayTitle
+   display_Lines wikiPages, displayTitle, "mDoubleUp_AtopiaWikiFiles"
+   put the result into displayView
+   --
+   set the title_Menu of displayView to "Global | Atopia | Tree | Menu"
+   set the line_Menu of displayView to "Global | Atopia | Line | Menu"
+   --
+   return displayView
+end display_AtopiaWikiPages
+
+command display_LocalFedray
+   local pMouseUpCommand
+   put fedray_GetArray ("atopia.array") into atopiaArray
+   put atopiaArray ["domain"] into domainArray
+   put keys (domainArray) into domainNames
+   url_SortDomainIndex domainNames
+   display_Index domainNames, "Local Atopia Domains,Fedray", "Global | Atopia | Top | Menu", "Global | Atopia | Top | Line | Menu"
+   put the result into displayView
+   return displayView
+end display_LocalFedray
+
+command display_AtopiaOwners
+   display_AtopiaDomains "Domain Owners"
+   return the result
+end display_AtopiaOwners
+
+
+--> Display | Atopia | Config
+-
+command display_AtopiaConfigArray
+   put atopia_GetConfigArray() into configArray
+   display_Array configArray, "Atopia config.json", "Global | Atopia | Config | Menu",  "Global | Atopia | Config | Line | Menu"
+   return the result
+end display_AtopiaConfigArray
+
+command display_AtopiaOwnerDomains userEmail, pIndexView
+   put atopia_GetDomainsFromEmail (userEmail) into domainNames
+   url_SortDomainIndex domainNames
+   --
+   put "" into mUpCommand
+   put userEmail & ",Owned Domains" into displayTitle
+   --
+   display_FederationDomains domainNames, displayTitle, mUpCommand, pIndexView
+   put the result into indexView
+   return indexView
+end display_AtopiaOwnerDomains
 
 command display_AtopiaUpdateResult resultArray, pIndexView
    display_Array resultArray
@@ -193,20 +290,6 @@ command display_AtopiaUpdateResult resultArray, pIndexView
    return mdText
 end display_AtopiaUpdateResult
 
-command display_AtopiaWikiPages wikiDomain
-   set the cursor to watch
-   put atopia_FetchWikiPageList (wikiDomain) into wikiPages
-   
-   put wikiDomain & comma & "atopia_FetchWikiPageList()" into displayTitle
-   display_Lines wikiPages, displayTitle, "mDoubleUp_AtopiaWikiFiles"
-   put the result into displayView
-   --
-   set the title_Menu of displayView to "Global | Atopia | Tree | Menu"
-   set the line_Menu of displayView to "Global | Atopia | Line | Menu"
-   --
-   return displayView
-end display_AtopiaWikiPages
-
 command display_AtopiaDomainErrorArray
    put atopia_GetData() into atopiaData
    --
@@ -222,7 +305,7 @@ end display_AtopiaOwnerArray
 --> Deps
 -
 setprop atopia_ColouredLines allFolderNames
-   -- this will set a domain list fo an index_View
+   -- this will set a domain list of an index_View
    -- and check and colour any domains red that are marked bad in the local atopiaData
    
    put atopia_GetData() into atopiaData
@@ -247,11 +330,3 @@ setprop atopia_ColouredLines allFolderNames
    set the line_Colours of the target to colourArray
    unlock screen
 end atopia_ColouredLines
-
-command atopia_SetDisplay indexView, domainNames, displayTitle
-   lock screen
-   set the atopia_ColouredLines of indexView to domainNames
-   set the title_Text of indexView to displayTitle
-   unlock screen
-end atopia_SetDisplay
-

@@ -389,14 +389,13 @@ function html_ConstructNameLink someText, someLink, pSomeColour
 end html_ConstructNameLink
 
 
---> HTML | Tags
+--> HTML | Video
 -
 function html_ConstructVideoTag videoURL, pMediaType, pVideoWidth, pShowControls, pPosterImageFile, pFallbackHtml
    -- this is a single source video tag
    if pFallbackHtml is empty then put "This is fallback content to display for user agents that do not support the video tag." into pFallbackHtml
    
    put "<video" into someHTML
-   
    put space & "src=" & quote & videoURL & quote after someHTML
    switch word 1 of pMediaType
       case "webm"
@@ -411,9 +410,7 @@ function html_ConstructVideoTag videoURL, pMediaType, pVideoWidth, pShowControls
    if pPosterImageFile is not empty then put space & "poster=" & quote & pPosterImageFile & quote after someHTML
    put ">" after someHTML
    
-   put "<p>" after someHTML
    put pFallbackHtml after someHTML
-   put "</p>" after someHTML
    put "</video>" after someHTML
    
    return someHTML
@@ -667,6 +664,11 @@ end html_BoldSpanToRev
 
 --> HTML | Strip
 -
+command html_Strip @someHTML
+   -- uses same regExp as "html_StripAllTags" and "text_StripAllTags"
+   put word 1 to -1 of replacetext (someHtml, "(<(.|\n)+?>)", empty) into someHtml
+end html_Strip
+
 function html_StripAllTags taggedText
     --was "stripAllTags", "html_StripTags"
     return text_StripAllTags(taggedText)
@@ -706,20 +708,6 @@ function html_StripTags pHtml
    -----
    return pHtml
 end html_StripTags
-
--- function stripHtmlTags someHTML, anyCase
-    -- version Metacard, 8/15/00
-    
-    replace return with empty in someHTML
-    if anyCase is false then set the casesensitive to true
-    replace "</P>" with return in someHTML
-    put html_StripTags(someHTML) into someText
-     
-    replace "&#9;" with tab in someText
-    replace "&lt;" with "<" in someText
-    replace "&gt;" with ">" in someText
-    return someText
-end stripHtmlTags
 
 
 --> HTML | Attributes

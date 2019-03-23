@@ -13,42 +13,6 @@ on submenu_Google
    return "Global | Google | Console | Title | Line | Menu"
 end submenu_Google
 
-on _
-end _
-
-on menu_SetFarm indexView
-   put the selected_Line of indexView into domainName
-   --
-   put atopia_FetchNameServerType (domainName) into nsType
-   put atopia_FetchFarmStatus (nsType)
-end menu_SetFarm
-
-on menu_GetConfigInfo indexView
-   put the selected_Line of indexView into domainName
-   --
-   put atopia_GetDomainConfigArray (domainName) into domainConfigArray
-   put atopia_GetDomainOwnerIdPath (domainName)
-   --
-   display_Array domainConfigArray
-end menu_GetConfigInfo
-
-on menu_DisplayDomainInfo indexView
-   put the selected_Line of indexView into domainName
-   put dig_GetNS (domainName) into nameServers
-   switch
-      case line 1 of nameServers ends with ".digitalocean.com."
-         put digitalocean_GetDomainArray (domainName) into domainArray
-         break
-      case line 1 of nameServers ends with ".dynadot.com." 
-         break
-      default
-         put nameServers
-         breakpoint
-   end switch
-   --
-   display_Array domainArray
-end menu_DisplayDomainInfo
-
 on menu_LaunchDomain indexView
    put the selected_Line of indexView into wikiDomain
    put "http://" & wikiDomain into someURL
@@ -64,30 +28,25 @@ end menu_DisplayWikiPages
 on _
 end _
 
-on menu_FindAuthor indexView
+on menu_IsInRoster indexView
    put the selected_Line of indexView into wikiDomain
-   --
-   put atopia_FetchEmail (wikiDomain) into ownerEmail
-   put ownerEmail
-end menu_FindAuthor
+   put atopia_IsInRoster (wikiDomain)
+end menu_IsInRoster
 
+on menu_IsInDomainArray indexView
+   put the selected_Line of indexView into wikiDomain
+   put atopia_IsInDomainArray (wikiDomain)
+end menu_IsInDomainArray
+   
 on menu_AddToOwnership indexView
-   put the selected_Line of indexView into wikiFolder
-   atopia_AddDomainToOwnershipArray wikiFolder
+   put the selected_Line of indexView into wikiDomain
+   atopia_AddDomainToOwnershipArray wikiDomain
 end menu_AddToOwnership
 
 on menu_DeleteFromOwnership indexView
-   put the selected_Line of indexView into wikiFolder
-   atopia_DeleteFromOwnershipArray wikiFolder
+   put the selected_Line of indexView into wikiDomain
+   atopia_DeleteFromOwnershipArray wikiDomain
 end menu_DeleteFromOwnership
-
-getprop disabled_AddToOwnership
-   return true
-end disabled_AddToOwnership
-
-getprop disabled_DeleteFromOwnership
-   return true
-end disabled_DeleteFromOwnership
 
 on _
 end _
@@ -156,10 +115,61 @@ end submenu_Dev
 
 --> Global | Atopia | Line | Menu | Disabled
 -
+getprop disabled_AddToOwnership
+   return true
+end disabled_AddToOwnership
+
+getprop disabled_DeleteFromOwnership
+   return true
+end disabled_DeleteFromOwnership
+
 
 
 --> Dev | Menu
 -
+on menu_SetFarm indexView
+   put the selected_Line of indexView into domainName
+   --
+   put atopia_FetchNameServerType (domainName) into nsType
+   put atopia_FetchFarmStatus (nsType)
+end menu_SetFarm
+
+on menu_GetConfigInfo indexView
+   put the selected_Line of indexView into domainName
+   --
+   put atopia_GetDomainConfigArray (domainName) into domainConfigArray
+   put atopia_GetDomainOwnerIdPath (domainName)
+   --
+   display_Array domainConfigArray
+end menu_GetConfigInfo
+
+on menu_DisplayDomainInfo indexView
+   put the selected_Line of indexView into domainName
+   put dig_GetNS (domainName) into nameServers
+   switch
+      case line 1 of nameServers ends with ".digitalocean.com."
+         put digitalocean_GetDomainArray (domainName) into domainArray
+         display_Array domainArray, "digitalocean_GetDomainArray"
+         break
+      case line 1 of nameServers ends with ".dynadot.com."
+         lcw_Answer "Nameservers are Dyanadot Hosted"
+         break
+      default
+         put nameServers
+         lcw_Answer "Nameservers are from someone else!"
+   end switch
+end menu_DisplayDomainInfo
+
+on menu_FindAuthor indexView
+   put the selected_Line of indexView into wikiDomain
+   --
+   put atopia_FetchEmail (wikiDomain) into ownerEmail
+   put ownerEmail
+end menu_FindAuthor
+
+on _
+end _
+
 on menu_Dig indexView
    put the selected_Line of indexView into wikiDomain
    --
@@ -213,7 +223,7 @@ end menu_FetchPersonaArray
 -
 private command _SetDisplayDomainNames indexView, domainNames, whichFolders
    lock screen
-   set the label of the stack_Object of indexView to "atopia_FetchNewFolderList()"
+   set the label of the stack_Object of indexView to "atopia_FetchNewFolders()"
    set the atopia_ColouredLines of indexView to domainNames
    set the title_Text of indexView to whichFolders
    unlock screen
