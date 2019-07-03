@@ -91,6 +91,14 @@ end atopia_FetchLsArray
 
 --> Atopia | Model | Fetch | List
 -
+function atopia_ListDefaultWikiPages
+   put atopia_WikiDefaultPagesFolder() into serverPath
+   put atopia_FetchLsArray (serverPath) into infoArray
+   put infoArray ["file"] into fileArray
+   put keys (fileArray) into wikiPages
+   return wikiPages
+end atopia_ListDefaultWikiPages
+
 function atopia_FetchWikiPageList wikiDomain
    put atopia_FetchWikiPageFileArray (wikiDomain) into fileArray
    put keys (fileArray) into wikiPages
@@ -227,3 +235,12 @@ function atopia_WikiRootFolder
    put "/root/.wiki/" into wikiRootFolder
    return wikiRootFolder
 end atopia_WikiRootFolder
+
+function atopia_DefaultWikiPagePath pageSlug
+   put atopia_WikiDefaultPagesFolder() & pageSlug into wikiPagePath
+   return wikiPagePath
+end atopia_DefaultWikiPagePath
+
+function atopia_WikiDefaultPagesFolder
+   return "/root/.nvm/versions/node/v6.11.3/lib/node_modules/wiki/node_modules/wiki-server/default-data/pages/"
+end atopia_WikiDefaultPagesFolder
