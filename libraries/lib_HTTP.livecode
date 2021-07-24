@@ -64,7 +64,6 @@ function dig_GetDomain someIP
    /*
    dig +noall +answer +short cyberciti.biz
    */
-   url_MakeTLD someDomain
    put "dig -x" && someIP into someShell
    put shell (someShell) into someDomain
    return word 1 to -1 of someDomain
@@ -100,13 +99,16 @@ function http_GetHostIpInfo ipAddress
     return someXML
 end http_GetHostIpInfo
 
+
 --> HTTP | Authentication
 -
-on http_SetBasicAuthentication someUser, somePassWord, moreHeaders
-    put someUser & ":" & somePassWord into tToken
-    put format("Authorization: Basic %s", base64encode(tToken)) into tAuthToken
-    line_Insert moreHeaders, tAuthToken
-    set the httpheaders to tAuthToken
+command http_SetBasicAuthentication someUser, somePassWord, moreHeaders
+   put someUser & ":" & somePassWord into tToken
+   put format("Authorization: Basic %s", base64encode(tToken)) into someHeaders
+   if moreHeaders is not empty then
+      put CR & moreHeaders after someHeaders
+   end if
+   set the httpheaders to someHeaders
 end http_SetBasicAuthentication
 
 function http_GetLastModificationDate pServer, pResource

@@ -28,6 +28,36 @@ local DropDelay = 60
 local SessionArray
 
 
+--> Working on
+-
+function json_FromArray pArray, pForceRootType, pPretty
+   -- put jsonExport (pArray) into someJSON -- not the same
+   
+   repeat for each key tKey in pArray
+      if pArray[tKey] is an array then
+         put "}"&json_FromArray(pArray[tKey]) into pArray[tKey]
+      end if
+   end repeat
+   return (mergJSONEncode("pArray",pForceRootType,pPretty))
+end json_FromArray
+
+function json_ToArray pJSON
+   local tArray,tKeys
+   if pJSON is empty then return false
+   -- put jsonImport (pJSON) into tArray -- not the same
+   
+   try -- as otherwise an error with non-json causes script to exit
+      if pJSON is empty then return empty
+      repeat for each line tKey in mergJSONDecode(pJSON,"tArray")
+         put json_ToArray(tArray[tKey]) into tArray[tKey]
+      end repeat
+      return tArray
+   catch e
+      return empty
+   end try
+end json_ToArray
+
+
 --> Objects
 -
 getprop daemon_Server
@@ -764,29 +794,3 @@ end daemon_SetSession
 
 --> Deps
 -
-function json_FromArray pArray, pForceRootType, pPretty
-   -- identical to (simply renamed) "ArrayToJSON"
-   -- pArray - array to be encoded
-   -- pForceRootType - can force the root to be an object if it looks like an array
-   -- pPretty - include whitespace
-   repeat for each key tKey in pArray
-      if pArray[tKey] is an array then
-         put "}" & json_FromArray (pArray [tKey]) into pArray [tKey]
-      end if
-   end repeat
-   return (mergJSONEncode ("pArray", pForceRootType, pPretty))
-end json_FromArray
-
-function json_ToArray pJSON
-   if pJSON is empty then return false
-   try -- as otherwise an error with non-json causes script to exit
-      local tArray,tKeys
-      if pJSON is empty then return empty
-      repeat for each line tKey in mergJSONDecode (pJSON, "tArray")
-         put json_ToArray(tArray[tKey]) into tArray[tKey]
-      end repeat
-      return tArray
-   catch e
-      return empty
-   end try
-end json_ToArray

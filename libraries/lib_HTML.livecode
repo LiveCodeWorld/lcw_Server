@@ -12,6 +12,280 @@ This script only stack contains the latest genral utility handlers for dealing w
 */
 
 
+--> Working on
+-
+function html_GetBody someHTML
+   -- put html_ExtractNode ("html/body", someHTML) into bodyXML -- uses revXML
+   html_SetTagOffsets startNum, endNum, someHTML, "body"
+   if the result is false then return someHTML
+   --
+   put char startNum to endNum of someHTML into bodyHTML
+   return bodyHTML
+end html_GetBody
+
+command html_SetBody @someHTML, bodyHTML
+   html_SetTagOffsets startNum, endNum, someHTML, "body"
+   if the result is false then return false
+   --
+   put bodyHTML into char startNum to endNum of someHTML 
+   return true
+end html_SetBody
+
+function html_GetHead someHTML
+   -- put html_ExtractNode ("html/body", someHTML) into headHTML -- uses revXML
+   html_SetTagOffsets startNum, endNum, someHTML, "head"
+   if the result is false then return someHTML
+   --
+   put char startNum to endNum of someHTML into headHTML
+   return headHTML
+end html_GetHead
+
+command html_SetHead @someHTML, headHTML
+   html_SetTagOffsets startNum, endNum, someHTML, "head"
+   if the result is false then return false
+   --
+   put headHTML into char startNum to endNum of someHTML 
+   return true
+end html_SetHead
+
+command html_SetTagOffsets @startNum, @endNum, someHTML, tagName
+   -- super simple version
+   put "<" & tagName into startTag
+   put "</" & tagName & ">" into endTag
+   --
+   put offset (startTag, someHTML) into startNum
+   if startNum is 0 then return false
+   put offset (endTag, someHTML, startNum) into afterEndNum
+   if afterEndNum is 0 then return false
+   --
+   put the number of chars of tagName + 2 into tagBit -- 6
+   put startNum + afterEndNum + tagBit into endNum
+   --
+   return true
+end html_SetTagOffsets
+
+function html_ExtractBodyContents someHTML
+   put html_ExtractNodeContents ("html/body", someHTML) into innerXML
+   return innerXML
+end html_ExtractBodyContents
+
+function pageItem_GetFirstImage itemHTML
+   -- "data-imagestyle='fullwiki'"
+   
+   -- lets do a bit of hacking first
+   put html_ExtractOpeningTag ("img", itemHTML) into imgTag
+   xml_TidyNode imgTag
+   --
+   put html_GetImageArray (imgTag) into imageArray
+   if imageArray is an array is false then return empty
+   --
+   --  display_Data imageArray, "html_GetImageArray()"
+   put imageArray ["data-imagestyle"] into dataImagestyle
+   put "<div style='padding: 12px; background:#eee; width:96%; align=centered;'>" into oldStandardDiv
+   switch
+      case dataImagestyle is not empty
+      case sHTML contains oldStandardDiv
+         return imageArray ["src"]
+      default
+         return imageArray ["src"]
+         -- return empty
+   end switch
+end pageItem_GetFirstImage
+
+function html_GetImageArray imgTag
+   put revXMLCreateTree (imgTag, false, true, false) into treeID
+   put xml_TreeNodeAttributeArray ("img", treeID) into imageArray
+   revXMLDeleteTree treeID
+   return imageArray
+end html_GetImageArray
+
+command xml_TidyNode @someNode
+   replace "'" with quote in someNode
+   replace ";" with space in someNode -- revXMLAttributes does not like ";"
+end xml_TidyNode
+
+function html_GetIframeSrc iframeHTML
+   put revXMLCreateTree (iframeHTML, false, true, false) into treeID
+   put xml_TreeNodeAttributeArray ("iframe", treeID) into iframeArray
+   revXMLDeleteTree treeID
+   --
+   return iframeArray ["src"]
+end html_GetIframeSrc
+
+command html_DeconstructImageArray imageAttributeArray, @srcURL, @imageCaption, @imageWidth, @imageHeight, @imageClass
+   -- put keys (imageAttributeArray) into class, height, width, alt, srcv, data-index, data-atf, data-iml, data-deferred
+   put imageAttributeArray ["scr"] into srcURL
+   put imageAttributeArray ["alt"] into imageCaption
+   put imageAttributeArray ["width"] into imageWidth
+   put imageAttributeArray ["height"] into imageHeight
+   put imageAttributeArray ["class"] into imageClass
+end html_DeconstructImageArray
+
+
+--> Html | Favicon
+-
+function html_ConstructFaviconLink xHTML, someURL
+   -- can be "apple-touch-icon"
+   if xHTML is empty then return empty
+   put revXMLCreateTree (xHTML, false, true, false) into treeID
+   --
+   put "html/head/title" into someNode
+   put html_ExtractNodeContents (someNode, xHTML) into pageTitle
+   put revXMLMatchingNode (treeID, "html/head", "link", "rel", "icon", 1) into someNode
+   if someNode is empty then
+      revXMLDeleteTree treeID
+      return empty
+   end if
+   put revXMLAttribute (treeID, someNode, "href") into faviconLink
+   --
+   revXMLDeleteTree treeID
+   
+   set the itemdelimiter to slash
+   if token 1 of faviconLink is among the items of "http/https" then
+      put faviconLink into faviconURL
+   else
+      put item 1 to 3 of someURL & faviconLink into faviconURL
+   end if
+   get "<img src='[[faviconURL]]' style='vertical-align: middle; width:16px; height:16px' /><a target=_blank style='vertical-align: middle; padding-left: 10px; padding-right: 12px; text-decoration: none;' href='[[someURL]]'>[[pageTitle]]</a>"
+   put merge (it) into faviconLink
+   return faviconLink
+end html_ConstructFaviconLink
+
+function html_ExtractFavicon someHTML
+   -- <link rel="icon" href="/resources/images/favicon.png">
+   -- <link id='favicon' href='/favicon.png' rel='icon' type='image/png'>
+   
+   /*
+   put merge ("<link\sid='favicon'\s(.*)/>") into someReg
+   replace "'" with quote in someReg
+   --
+   if matchText (someHTML, someReg, metaContent) is true then
+      return metaContent
+   else
+      return "Not found"
+   end if
+   */
+   
+   put revXMLCreateTree (someHTML, false, true, false) into treeID
+   -- put revXMLMatchingNode (treeID, "/head", "link", "rel", "icon", -1) into someNode -- without htmlTidy
+   put revXMLMatchingNode (treeID, "html/head", "link", "rel", "icon", 1) into someNode -- if you use htmlTidy
+   put revXMLAttribute (treeID, someNode, "href") into faviconLink
+   revXMLDeleteTree treeID
+   return faviconLink
+end html_ExtractFavicon
+
+
+--> Html
+-
+function html_ExtractHeaderDescription headerSection
+   put revXMLCreateTree (headerSection, false, true, false) into treeID
+   --
+   put revXMLMatchingNode (treeID, "head", "meta", "name", "description", -1, false) into dNode
+   if dNode is empty then
+      put empty into metaDescription
+   else
+      put word 1 to -1 of revXMLAttribute (treeID, dNode, "content") into metaDescription
+   end if
+   --
+   revXMLDeleteTree treeID
+   --
+   return metaDescription
+end html_ExtractHeaderDescription
+
+function html_ExtractHeaderTitle headerSection
+   if headerSection is empty then return empty
+   --
+   -- put tolower (headerSection) into headerSection
+   put html_ExtractTagContents ("title", headerSection) into htmlTitle
+   return htmlTitle
+   
+   /*
+   -- CAN BE AN UNDEFINED NUMBER OF META SECTIONS WHICH CAUSE UNWANTED NESTING
+   put "head/meta/meta/meta/title" into someNode
+   -- put html_ExtractNodeContents (someNode, headerSection) into innerContent
+   put revXMLCreateTree (headerSection, false, true, false) into treeID
+   put revXMLRootNode (treeID) into rNode
+   put revXMLTree (treeID, rNode, CR, space, true, -1) into tContents
+   put revXMLNodeContents (treeID, someNode) into htmlTitle -- this is not what I think of as "contents" :)
+   revXMLDeleteTree treeID
+   */
+end html_ExtractHeaderTitle
+
+function html_ExtractOpeningTag tagName, someHtml
+   -- opening or single tag such as
+   -- <img src='https://www.ic.org/wp-content/uploads/2013/12/findhorn_foundation_and_community_3541.jpg'>
+   local tagContents
+   replace lineFeed with empty in someHtml -- seems neessary
+   --
+   put "(?miU)(<\s*" & tagName & "[^>]*>)" into someReg
+   --
+   if matchtext(someHtml, someReg, tagContents) is false then
+      return empty
+   else
+      return tagContents
+   end if
+end html_ExtractOpeningTag
+
+function html_ExtractTag tagName, someHtml
+   local tagContents -- not sure if it is still required
+   replace lineFeed with empty in someHtml -- seems neessary
+   
+   -- put "(<\s*" & tagName & "\s[^>]*>.*<\s*/\s*" & tagName & "\s*>)" into someReg
+   put "(?miU)(<\s*" & tagName & "[^>]*>.*<\s*/\s*" & tagName & "\s*>)" into someReg
+   --
+   if matchtext(someHtml, someReg, tagContents) is false then
+      return empty
+   else
+      return tagContents
+   end if
+end html_ExtractTag
+
+function html_ExtractTagContents tagName, someHtml
+   local tagContents -- not sure if it is still required
+   replace lineFeed with empty in someHtml -- seems neessary
+   --
+   -- put "<\s*" & tagName & "\s+name\s*=[^>]*>(.*)<\s*/\s*" & tagName & "\s*>" into someReg
+   put "(?miU)<\s*" & tagName & "[^>]*>(.*)<\s*/\s*" & tagName & "\s*>" into someReg
+   --
+   if matchtext(someHtml, someReg, tagContents) is false then
+      return empty
+   else
+      return tagContents
+   end if
+end html_ExtractTagContents
+
+function html_ExtractTitle someHTML
+   put html_ExtractTag ("title", someHtml) into htmlTitle
+   -- put html_ExtractNodeContents ("html/head/title", someHTML) into htmlTitle
+   return htmlTitle
+end html_ExtractTitle
+
+function html_ListImageNodes someHTML, pNode
+   if someHTML is empty then return empty
+   if pNode is empty then put "/" into pNode
+   
+   put revXMLCreateTree (someHTML, false, true, false) into treeID
+   put revXMLChildNames (treeID, pNode, CR, "img", true) into childNodes
+   revXMLDeleteTree treeID
+   --
+   repeat for each line childNode in childNodes
+      put pNode & childNode & CR after imageNodes
+   end repeat
+   delete char -1 of imageNodes
+   return imageNodes
+end html_ListImageNodes
+
+function html_GetNodeAttributeArray someNode, someHTML
+   if someHTML is empty then return empty
+   put revXMLCreateTree (someHTML, false, true, false) into treeID
+   put revXMLAttributes (treeID, someNode, tab, CR) into attributeTable
+   revXMLDeleteTree treeID
+   --
+   split attributeTable with CR and tab
+   return attributeTable
+end html_GetNodeAttributeArray
+
+
 --> HTML | Link
 -
 function html_ExtractLink someLine
@@ -20,13 +294,13 @@ function html_ExtractLink someLine
 end html_ExtractLink
 
 command html_DeconstructRefLink someLine, @someText, @someLink
-    -- <a href="/Users/david/Movies/crossingTheBridge.mp4">Crossing The Bridge</a>
-    
-    put "<a href=" & quote & "([^>]*)" & quote & ">([^<]*)</a>" into someReg
-    if matchtext(someLine, someReg, someLink, someText) is false then
-        put someLine into someText
-        put empty into someLink
-    end if
+   -- <a href="/Users/david/Movies/crossingTheBridge.mp4">Crossing The Bridge</a>
+   
+   put "<a href=" & quote & "([^>]*)" & quote & ">([^<]*)</a>" into someReg
+   if matchtext(someLine, someReg, someLink, someText) is false then
+      put someLine into someText
+      put empty into someLink
+   end if
 end html_DeconstructRefLink
 
 function html_ConstructRefLink someText, someLink, pTarget
@@ -89,7 +363,7 @@ function html_ExtractLinks someHtml
    delete last char of newLinkList
    return newLinkList
 end html_ExtractLinks
-    
+
 function html_ExtractLinkNumArray htmlLines
    /*
    Requires each link on a new line
@@ -150,39 +424,39 @@ function html_ExtractLinkNumArray htmlLines
 end html_ExtractLinkNumArray
 
 function html_ExtractAllLinks someHtml
-    /*
-    This one is prob better:
-    
-    <a[\s]+[^>]*?href[\s]?=[\s\"\']+(.*?)[\"\']+.*?>([^<]+|.*?)?<\/a>
-    
-    from http://regexlib.com/REDetails.aspx?regexp_id=968
-    
-    
-    based on http://regexlib.com/REDetails.aspx?regexp_id=774
-    
-    Pattern:  href[\s]*=[\s]*&quot;[^\n&quot;]*&quot;
-    RegExp Author:  Tony Hawe
-    Matching Text:	href =&quot;http://www.theregister.com/&quot;|||href=&quot;http://theregister.co.uk&quot;|||hre
-    Non-Matching Text:	href=http://theregister.co.uk
-    Description:	A very short pattern for extracting hrefs from HTML, does not validate they are within a tag
-    */
-    
-    local urlIndex
-    replace lineFeed with empty in someHtml -- seems necessary
-    
-    put "href[\s]*=[\s]*'([^\n']*)'" into someReg
-    replace "'" with quote in someReg -- for now to make regExp readable
-    
-    repeat
-        if matchchunk(someHtml, someReg, startCharNum, endCharNum) is false then
-            delete last char of urlIndex
-            return urlIndex
-        else
-            put char startCharNum to endCharNum of someHtml into someUrl
-            put someUrl & CR after urlIndex
-            delete char 1 to endCharNum + 1 of someHtml
-        end if
-    end repeat
+   /*
+   This one is prob better:
+   
+   <a[\s]+[^>]*?href[\s]?=[\s\"\']+(.*?)[\"\']+.*?>([^<]+|.*?)?<\/a>
+         
+   from http://regexlib.com/REDetails.aspx?regexp_id=968
+   
+   
+   based on http://regexlib.com/REDetails.aspx?regexp_id=774
+   
+   Pattern:  href[\s]*=[\s]*&quot;[^\n&quot;]*&quot;
+         RegExp Author:  Tony Hawe
+   Matching Text:	href =&quot;http://www.theregister.com/&quot;|||href=&quot;http://theregister.co.uk&quot;|||hre
+   Non-Matching Text:	href=http://theregister.co.uk
+   Description:	A very short pattern for extracting hrefs from HTML, does not validate they are within a tag
+   */
+   
+   local urlIndex
+   replace lineFeed with empty in someHtml -- seems necessary
+   
+   put "href[\s]*=[\s]*'([^\n']*)'" into someReg
+   replace "'" with quote in someReg -- for now to make regExp readable
+   
+   repeat
+      if matchchunk(someHtml, someReg, startCharNum, endCharNum) is false then
+         delete last char of urlIndex
+         return urlIndex
+      else
+         put char startCharNum to endCharNum of someHtml into someUrl
+         put someUrl & CR after urlIndex
+         delete char 1 to endCharNum + 1 of someHtml
+      end if
+   end repeat
 end html_ExtractAllLinks
 
 
@@ -194,7 +468,7 @@ function html_ExtractNode someNode, someHTML
    if someHTML is empty then return empty
    put revXMLCreateTree (someHTML, false, true, false) into treeID
    put revXMLText (treeID, someNode) into nodeXml
-   revDeleteXMLTree treeID
+   revXMLDeleteTree treeID
    return nodeXml
 end html_ExtractNode
 
@@ -202,14 +476,14 @@ function html_ExtractNodeContents someNode, someHTML
    if someHTML is empty then return empty
    put revXMLCreateTree (someHTML, false, true, false) into treeID
    put revXMLNodeContents (treeID, someNode) into innerContent -- this is not what I think of as "contents" :)
-   revDeleteXMLTree treeID
+   revXMLDeleteTree treeID
    return innerContent
 end html_ExtractNodeContents
 
 function html_ExtractChildNodeNames someNode, someHTML
    put revXMLCreateTree (someHTML, false, true, false) into treeID
    put revXMLChildNames (treeID, someNode, CR, empty, true) into tNodeNames
-   revDeleteXMLTree treeID
+   revXMLDeleteTree treeID
    return tNodeNames
 end html_ExtractChildNodeNames
 
@@ -217,13 +491,21 @@ function html_ListNodes someHTML
    put revXMLCreateTree (someHTML, false, true, false) into treeID
    put revXMLRootNode (treeID) into rootNode
    put revXMLTree (treeID, rootNode, CR, space, true, -1) into allNodes
-   revDeleteXMLTree treeID
+   revXMLDeleteTree treeID
    return allNodes
 end html_ListNodes
 
 
 --> HTML | CLI
 -
+function html_Fetch someURL
+   put "curl -sL" && someURL into someShell
+   put shell (someShell) into someHtml
+   set the itemdelimiter to ":"
+   if item 1 of someHtml = "error code" then return empty -- error code: 1020
+   return someHtml
+end html_Fetch
+
 function html_FetchTidy someURL
    put "curl -s" && someURL && "| tidy -asxhtml --quiet yes --tidy-mark no --show-warnings false --show-errors 0" into someShell
    put shell (someShell) into someXhtml   
@@ -370,13 +652,13 @@ command html_DeconstructLink someLine, @someText, @someLink
 end html_DeconstructLink
 
 command html_DeconstructNameLink someLine, @someText, @someLink
-    -- <a name="/Users/david/Movies/crossingTheBridge.mp4">Crossing The Bridge</a>
-    
-    put "<a name=" & quote & "([^>]*)" & quote & ">([^<]*)</a>" into someReg
-    if matchtext(someLine, someReg, someLink, someText) is false then
-        put someLine into someText
-        put empty into someLink
-    end if
+   -- <a name="/Users/david/Movies/crossingTheBridge.mp4">Crossing The Bridge</a>
+   
+   put "<a name=" & quote & "([^>]*)" & quote & ">([^<]*)</a>" into someReg
+   if matchtext(someLine, someReg, someLink, someText) is false then
+      put someLine into someText
+      put empty into someLink
+   end if
 end html_DeconstructNameLink
 
 function html_ConstructNameLink someText, someLink, pSomeColour
@@ -446,27 +728,27 @@ end html_ConstructVideoSourceTag
 --> Html | Sections
 -
 function html_AddHeaders someBody, htmlTitle, headerSection
-    -- was "htmlHeaders"
-    put "<HTML>" into someHtml
-    if headerSection is empty then
-        put CR & tab & "<HEAD><TITLE>" & htmlTitle & "</TITLE></HEAD>" after someHtml
-    else
-        put CR & tab & "<HEAD>" after someHtml
-        put CR & tab & tab & "<TITLE>" & htmlTitle & "</TITLE>" after someHtml
-        put CR & outline_IncreaseIndent(headerSection, 2) after someHtml
-        put CR & tab & "</HEAD>" after someHtml
-    end if
-    put CR & tab & "<BODY>" after someHtml
-    put CR & outline_IncreaseIndent(someBody, 2) after someHtml
-    put CR & tab & "</BODY>" after someHtml
-    put CR & "</HTML>" after someHtml
-    return someHtml
+   -- was "htmlHeaders"
+   put "<HTML>" into someHtml
+   if headerSection is empty then
+      put CR & tab & "<HEAD><TITLE>" & htmlTitle & "</TITLE></HEAD>" after someHtml
+   else
+      put CR & tab & "<HEAD>" after someHtml
+      put CR & tab & tab & "<TITLE>" & htmlTitle & "</TITLE>" after someHtml
+      put CR & outline_IncreaseIndent(headerSection, 2) after someHtml
+      put CR & tab & "</HEAD>" after someHtml
+   end if
+   put CR & tab & "<BODY>" after someHtml
+   put CR & outline_IncreaseIndent(someBody, 2) after someHtml
+   put CR & tab & "</BODY>" after someHtml
+   put CR & "</HTML>" after someHtml
+   return someHtml
 end html_AddHeaders
 
 on html_Deconstruct someHTML, @someHeader, @someBody, @someTitle
-    put html_ExtractHeader(someHTML) into someHeader
-    put xml_GetTagContents("title", someHeader) into someTitle
-    put html_ExtractBody(someHTML) into someBody
+   put html_ExtractHeader(someHTML) into someHeader
+   put xml_GetTagContents("title", someHeader) into someTitle
+   put html_GetBody(someHTML) into someBody
 end html_Deconstruct
 
 function html_ExtractTLD someURL, pLastTwo
@@ -479,112 +761,48 @@ function html_ExtractTLD someURL, pLastTwo
    return tldBit
 end html_ExtractTLD
 
-function html_ExtractTitle someHTML
-   put "html/head/title" into someNode
-   -- return html_ExtractNode (someNode, someHTML)
-   put html_ExtractNodeContents (someNode, someHTML) into innerContent
-   return innerContent
-end html_ExtractTitle
-
-function html_ConstructFaviconLink xHTML, someURL
-   -- can be "apple-touch-icon"
-   if xHTML is empty then return empty
-   put revXMLCreateTree (xHTML, false, true, false) into treeID
-   --
-   put "html/head/title" into someNode
-   put html_ExtractNodeContents (someNode, xHTML) into pageTitle
-   put revXMLMatchingNode (treeID, "html/head", "link", "rel", "icon", 1) into someNode
-   if someNode is empty then
-      revDeleteXMLTree treeID
-      return empty
-   end if
-   put revXMLAttribute (treeID, someNode, "href") into faviconLink
-   --
-   revDeleteXMLTree treeID
-   
-   set the itemdelimiter to slash
-   if token 1 of faviconLink is among the items of "http/https" then
-      put faviconLink into faviconURL
-   else
-      put item 1 to 3 of someURL & faviconLink into faviconURL
-   end if
-   get "<img src='[[faviconURL]]' style='vertical-align: middle; width:16px; height:16px' /><a target=_blank style='vertical-align: middle; padding-left: 10px; padding-right: 12px; text-decoration: none;' href='[[someURL]]'>[[pageTitle]]</a>"
-   put merge (it) into faviconLink
-   return faviconLink
-end html_ConstructFaviconLink
-
-function html_ExtractFavicon someHTML
-   -- <link rel="icon" href="/resources/images/favicon.png">
-   put url "https://caddyserver.com/features" into someHTML
-   html_Tidy someHTML
-   if someHTML is empty then return empty
-   
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   --
-   -- put revXMLMatchingNode (treeID, "/head", "link", "rel", "icon", -1) into someNode -- without htmlTidy
-   put revXMLMatchingNode (treeID, "html/head", "link", "rel", "icon", 1) into someNode -- if you use htmlTidy
-   put revXMLAttribute (treeID, someNode, "href") into faviconLink
-   --
-   revDeleteXMLTree treeID
-   return faviconLink
-end html_ExtractFavicon
-
 function html_ExtractHeader someHTML
    return html_ExtractNode ("html/head", someHTML)
 end html_ExtractHeader
 
-function html_ExtractBody someHTML
-   put html_ExtractNode ("html/body", someHTML) into bodyXML
-   return bodyXML
-end html_ExtractBody
-
-function html_ExtractBodyContents someHTML
-   put html_ExtractNodeContents ("html/body", someHTML) into innerXML
-   return innerXML
-end html_ExtractBodyContents
-
-function html_Anchors someHtml
-    return html_AttributeValues (someHtml, "name")
-end html_Anchors
-
 function html_ExtractAnchors someHtml
-    put someHtml into htmlPage
-    replace CR with empty in htmlPage --text is now one line
-    replace "name=" with "name=" & CR in htmlPage
-    replace "</a" with "</a" & CR in htmlPage
-     
-    -- filter htmlPage with "*http://*"
-    -- set the itemdel to ">"
-    filter htmlPage with (quote & "*</a")
-    set the itemdel to quote
-    
-    put empty into newLinkList
-    repeat for each line LNN in htmlPage
-        put item 2 of LNN & cr after newLinkList
-        -- put item 1 of LNN & cr after newLinkList
-    end repeat
-    delete last char of newLinkList
-    return newLinkList
+   put someHtml into htmlPage
+   replace CR with empty in htmlPage --text is now one line
+   replace "name=" with "name=" & CR in htmlPage
+   replace "</a" with "</a" & CR in htmlPage
+   
+   -- filter htmlPage with "*http://*"
+   -- set the itemdel to ">"
+   filter htmlPage with (quote & "*</a")
+   set the itemdel to quote
+   
+   put empty into newLinkList
+   repeat for each line LNN in htmlPage
+      put item 2 of LNN & cr after newLinkList
+      -- put item 1 of LNN & cr after newLinkList
+   end repeat
+   delete last char of newLinkList
+   return newLinkList
 end html_ExtractAnchors
 
 function html_ExtractImages someHtml
-    /*
-    Not all 'img' tags are in link tags
-    */
-    
-    replace CR with empty in someHtml -- text is now one line
-    replace "img src=" with ("img" & CR & "src=") in someHtml -- assumes a single space
-    replace ".jpg" with ".jpg" & cr in someHtml
-    replace ".gif" with ".gif" & cr in someHtml
-    filter someHtml with "src=*"
-    set the itemdel to "="
-    
-    put empty into newImgList
-    repeat for each line LNN in someHtml
-        put item 2 of LNN & cr after newImgList
-    end repeat
-    delete last char of newImgList
-    return newImgList
+   /*
+   Not all 'img' tags are in link tags
+   */
+   
+   replace CR with empty in someHtml -- text is now one line
+   replace "img src=" with ("img" & CR & "src=") in someHtml -- assumes a single space
+   replace ".jpg" with ".jpg" & cr in someHtml
+   replace ".gif" with ".gif" & cr in someHtml
+   filter someHtml with "src=*"
+   set the itemdel to "="
+   
+   put empty into newImgList
+   repeat for each line LNN in someHtml
+      put item 2 of LNN & cr after newImgList
+   end repeat
+   delete last char of newImgList
+   return newImgList
 end html_ExtractImages
 
 
@@ -595,70 +813,70 @@ These functions replace html span tags such as those found in basic html / jabbe
 */
 
 function html_BasicToRev someHtml
-    put html_BoldSpanToRev(someHtml) into someHtml
-    put html_ColourSpanToRev(someHtml) into someHtml
-    return someHtml
+   put html_BoldSpanToRev(someHtml) into someHtml
+   put html_ColourSpanToRev(someHtml) into someHtml
+   return someHtml
 end html_BasicToRev
 
 function html_RevToBasic someHtmlText
-    put html_RevToColourSpan(someHtmlText) into someHtml
-    return html_RevToBoldSpan(someHtml)
+   put html_RevToColourSpan(someHtmlText) into someHtml
+   return html_RevToBoldSpan(someHtml)
 end html_RevToBasic
 
 function html_RevToColourSpan someHtml
-    replace quote with "'" in someHtml
-    put "(?miU)(<font color=').*(</font>)" into someReg
-    repeat
-        if matchchunk(someHtml, someReg, oTagStart, oTagEnd, cTagStart, cTagEnd) is true then
-            put "</span>" into char cTagStart to cTagEnd of someHtml
-            put "<span style='color:" into char oTagStart to oTagEnd of someHtml
-        else
-            replace quote with "'" in someHtml
-            return someHtml
-        end if
-    end repeat
+   replace quote with "'" in someHtml
+   put "(?miU)(<font color=').*(</font>)" into someReg
+   repeat
+      if matchchunk(someHtml, someReg, oTagStart, oTagEnd, cTagStart, cTagEnd) is true then
+         put "</span>" into char cTagStart to cTagEnd of someHtml
+         put "<span style='color:" into char oTagStart to oTagEnd of someHtml
+      else
+         replace quote with "'" in someHtml
+         return someHtml
+      end if
+   end repeat
 end html_RevToColourSpan
 
 function html_RevToBoldSpan someHtml
-    put "(?miU)(<b>).*(</b>)" into someReg
-    -- put "(?mi)(<b>)[^\<]*(</b>)" into someReg
-    repeat
-        if matchchunk(someHtml, someReg, oTagStart, oTagEnd, cTagStart, cTagEnd) is true then
-            put "</span>" into char cTagStart to cTagEnd of someHtml
-            put "<span style='font-weight:bold'>" into char oTagStart to oTagEnd of someHtml
-        else
-            return someHtml
-        end if
-    end repeat
+   put "(?miU)(<b>).*(</b>)" into someReg
+   -- put "(?mi)(<b>)[^\<]*(</b>)" into someReg
+   repeat
+      if matchchunk(someHtml, someReg, oTagStart, oTagEnd, cTagStart, cTagEnd) is true then
+         put "</span>" into char cTagStart to cTagEnd of someHtml
+         put "<span style='font-weight:bold'>" into char oTagStart to oTagEnd of someHtml
+      else
+         return someHtml
+      end if
+   end repeat
 end html_RevToBoldSpan
 
 function html_ColourSpanToRev someHtml
-    -- U is for non-greedy
-    replace quote with "'" in someHtml
-    put "(?miU)(<span style='color:).*(</span>)" into someReg
-    -- put "(?mi)(<span style='color:)[^\<]*(</span>)" into someReg
-    repeat
-        if matchchunk(someHtml, someReg, oTagStart, oTagEnd, cTagStart, cTagEnd) is true then
-            put "</font>" into char cTagStart to cTagEnd of someHtml
-            put "<font color='" into char oTagStart to oTagEnd of someHtml
-        else
-            replace "'" with quote in someHtml
-            return someHtml
-        end if
-    end repeat
+   -- U is for non-greedy
+   replace quote with "'" in someHtml
+   put "(?miU)(<span style='color:).*(</span>)" into someReg
+   -- put "(?mi)(<span style='color:)[^\<]*(</span>)" into someReg
+   repeat
+      if matchchunk(someHtml, someReg, oTagStart, oTagEnd, cTagStart, cTagEnd) is true then
+         put "</font>" into char cTagStart to cTagEnd of someHtml
+         put "<font color='" into char oTagStart to oTagEnd of someHtml
+      else
+         replace "'" with quote in someHtml
+         return someHtml
+      end if
+   end repeat
 end html_ColourSpanToRev
 
 function html_BoldSpanToRev someHtml
-    put "(?miU)(<span style='font-weight:bold'>).*(</span>)" into someReg
-    -- put "(?mi)(<span style='font-weight:bold'>)[^\<]*(</span>)" into someReg
-    repeat
-        if matchchunk(someHtml, someReg, oTagStart, oTagEnd, cTagStart, cTagEnd) is true then
-            put "</b>" into char cTagStart to cTagEnd of someHtml
-            put "<b>" into char oTagStart to oTagEnd of someHtml
-        else
-            return someHtml
-        end if
-    end repeat
+   put "(?miU)(<span style='font-weight:bold'>).*(</span>)" into someReg
+   -- put "(?mi)(<span style='font-weight:bold'>)[^\<]*(</span>)" into someReg
+   repeat
+      if matchchunk(someHtml, someReg, oTagStart, oTagEnd, cTagStart, cTagEnd) is true then
+         put "</b>" into char cTagStart to cTagEnd of someHtml
+         put "<b>" into char oTagStart to oTagEnd of someHtml
+      else
+         return someHtml
+      end if
+   end repeat
 end html_BoldSpanToRev
 
 
@@ -670,8 +888,8 @@ command html_Strip @someHTML
 end html_Strip
 
 function html_StripAllTags taggedText
-    --was "stripAllTags", "html_StripTags"
-    return text_StripAllTags(taggedText)
+   --was "stripAllTags", "html_StripTags"
+   return text_StripAllTags(taggedText)
 end html_StripAllTags
 
 function html_StripTags pHtml
@@ -718,7 +936,7 @@ function html_ExtractAttribute attributeName, someNode, someHTML
    if someHTML is empty then return empty
    put revXMLCreateTree (someHTML, false, true, false) into treeID
    put revXMLAttribute (treeID, someNode, attributeName) into nodeXml
-   revDeleteXMLTree treeID
+   revXMLDeleteTree treeID
    return nodeXml
 end html_ExtractAttribute
 
@@ -734,120 +952,90 @@ command html_AddTag @someText, tagName
 end html_AddTag
 
 command html_ParamDeconstuct someTag, @someKey, @someValue
-    -- replace lineFeed with empty in inputTag -- seems neessary
-    /*
-    -- from http://regexlib.com/REDetails.aspx?regexp_id=1195
-    
-    Pattern:  \s(type|name|value)=(?:(\w+)|(?:"(.*?)")|(?:\'(.*)\'))
-    Author: 	Carey Bishop
-    Matching Text: 	&lt;input type=&quot;text&quot; value='somevalue' name=fred&gt;
-    Non-Matching Text:	Any attributes that aren't &quot;type&quot;, &quot;name&quot;, or &quot;value&quot;
-    
-    Description
-    Returns the three most important attributes from an HTML &lt;input&gt; tag: 'type', 'name' and 'value'. 
-    Supports attribute values that are double- or single-quoted or unquoted. 
-    Returns four references, the first being the name of the attribute, and the other three being the value,
-    of which only one will be populated based on the way the value was quoted.
-    */
-    
-    put "\s(type|name|value)=(?:(\w+)|(?:" & quote & "(.*?)" & quote & ")|(?:\'(.*)\'))" into someReg
-    if matchchunk(someTag, someReg, sKey, eKey, sValue, eValue) is false then
-        put empty into someKey
-        put empty into someValue
-        return empty
-    else
-        put char sKey to eKey of someTag into someKey
-        put char sValue to eValue of someTag into someValue
-        
-        -- not sure why but empty quoted values rsults in empty sValue and eValue
-        if eValue is empty then
-            put the number of chars of someTag into lastValue
-            return sKey,eKey,0,lastValue
-        else
-            return sKey,eKey,sValue,eValue
-        end if
-    end if
+   -- replace lineFeed with empty in inputTag -- seems neessary
+   /*
+   -- from http://regexlib.com/REDetails.aspx?regexp_id=1195
+   
+   Pattern:  \s(type|name|value)=(?:(\w+)|(?:"(.*?)")|(?:\'(.*)\'))
+         Author: 	Carey Bishop
+   Matching Text: 	&lt;input type=&quot;text&quot; value='somevalue' name=fred&gt;
+   Non-Matching Text:	Any attributes that aren't &quot;type&quot;, &quot;name&quot;, or &quot;value&quot;
+   
+   Description
+   Returns the three most important attributes from an HTML &lt;input&gt; tag: 'type', 'name' and 'value'. 
+   Supports attribute values that are double- or single-quoted or unquoted. 
+   Returns four references, the first being the name of the attribute, and the other three being the value,
+   of which only one will be populated based on the way the value was quoted.
+   */
+   
+   put "\s(type|name|value)=(?:(\w+)|(?:" & quote & "(.*?)" & quote & ")|(?:\'(.*)\'))" into someReg
+   if matchchunk(someTag, someReg, sKey, eKey, sValue, eValue) is false then
+      put empty into someKey
+      put empty into someValue
+      return empty
+   else
+      put char sKey to eKey of someTag into someKey
+      put char sValue to eValue of someTag into someValue
+      
+      -- not sure why but empty quoted values rsults in empty sValue and eValue
+      if eValue is empty then
+         put the number of chars of someTag into lastValue
+         return sKey,eKey,0,lastValue
+      else
+         return sKey,eKey,sValue,eValue
+      end if
+   end if
 end html_ParamDeconstuct
- 
-function html_ExtractOpeningTag tagName, someHtml
-    local tagContents -- not sure if it is still required
-    replace lineFeed with empty in someHtml -- seems neessary
-    
-    put "(<\s*" & tagName & "\s[^>]*>)" into someReg
-    if matchtext(someHtml, someReg, tagContents) is false then
-        return empty
-    else
-        return tagContents
-    end if
-end html_ExtractOpeningTag
 
-function html_ExtractTag tagName, someHtml
+function html_ExtractOpeningTag tagName, someHtml
    local tagContents -- not sure if it is still required
    replace lineFeed with empty in someHtml -- seems neessary
    
-   put "(<\s*" & tagName & "\s[^>]*>.*<\s*/\s*" & tagName & "\s*>)" into someReg
-   
+   put "(<\s*" & tagName & "\s[^>]*>)" into someReg
    if matchtext(someHtml, someReg, tagContents) is false then
       return empty
    else
       return tagContents
    end if
-end html_ExtractTag
-
-function html_ExtractTagContents tagName, someHtml
-    replace lineFeed with empty in someHtml -- seems neessary
-    
-    -- get the first one only
-    -- using white space char "\s*" all over the place
-    local tagContents -- not sure if it is still required
-    
-    put "<\s*" & tagName & "\s+name\s*=[^>]*>(.*)<\s*/\s*" & tagName & "\s*>" into someReg
-    -- put "(?m)" before someReg -- does not seem to have an effect
-    
-    if matchtext(someHtml, someReg, tagContents) is false then
-        return empty
-    else
-        return tagContents
-    end if
-end html_ExtractTagContents
+end html_ExtractOpeningTag
 
 function extractTag someTagName, someHTML, startCharNum, wholeTag
-    -- version 9.2
-     
-    get whereIsTag (someTagName, someHTML, startCharNum, wholeTag)
-    if it is "Not Found" then
-        return empty
-    else
-        put item 1 of it into startTagCharNum
-        put item 2 of it into endTagCharNum
-        return char startTagCharNum to endTagCharNum of someHTML
-    end if
+   -- version 9.2
+   
+   get whereIsTag (someTagName, someHTML, startCharNum, wholeTag)
+   if it is "Not Found" then
+      return empty
+   else
+      put item 1 of it into startTagCharNum
+      put item 2 of it into endTagCharNum
+      return char startTagCharNum to endTagCharNum of someHTML
+   end if
 end extractTag
 
 function whereIsTag someTagName, someHTML, startCharNum, wholeTag
-  -- version original, 23 12 99
-  
-  put "<" & someTagName into starsomeHtml
-  put ">" into endText
-  put whereIsText(starsomeHtml, endtext, someHTML, startCharNum) into tagOfset
-  if tagOfset is "Not Found" then
-    return "Not Found"
-  else
-    put item 1 of tagOfset into startTagChar
-    put item 2 of tagOfset into endTagChar
-    get char (startTagChar + 1) to (endTagChar - 1) of someHTML
-    put word 1 of it into fullTagName
-    
-    if wholeTag is not false then
-      if someTagName is fullTagName then
-        return tagOfset
+   -- version original, 23 12 99
+   
+   put "<" & someTagName into starsomeHtml
+   put ">" into endText
+   put whereIsText(starsomeHtml, endtext, someHTML, startCharNum) into tagOfset
+   if tagOfset is "Not Found" then
+      return "Not Found"
+   else
+      put item 1 of tagOfset into startTagChar
+      put item 2 of tagOfset into endTagChar
+      get char (startTagChar + 1) to (endTagChar - 1) of someHTML
+      put word 1 of it into fullTagName
+      
+      if wholeTag is not false then
+         if someTagName is fullTagName then
+            return tagOfset
+         else
+            return whereIsTag(someTagName, someHTML, endTagChar, wholeTag)
+         end if
       else
-        return whereIsTag(someTagName, someHTML, endTagChar, wholeTag)
+         return tagOfset
       end if
-    else
-      return tagOfset
-    end if
-  end if
+   end if
 end whereIsTag
 
 
@@ -858,16 +1046,16 @@ Rag tag of entity handlers to tidy.
 */
 
 function html_ReplaceChars someText
-    put html_EntityList() into htmlEntities
-    put html_EntityCharNums() into entityCharNums
-    
-    repeat with ii = 1 to the number of items of htmlEntities
-        put item ii of entityCharNums in entityCharNum
-        put numtochar(entityCharNum) into someChar
-        put item ii of htmlEntities in htmlEntity
-        replace someChar with htmlEntity in someText
-    end repeat
-    return someText
+   put html_EntityList() into htmlEntities
+   put html_EntityCharNums() into entityCharNums
+   
+   repeat with ii = 1 to the number of items of htmlEntities
+      put item ii of entityCharNums into entityCharNum
+      put numtochar(entityCharNum) into someChar
+      put item ii of htmlEntities into htmlEntity
+      replace someChar with htmlEntity in someText
+   end repeat
+   return someText
 end html_ReplaceChars
 
 command html_DecodeUnicodeEntites @someHtml
@@ -967,13 +1155,13 @@ function html_ReplaceEntities someHtml
 end html_ReplaceEntities
 
 function html_EntityList
-    /*
-    Special characters (whose ASCII value is greater than 127) are encoded as HTML entities.
-    Revolution recognizes the following named entities:
-    */
-    get "&Aacute;,&aacute;,&Acirc;,&acirc;,&acute;,&AElig;,&aelig;,&Agrave;,&agrave;,&Aring;,&aring;,&Atilde;,&atilde;,&Auml;,&auml;,&brvbar;,&Ccedil;,&ccedil;,&cedil;,&cent;,&copy;,&curren;,&deg;,&divide;,&Eacute;,&eacute;,&Ecirc;,&ecirc;,&Egrave;,&egrave;,&ETH;,&eth;,&Euml;,&euml;,&frac12;,&frac14;,&frac34;,&gt;,&Iacute;,&iacute;,&Icirc;,&icirc;,&iexcl;,&Igrave;,&igrave;,&iquest;,&Iuml;,&iuml;,&laquo;,&lt;,&macr;,&micro;,&middot;,&nbsp;,&not;,&Ntilde;,&ntilde;,&Oacute;,&oacute;,&Ocirc;,&ocirc;,&Ograve;,&ograve;,&ordf;,&ordm;,&Oslash;,&oslash;,&Otilde;,&otilde;,&Ouml;,&ouml;,&para;,&plusmn;,&pound;,&raquo;,&reg;,&sect;,&shy;,&sup1;,&sup2;,&sup3;,&szlig;,&THORN;,&thorn;,&times;,&Uacute;,&uacute;,&Ucirc;,&ucirc;,&Ugrave;,&ugrave;,&uml;,&Uuml;,&uuml;,&Yacute;,&yacute;,&yen;,&yuml"
-    put "&amp;" & comma before it
-    return it
+   /*
+   Special characters (whose ASCII value is greater than 127) are encoded as HTML entities.
+   Revolution recognizes the following named entities:
+   */
+   get "&Aacute;,&aacute;,&Acirc;,&acirc;,&acute;,&AElig;,&aelig;,&Agrave;,&agrave;,&Aring;,&aring;,&Atilde;,&atilde;,&Auml;,&auml;,&brvbar;,&Ccedil;,&ccedil;,&cedil;,&cent;,&copy;,&curren;,&deg;,&divide;,&Eacute;,&eacute;,&Ecirc;,&ecirc;,&Egrave;,&egrave;,&ETH;,&eth;,&Euml;,&euml;,&frac12;,&frac14;,&frac34;,&gt;,&Iacute;,&iacute;,&Icirc;,&icirc;,&iexcl;,&Igrave;,&igrave;,&iquest;,&Iuml;,&iuml;,&laquo;,&lt;,&macr;,&micro;,&middot;,&nbsp;,&not;,&Ntilde;,&ntilde;,&Oacute;,&oacute;,&Ocirc;,&ocirc;,&Ograve;,&ograve;,&ordf;,&ordm;,&Oslash;,&oslash;,&Otilde;,&otilde;,&Ouml;,&ouml;,&para;,&plusmn;,&pound;,&raquo;,&reg;,&sect;,&shy;,&sup1;,&sup2;,&sup3;,&szlig;,&THORN;,&thorn;,&times;,&Uacute;,&uacute;,&Ucirc;,&ucirc;,&Ugrave;,&ugrave;,&uml;,&Uuml;,&uuml;,&Yacute;,&yacute;,&yen;,&yuml"
+   put "&amp;" & comma before it
+   return it
 end html_EntityList
 
 function html_EntityCharNums
@@ -992,28 +1180,28 @@ function html_EntityCharNums
 end html_EntityCharNums
 
 function html_EntityTableList
-    -- arrays are not able to be case insensitive
-    get "&Aacute;,231|&aacute;,135|&Acirc;,229|&acirc;,137|&acute;,171|&AElig;,174|&aelig;,190|&Agrave;,203|&agrave;,136|&Aring;,129|&aring;,140|&Atilde;,204|&atilde;,139|&Auml;,128|&auml;,138|&brvbar;,3|&Ccedil;,130|&ccedil;,141|&cedil;,252|&cent;,162|&copy;,169|&curren;,219|&deg;,161|&divide;,214|&Eacute;,131|&eacute;,142|&Ecirc;,230|&ecirc;,144|&Egrave;,233|&egrave;,143|&ETH;,15|&eth;,19|&Euml;,232|&euml;,145|&frac12;,12|&frac14;,11|&frac34;,14|&gt;,62|&Iacute;,234|&iacute;,146|&Icirc;,235|&icirc;,148|&iexcl;,193|&Igrave;,237|&igrave;,147|&iquest;,192|&Iuml;,236|&iuml;,149|&laquo;,199|&lt;,60|&macr;,248|&micro;,181|&middot;,225|&nbsp;,202|&not;,194|&Ntilde;,132|&ntilde;,150|&Oacute;,238|&oacute;,151|&Ocirc;,239|&ocirc;,153|&Ograve;,241|&ograve;,152|&ordf;,187|&ordm;,188|&Oslash;,175|&oslash;,191|&Otilde;,205|&otilde;,155|&Ouml;,133|&ouml;,154|&para;,166|&plusmn;,177|&pound;,163|&raquo;,200|&reg;,168|&sect;,164|&shy;,4|&sup1;,7|&sup2;,5|&sup3;,6|&szlig;,167|&THORN;,18|&thorn;,21|&times;,16|&Uacute;,242|&uacute;,156|&Ucirc;,243|&ucirc;,158|&Ugrave;,244|&ugrave;,157|&uml;,172|&Uuml;,134|&uuml;,159|&Yacute;,17|&yacute;,20|&yen;,180|&yuml,216"
-    return it
+   -- arrays are not able to be case insensitive
+   get "&Aacute;,231|&aacute;,135|&Acirc;,229|&acirc;,137|&acute;,171|&AElig;,174|&aelig;,190|&Agrave;,203|&agrave;,136|&Aring;,129|&aring;,140|&Atilde;,204|&atilde;,139|&Auml;,128|&auml;,138|&brvbar;,3|&Ccedil;,130|&ccedil;,141|&cedil;,252|&cent;,162|&copy;,169|&curren;,219|&deg;,161|&divide;,214|&Eacute;,131|&eacute;,142|&Ecirc;,230|&ecirc;,144|&Egrave;,233|&egrave;,143|&ETH;,15|&eth;,19|&Euml;,232|&euml;,145|&frac12;,12|&frac14;,11|&frac34;,14|&gt;,62|&Iacute;,234|&iacute;,146|&Icirc;,235|&icirc;,148|&iexcl;,193|&Igrave;,237|&igrave;,147|&iquest;,192|&Iuml;,236|&iuml;,149|&laquo;,199|&lt;,60|&macr;,248|&micro;,181|&middot;,225|&nbsp;,202|&not;,194|&Ntilde;,132|&ntilde;,150|&Oacute;,238|&oacute;,151|&Ocirc;,239|&ocirc;,153|&Ograve;,241|&ograve;,152|&ordf;,187|&ordm;,188|&Oslash;,175|&oslash;,191|&Otilde;,205|&otilde;,155|&Ouml;,133|&ouml;,154|&para;,166|&plusmn;,177|&pound;,163|&raquo;,200|&reg;,168|&sect;,164|&shy;,4|&sup1;,7|&sup2;,5|&sup3;,6|&szlig;,167|&THORN;,18|&thorn;,21|&times;,16|&Uacute;,242|&uacute;,156|&Ucirc;,243|&ucirc;,158|&Ugrave;,244|&ugrave;,157|&uml;,172|&Uuml;,134|&uuml;,159|&Yacute;,17|&yacute;,20|&yen;,180|&yuml,216"
+   return it
 end html_EntityTableList
 
 function html_EntityArray
-    -- arrays are not able to be case insensitive
-    get html_EntityTableList()
-    split it with "|" and comma
-    return it
+   -- arrays are not able to be case insensitive
+   get html_EntityTableList()
+   split it with "|" and comma
+   return it
 end html_EntityArray
 
 function html_EntityToCharNum htmlEntity
-    put html_EntityList() into entityList
-    put html_EntityCharNums() into entityCharNums
-    set the wholematches to true
-    put itemoffset(htmlEntity, entityList) into itemNum
-    return item itemNum of entityCharNums
-     
-    -- arrays are not able to be case insensitive
-    put html_EntityArray() into entityArray
-    return entityArray [htmlEntity]
+   put html_EntityList() into entityList
+   put html_EntityCharNums() into entityCharNums
+   set the wholematches to true
+   put itemoffset(htmlEntity, entityList) into itemNum
+   return item itemNum of entityCharNums
+   
+   -- arrays are not able to be case insensitive
+   put html_EntityArray() into entityArray
+   return entityArray [htmlEntity]
 end html_EntityToCharNum
 
 

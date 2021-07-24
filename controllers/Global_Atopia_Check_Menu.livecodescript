@@ -1,16 +1,97 @@
-﻿script "Global_Atopia_Check_Menu"
+﻿script "Global | Atopia | Check | Menu"
 --> MetaData
 -
-license: GPLv3
-name: Global_Atopia_Check_Menu
-type: controller
-version: 0.1
 
 
 --> Global | Atopia | Check | Menu
 -
+on menu_CheckSitesAreReachable indexView
+   put atopia_ListFederationSitePages() into allSites
+   set the displayed_Index ["Good Site Pages"] of indexView to allSites
+   --
+   lcw_Answer "Test each of these sites listed on 'sites.fedwiki.org' and check that they are reachable?", indexView
+   --
+   repeat for each line wikiDomain in allSites
+      display_Spin wikiDomain, indexView
+      put the result into lineNum
+      --
+      set the cursor to watch
+      set the socketTimeoutInterval to 100
+      if fedwiki_WikiExists (wikiDomain) then
+         set the line_Colour [lineNum] of indexView to "green"
+      else
+         set the deleted_Line of indexView to lineNum
+         atopia_DeleteFederationSitePage wikiDomain
+      end if
+   end repeat   
+end menu_CheckSitesAreReachable
+
+on menu_CheckAtopiaFedrayRoster indexView
+   put atopia_FetchRosterDomains() into atopiaRosterDomains
+   set the displayed_Index ["Atopia Roster"] of indexView to atopiaRosterDomains
+   --
+   put atopia_ListDomainsFromFedray() into atopiaFedrayDomains
+   --
+   if word 1 to -1 of atopiaRosterDomains = word 1 to -1 of atopiaFedrayDomains then
+      lcw_Answer "The atopia domain index is the same for both the Atopia Fedray and roster", indexView
+   else
+      set the wholematches to true
+      repeat with rLineNum = the number of lines of atopiaRosterDomains down to 1
+         put line rLineNum of atopiaRosterDomains into rosterLine
+         put lineOffset (rosterLine, atopiaFedrayDomains ) into fLineNum
+         if fLineNum is not 0 then
+            delete line rLineNum of atopiaRosterDomains 
+            delete line fLineNum of atopiaFedrayDomains 
+         end if
+      end repeat
+      --
+      display_AtopiaRoster atopiaRosterDomains, "Atopia Index"
+      display_AtopiaRoster atopiaFedrayDomains, "Fedray"
+      --
+      lcw_AnswerWarning "The atopia domain index is different for the Atopia Fedray and Roster!", indexView
+   end if
+end menu_CheckAtopiaFedrayRoster
+
+on _
+end _
+
+on menu_DisplayMissingSitePages indexView
+   put atopia_ListSitePagesToCreate() into sitesToCreate
+   set the displayed_Index ["Missing Site Pages"] of indexView to sitesToCreate
+end menu_DisplayMissingSitePages
+
+on menu_CreateMissingSitePages indexView
+   put atopia_ListSitePagesToCreate() into sitesToCreate
+   set the displayed_Index ["Missing Site Pages"] of indexView to sitesToCreate
+   --
+   lcw_Answer "Create a new site page for each of these missing pages?"
+   --
+   atopia_CreateFederationSitePages sitesToCreate, indexView
+   --
+   put atopia_ListSitePagesToCreate() into sitesToCreate
+   set the displayed_Index ["Missing Site Pages"] of indexView to sitesToCreate
+end menu_CreateMissingSitePages
+
+on _
+end _
+
+on menu_CheckThisWeeks displayView
+   put federation_FetchRecentSites ("1 week", true)  into thisWeeksModifiedSites
+   put fedray_FetchRecentSites() into fedraySites
+   --
+   if fedraySites = thisWeeksModifiedSites is false then
+      display_Data thisWeeksModifiedSites, "federation_ThisWeeksModifiedSites (true)", "Federation"
+      display_Data fedraySites, "fedray_FetchRecentSites (true)", "Federation"
+   else
+      lcw_Answer "Same", displayView
+   end if
+end menu_CheckThisWeeks
+
+
+--> Dev | Local | Menu
+-
 on menu_FindLocalGoodUnhosted indexView
-   lcw_AnswerSheet "This is slow as we rotate through all local good folders and check they have A records for Atopia!"
+   lcw_Answer "This is slow as we rotate through all local good folders and check they have A records for Atopia!", indexView
    set the cursor to watch
    --
    put atopia_ListLocalGoodFolders() into localGoodFolders
@@ -22,7 +103,7 @@ end menu_FindLocalGoodUnhosted
 
 on menu_CheckWithoutOwners indexView
    put "Check each local folder (good or bad) and see if they are in atopia_GetOwnershipArray()?" into someQuestion
-   dispatch "lcw_AnswerSheet" to indexView with someQuestion
+   lcw_Answer someQuestion, indexView
    --
    put atopia_GetOwnershipArray() into ownershipArray
    --
@@ -39,19 +120,19 @@ on menu_CheckWithoutOwners indexView
    if unownedFolders is not empty then
       atopia_SetDisplay indexView, unownedFolders, "Unowned Folders"
       put "These remote good folders have NOT been entered in ownershipArray! Do you want to rebuild the ownershipArray?" into someQuestion
-      dispatch "lcw_AnswerSheet" to indexView with someQuestion
+      lcw_Answer someQuestion, indexView
       --
       breakpoint
       menu_BuildOwnershipArray indexView
    else
       put "Remote good folders have all been entered in ownershipArray!" into someQuestion
-      dispatch "lcw_AnswerSheet" to indexView with someQuestion
+      lcw_Answer someQuestion, indexView
    end if
 end menu_CheckWithoutOwners
 
 on menu_CheckLocalBad indexView
    put "Check each local bad folder and fix depending on if it is remote bad or good folder?" into someQuestion
-   dispatch "lcw_AnswerSheet" to indexView with someQuestion
+   lcw_Answer someQuestion, indexView
    --
    put atopia_ListLocalBadFolders() into localBadFolders
    put atopia_GetData() into atopiaData
@@ -81,7 +162,7 @@ end menu_CheckLocalBad
 
 on menu_CheckLocalUnhosted indexView
    put "Check each local unhosted folder and check there is a corresponding good remote folder?" into someQuestion
-   dispatch "lcw_AnswerSheet" to indexView with someQuestion
+   lcw_Answer someQuestion, indexView
    --
    put atopia_ListLocalUnhostedFolders() into unhostedFolders
    put atopia_FetchFolders() into remoteWikiFolders
@@ -98,7 +179,7 @@ end menu_CheckLocalUnhosted
 
 on menu_CheckGoodFolders indexView
    put "Check to see if local good folders have DNS settings?" into someQuestion
-   dispatch "lcw_AnswerSheet" to indexView with someQuestion
+   lcw_Answer someQuestion, indexView
    --
    put atopia_ListLocalGoodFolders() into goodFolders
    --
@@ -120,12 +201,12 @@ end menu_CheckGoodFolders
 
 on menu_CheckLocalBadFolders indexView
    put "Check missing Local Bad folders to see if they are in the atopiaData?" into someQuestion
-   dispatch "lcw_AnswerSheet" to indexView with someQuestion
+   lcw_Answer someQuestion, indexView
    --
    put atopia_MissingRemoteFolderArray() into notThereArray
    put notThereArray ["Local Bad folder missing"] into badMissingIndex
    if badMissingIndex is empty then
-      lcw_WarnAndExit "There are no bad missing folders!"
+      lcw_AnswerWarning "There are no bad missing folders!", indexView
    end if
    
    breakpoint
@@ -144,20 +225,20 @@ on menu_CheckLocalBadFolders indexView
    atopia_SetDisplay indexView, domainNames, "Bad Folders"
 end menu_CheckLocalBadFolders
 
-on menu_TestFetchedSameAsLocal
+on menu_TestFetchedSameAsLocal indexView
    put "Check atopia_ListLocalWikiFolders() = atopia_FetchFolders() ?" into someQuestion
-   dispatch "lcw_AnswerSheet" to indexView with someQuestion
+   lcw_Answer someQuestion, indexView
    --
    set the cursor to watch
    put atopia_FetchFolders() into fetchedFolders
    put atopia_ListLocalWikiFolders() into localFolders
    --
    if localFolders = fetchedFolders then
-      lcw_AnswerSheet "Good server folders are the same as local folders!"
+      lcw_Answer "Good server folders are the same as local folders!", indexView
    else
       display_Lines fetchedFolders, "Fetched,atopia_FetchFolders()"
       display_Lines localFolders, "Local,atopia_ListLocalWikiFolders()"
-      lcw_AnswerSheet "Good server folders are different from local folders!"
+      lcw_Answer "Good server folders are different from local folders!", indexView
    end if
 end menu_TestFetchedSameAsLocal
 

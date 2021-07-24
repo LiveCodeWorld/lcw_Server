@@ -59,5 +59,5 @@ private command _DisplayDomains domainNames, displayTitle, stackLabel, indexView
    -- set the title_Menu of indexView to "Global | Ocean | Tree | Menu"
    -- set the line_Menu of indexView to "Global | Ocean | Line | Menu"
    --
-   -- set the event_Target of indexView to callingObject
+   -- set the mouse_Target of indexView to callingObject
 end _DisplayDomains

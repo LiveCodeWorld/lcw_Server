@@ -25,6 +25,26 @@ constant DynadotDomainApiHelpUrl = "https://www.dynadot.com/domain/api2.html"
 local DynadotApiKey
 
 
+--> Working on
+-
+function dynadot_CheckError someXML
+   switch line 1 of someXML
+      case "error,unknown command"
+         return someXML
+      case "error,invalid key"
+         return someXML
+      default
+         -- case "ok"
+         /*
+         ok,
+         
+         success,ns1.digitalocean.com,ns2.digitalocean.com,ns3.digitalocean.com,,,,,,,,,,,Name Servers
+         */
+         return empty
+   end switch
+end dynadot_CheckError
+
+
 --> Dynadot | Rest | Authentication
 -
 function dynadot_GetApiKey   
@@ -73,6 +93,7 @@ function dynadot_GetAdvancedXML someCommand, pKey, pValue
    end repeat
    --
    put url someUrl into someXML
+   --
    if dynadot_CheckError (someXML) is not empty then
       breakpoint
       return empty
@@ -109,6 +130,17 @@ function dynadot_ConstructAdvancedURL someCommand, pKey, pValue
 end dynadot_ConstructAdvancedURL
 
 
+--> Deps
+-
+function secret_Get secretName
+   -- for server use only
+   if the environment is not "server" then pass "secret_Get"
+   --
+   put rigFetchConfigItem (secretName) into someSecret
+   return someSecret
+end secret_Get
+
+
 --> Private
 -
 private command dynadot_XmlResponseErrorExit responseArray
@@ -125,20 +157,3 @@ private function dynadot_GetTestResponse responseArray
    put responseArray ["ListDomainInfoHeader"] ["ResponseCode"] is 0 into someBoolean
    return someBoolean
 end dynadot_GetTestResponse
-
-function dynadot_CheckError someXML
-   switch line 1 of someXML
-      case "error,unknown command"
-         return someXML
-      case "error,invalid key"
-         return someXML
-      default
-         -- case "ok"
-         /*
-         ok,
-         
-         success,ns1.digitalocean.com,ns2.digitalocean.com,ns3.digitalocean.com,,,,,,,,,,,Name Servers
-         */
-         return empty
-   end switch
-end dynadot_CheckError

@@ -1,230 +1,269 @@
-﻿script "Global_Atopia_Line_Menu"
+﻿script "Global | Atopia | Line | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Atopia_Line_Menu
+name: Global | Atopia | Line | Menu
 type: controller
 version: 0.1
 
 
---> Global | Atopia | Line | Menu
+--> Menu | Init
 -
-on submenu_Google
-   return "Global | Google | Console | Title | Line | Menu"
-end submenu_Google
+local LocalArray
 
-on menu_LaunchDomain indexView
-   put the selected_Line of indexView into wikiDomain
-   put "http://" & wikiDomain into someURL
-   --
-   launch url someURL
-end menu_LaunchDomain
-
-on menu_DisplayWikiPages indexView
-   put the selected_Line of indexView into wikiDomain
-   display_AtopiaWikiPages wikiDomain
-end menu_DisplayWikiPages
-
-on _
-end _
-
-on menu_IsInRoster indexView
-   put the selected_Line of indexView into wikiDomain
-   put atopia_IsInRoster (wikiDomain)
-end menu_IsInRoster
-
-on menu_IsInDomainArray indexView
-   put the selected_Line of indexView into wikiDomain
-   put atopia_IsInDomainArray (wikiDomain)
-end menu_IsInDomainArray
-   
-on menu_AddToOwnership indexView
-   put the selected_Line of indexView into wikiDomain
-   atopia_AddDomainToOwnershipArray wikiDomain
-end menu_AddToOwnership
-
-on menu_DeleteFromOwnership indexView
-   put the selected_Line of indexView into wikiDomain
-   atopia_DeleteFromOwnershipArray wikiDomain
-end menu_DeleteFromOwnership
-
-on _
-end _
-
-on menu_CheckDomain indexView
+getprop menu_Target [tObject]
    set the cursor to watch
-   put the selected_Line of indexView into domainName
+   put the  display_View of tObject into displayView
+   --
+   put _GetWikiDomain (displayView) into subDomain
+   put subDomain into LocalArray ["subDomain"]
+   --
+   put atopia_SiteIsIndexed (subDomain) into siteIsIndexed
+   put siteIsIndexed into LocalArray ["siteIsIndexed"]
+   --
+   put atopia_IsInDomainArray (subDomain) into isInDomainArray
+   put isInDomainArray into LocalArray ["isInDomainArray"]
+   --
+   put atopia_IsInRoster (subDomain) into isInRoster
+   put isInRoster into LocalArray ["isInRoster"]
+   --
+   put fedray_IsIndexed (subDomain) into isInFederation
+   put isInFederation into LocalArray ["isInFederation"]
+   --
+   put siteIsIndexed AND isInDomainArray AND isInRoster AND isInFederation into LocalArray ["isIndexed"]
+   --
+   _CheckAndColourDomain subDomain, displayView, true
+   put the result into LocalArray ["DomainIsGood"]
+   --
+   return displayView
+end menu_Target
+
+private command _CheckAndColourDomain domainName, indexView, pDontAnswer
    put the line_Number [domainName] of indexView into lineNum
    --
-   if atopia_WikiHasPages (domainName) then
-      if atopia_WikiIsHosted (domainName) then
+   put atopia_WikiHasPages (domainName) into hasPages 
+   if hasPages then
+      put digitalocean_FetchDropletIP ("Atopia") into dropletIP
+      --
+      put dig_GetIP (domainName) into testIP
+      put testIP = dropletIP into isHosted
+      --
+      if isHosted then
          set the line_Colour [lineNum] of indexView to green
+         return true
       else
          set the line_Colour [lineNum] of indexView to blue
+         if pDontAnswer is true then return false
+         --
+         put testIP & CR & dig_GetNS (domainName)
+         lcw_AnswerWarning "Wiki is not hosted!", indexView
+         return false
       end if
    else
       set the line_Colour [lineNum] of indexView to red
+      if pDontAnswer is true then return false
+      --
+      lcw_AnswerWarning "Wiki has no pages", indexView
+      return false
    end if
-end menu_CheckDomain
+end _CheckAndColourDomain
 
-on menu_MoveOrUpdateAtopiaArray indexView
-   put the selected_Line of indexView into wikiDomain
-   --
-   atopia_UpdateArrayAndMove wikiDomain
-   put the result into resultArray
-   --
-   display_AtopiaUpdateResult resultArray, indexView
-end menu_MoveOrUpdateAtopiaArray
+getprop isIndexed_Param [indexView]
+   put LocalArray ["isIndexed"] into isIndexed
+   return isIndexed
+end isIndexed_Param
 
-on menu_MoveToTrash indexView
-   put the selected_Line of indexView into wikiDomain
-   --  
-   put "Move" && kwote (wikiDomain) && "to the _trash folder?" into someQuestion
-   lcw_AnswerSheet someQuestion
-   --
-   set the cursor to watch
-   --
-   atopia_MoveToTrash wikiDomain
-   put the result into atopiaArray
-   --
-   set the deleted_Line of indexView to wikiDomain
-end menu_MoveToTrash
+getprop isIndexed_Params
+   return "true,false"
+end isIndexed_Params
 
-on menu_MoveToUnhosted indexView
-   put the selected_Line of indexView into wikiDomain
-   put "Move" && kwote (wikiDomain) && "to the _unhosted_sites folder?" into someQuestion
-   lcw_AnswerSheet someQuestion
+getprop isInFederation_Param [indexView]
+   put LocalArray ["isInFederation"] into isInRoster
+   return isInRoster
+end isInFederation_Param
+
+getprop isInFederation_Params
+   return "true,false"
+end isInFederation_Params
+
+getprop isInSites_Param [indexView]
+   put LocalArray ["siteIsIndexed"] into siteIsIndexed
+   return siteIsIndexed
+end isInSites_Param
+
+getprop isInSites_Params
+   return "true,false"
+end isInSites_Params
+
+getprop isInDomainArray_Param [indexView]
+   put LocalArray ["isInDomainArray"] into isInDomainArray
+   return isInDomainArray
+end isInDomainArray_Param
+
+getprop isInDomainArray_Params
+   return "true,false"
+end isInDomainArray_Params
+
+getprop isInRoster_Param [indexView]
+   put LocalArray ["isInRoster"] into isInRoster
+   return isInRoster
+end isInRoster_Param
+
+getprop isInRoster_Params
+   return "true,false"
+end isInRoster_Params
+
+getprop disabled_SiteIsIndexed [indexView]
+   if LocalArray ["DomainIsGood"] is true then
+      return false
+   else
+      return true
+   end if
+end disabled_SiteIsIndexed
+
+getprop disabled_IsInDomainArray [indexView]
+   if LocalArray ["DomainIsGood"] is true then
+      return false
+   else
+      return true
+   end if
+end disabled_IsInDomainArray
+
+getprop disabled_IsInRoster [indexView]
+   if LocalArray ["DomainIsGood"] is true then
+      return false
+   else
+      return true
+   end if
+end disabled_IsInRoster
+
+getprop disabled_DisplayDomainFolders [indexView]
+   put LocalArray ["subDomain"] into subDomain
    --
-   set the cursor to watch
-   atopia_MoveToUnhosted wikiDomain
-   put the result into atopiaArray
-   
-   set the deleted_Line of indexView to wikiDomain
-end menu_MoveToUnhosted
+   set the itemdelimiter to "."
+   if the number of items of subDomain = 2 then
+      return false
+   else
+      return "delete"
+   end if
+end disabled_DisplayDomainFolders
+
+getprop disabled_DisplaySubDomainFolders [indexView]
+   put LocalArray ["subDomain"] into subDomain
+   --
+   set the itemdelimiter to "."
+   if the number of items of subDomain = 2 then
+      return "delete"
+   else
+      return false
+   end if
+end disabled_DisplaySubDomainFolders
+
+private function _GetWikiDomain displayView
+   put the top_Line of displayView into subDomain
+   -- put the selected_Line of displayView into subDomain
+   return subDomain
+end _GetWikiDomain
+
+private command _SetInfo displayView, @wikiDomain, @pSlug
+   put _GetWikiDomain (displayView) into wikiDomain
+   -- put the selected_Line of displayView into pageTitle
+   -- put the top_Array of displayView into domainArray
+   put the selected_Array of displayView into pageInfoArray
+   put pageInfoArray ["slug"] into pSlug
+end _SetInfo
+
+
+--> Global | Atopia | Line | Menu
+-
+on menu_DisplayPages indexView
+   put _GetWikiDomain (indexView) into subDomain
+   --
+   display_WikiDomain subDomain
+end menu_DisplayPages
+
+on menu_DisplayRecentPages indexView
+   put _GetWikiDomain (indexView) into subDomain
+   --
+   display_RecentDomainWikiPages subDomain
+end menu_DisplayRecentPages
 
 on _
 end _
 
-on submenu_Dev
+on insert_Menu
+   return "Global | Atopia | Build | Line | Menu"
+end insert_Menu
+
+on _
+end _
+
+on menu_RenameWiki indexView
+   put _GetWikiDomain (indexView) into oldDomainName
+   --
+   put lcw_Ask ("Change the name of this wiki folder...", oldDomainName) into newDomainName
+   if newDomainName is oldDomainName then
+      lcw_AnswerWarning "Not renamed. Choose a new name?", indexView
+   end if
+   --
+   set the displayed_Line of indexView to newDomainName
+   _CheckAndColourDomain newDomainName, indexView
+end menu_RenameWiki
+
+on _
+end _
+
+on menu_DisplayDomainFolders indexView
+   put _GetWikiDomain (indexView) into subDomain
+   url_DeconstructTopDomain subDomain, topDomainName, subDomainBit
+   --
+   display_AtopiaDomainFolders topDomainName
+end menu_DisplayDomainFolders
+
+on menu_DisplaySubDomainFolders indexView
+   put _GetWikiDomain (indexView) into subDomain
+   url_DeconstructTopDomain subDomain, topDomainName, subDomainBit
+   --
+   display_AtopiaSubDomainFolders topDomainName
+end menu_DisplaySubDomainFolders
+
+on _
+end _
+
+on subMenu_Dev
    return "Dev | Menu"
-end submenu_Dev
-
-
---> Global | Atopia | Line | Menu | Props
--
-
---> Global | Atopia | Line | Menu | Disabled
--
-getprop disabled_AddToOwnership
-   return true
-end disabled_AddToOwnership
-
-getprop disabled_DeleteFromOwnership
-   return true
-end disabled_DeleteFromOwnership
-
+end subMenu_Dev
 
 
 --> Dev | Menu
 -
-on menu_SetFarm indexView
-   put the selected_Line of indexView into domainName
+on menu_CheckDomain indexView
+   set the cursor to watch
+   put _GetWikiDomain (indexView) into subDomain
    --
-   put atopia_FetchNameServerType (domainName) into nsType
-   put atopia_FetchFarmStatus (nsType)
-end menu_SetFarm
+   _CheckAndColourDomain subDomain, indexView
+end menu_CheckDomain
 
-on menu_GetConfigInfo indexView
-   put the selected_Line of indexView into domainName
+on menu_TrashDomain displayView
+   set the cursor to watch
+   put _GetWikiDomain (displayView) into wikiDomain
    --
-   put atopia_GetDomainConfigArray (domainName) into domainConfigArray
-   put atopia_GetDomainOwnerIdPath (domainName)
-   --
-   display_Array domainConfigArray
-end menu_GetConfigInfo
-
-on menu_DisplayDomainInfo indexView
-   put the selected_Line of indexView into domainName
-   put dig_GetNS (domainName) into nameServers
-   switch
-      case line 1 of nameServers ends with ".digitalocean.com."
-         put digitalocean_GetDomainArray (domainName) into domainArray
-         display_Array domainArray, "digitalocean_GetDomainArray"
-         break
-      case line 1 of nameServers ends with ".dynadot.com."
-         lcw_Answer "Nameservers are Dyanadot Hosted"
-         break
-      default
-         put nameServers
-         lcw_Answer "Nameservers are from someone else!"
-   end switch
-end menu_DisplayDomainInfo
-
-on menu_FindAuthor indexView
-   put the selected_Line of indexView into wikiDomain
-   --
-   put atopia_FetchEmail (wikiDomain) into ownerEmail
-   put ownerEmail
-end menu_FindAuthor
-
-on _
-end _
-
-on menu_Dig indexView
-   put the selected_Line of indexView into wikiDomain
-   --
-   put dig_GetIP (wikiDomain) into someIP
-   put dig_GetNS (wikiDomain) into nameServers
-   -- put dig_GetDomain (someIP) into rAddress
-   --
-   put someIP & CR & nameServers
-end menu_Dig
-
-on menu_LsArray indexView
-   -- general ls file info for the folder
-   put the selected_Line of indexView into wikiDomain
-   put atopia_FetchDomainLsArray (wikiDomain) into lsArray
-   --
-   put wikiDomain & ",LS Files" into displayTitle
-   display_Array lsArray, displayTitle
-end menu_LsArray
-
-on menu_WikiPageFileArray indexView
-   -- general ls file info for the folder
-   put the selected_Line of indexView into wikiDomain
-   put atopia_FetchWikiPageFileArray (wikiDomain) into fileArray
-   --
-   put wikiDomain & ",atopia_FetchWikiPageFileArray()" into displayTitle
-   display_Array fileArray, displayTitle
-end menu_WikiPageFileArray
-
-on _
-end _
-
-on menu_FindOwnerArray indexView
-   put the selected_Line of indexView into wikiDomain
-   --
-   put atopia_FetchAndFindOwnerArray (wikiDomain) into ownerArray
-   display_AtopiaOwnerArray ownerArray, wikiDomain
-end menu_FindOwnerArray
-
-on menu_FetchPersonaArray indexView
-   put the selected_Line of indexView into wikiDomain
-   --
-   put atopia_FetchPersonaEmail (wikiDomain) into personaEmail
-   put atopia_ConstructPersonaOwnerArray (personaEmail) into ownerArray
-   --
-   display_AtopiaOwnerArray ownerArray, wikiDomain
-   put personaEmail
-end menu_FetchPersonaArray
-
-
---> Private
--
-private command _SetDisplayDomainNames indexView, domainNames, whichFolders
-   lock screen
-   set the label of the stack_Object of indexView to "atopia_FetchNewFolders()"
-   set the atopia_ColouredLines of indexView to domainNames
-   set the title_Text of indexView to whichFolders
-   unlock screen
-end _SetDisplayDomainNames
+   if wikiDomain is empty then
+      lcw_AnswerWarning "No domain selected!", displayView
+   end if
+   
+   put atopia_CheckDomain (wikiDomain) into someError
+   if someError is empty then
+      lcw_AnswerWarning "Domain is not faulty!", displayView
+   else
+      atopia_TrashDomain wikiDomain
+      --
+      put the result into trashAction
+      if trashAction is empty then
+         lcw_AnswerWarning "Domain is good. Nothing changed", displayView
+      else
+         set the deleted_Line of displayView to wikiDomain
+         put trashAction
+      end if
+   end if
+end menu_TrashDomain

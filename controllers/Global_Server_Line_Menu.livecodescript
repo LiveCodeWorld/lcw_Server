@@ -1,8 +1,8 @@
-﻿script "Global_Server_Line_Menu"
+﻿script "Global | Server | Line | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Server_Line_Menu
+name: Global | Server | Line | Menu
 type: controller
 version: 0.1
 

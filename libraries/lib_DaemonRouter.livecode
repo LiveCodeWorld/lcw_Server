@@ -61,7 +61,7 @@ command process_GET someRoute, socketID, requestArray
          -- put fedwiki_GetLocalPageArray (pageSlug) into localPageArray
          
          put "A particular tool goes here:" into someComment
-         put fedwiki_ConstructNewPageArray ("Hello", someComment) into pageArray
+         put pageArray_Construct ("Hello", someComment) into pageArray
          
          put "* [[Test Tool]]" into someMarkdown
          put CR & "* [[Another Tool]]" after someMarkdown
@@ -75,7 +75,7 @@ command process_GET someRoute, socketID, requestArray
          return the result
       case someRoute = "tools-index.json"
          put "An nice tool index goes here:" into someComment
-         put fedwiki_ConstructNewPageArray ("Tools Index", someComment) into pageArray
+         put pageArray_Construct ("Tools Index", someComment) into pageArray
          
          put "* [[Test Tool]]" into someMarkdown
          put CR & "* [[Another Tool]]" after someMarkdown
@@ -88,7 +88,7 @@ command process_GET someRoute, socketID, requestArray
       case someRoute = "/hello.json"
          put "This is a test of Hello World. At round about" into someComment
          put the time after someComment
-         put fedwiki_ConstructNewPageArray ("Hello", someComment) into someArray
+         put pageArray_Construct ("Hello", someComment) into someArray
          put json_FromArray (someArray) into someJSON
          daemon_SendJSON socketID, someJSON
          return the result

@@ -9,6 +9,23 @@ version: 0.3
 
 --> Working on
 -
+function url_GetDomain someURL
+   -- url_Deconstruct wikiURL, someProtocol, wikiDomain, urlPath, shortName, fileExtension, uName, pWord
+   set the itemdelimiter to "?"
+   get item 1 of someURL
+   set the itemdelimiter to slash
+   put item 3 of someURL into urlDomain
+   return urlDomain
+end url_GetDomain
+
+function url_FileEnding droppedURL
+   set the itemdelimiter to "?"
+   get item 1 of droppedURL
+   set the itemdelimiter to "."
+   put item -1 of it into qEnd
+   return qEnd
+end url_FileEnding
+
 command url_DeconstructTopDomain domainString, @topDomainName, @subDomainBit
    -- a quick hack
    -- could check it is a url first
@@ -138,11 +155,23 @@ end url_CheckDomainIndex
 
 command url_SortDomainIndex @domainNames
    set the itemdelimiter to "."
-   -- sort domainNames by item -1 of each & item -2 of each & item -3 of each & item -4 of each
-   -- sort domainNames by item -2 of each & item -3 of each & item -4 of each & item -1 of each
-   sort domainNames by item -2 of each & item -3 of each & item -4 of each
-   return word 1 to -1 of domainNames
+   sort domainNames by item -2 of each & item -3 of each & item -4 of each & item -5 of each
+   put word 1 to -1 of domainNames into domainNames
+   line_DeleteTail domainNames
+   return domainNames
 end url_SortDomainIndex
+
+command url_FilterDomainIndex @domainIndex, topDomain
+   if topDomain is empty then return empty
+   put "*." & topDomain into someFilter
+   set the wholematches to true
+   put topDomain is among the lines of domainIndex into topThere
+   filter domainIndex with someFilter
+   if topThere then
+      put topDomain & CR before domainIndex
+   end if
+   return someFilter
+end url_FilterDomainIndex
 
 function url_ListSubdomains domainName, domainNameIndex
    put url_ConstructTopLevelDomainArray (domainNameIndex) into domainNameArray

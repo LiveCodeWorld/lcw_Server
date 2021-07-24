@@ -1,8 +1,8 @@
-﻿script "Global_Azure_Tree_Line_Menu"
+﻿script "Global | Azure | Tree | Line | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Azure_Tree_Line_Menu
+name: Global | Azure | Tree | Line | Menu
 type: controller
 version: 0.1
 

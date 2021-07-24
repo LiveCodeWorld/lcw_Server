@@ -9,48 +9,23 @@ version: 0.5
 
 --> Working on
 -
-function jsonrpc_POST someJSON, restUrl, pOAuthToken, pVersionNum, pExtraHeaders
-   -- change to a command
-   rest_SetJsonHeaders pOAuthToken, pVersionNum, pExtraHeaders
-   post someJSON to url restUrl
-   put it into jsonResult
-   return jsonResult
-end jsonrpc_POST
-
-
---> JsonRPC | Array
--
-function jsonrpc_GetArray restURL, pOAuthToken, pVersionNum, pExtraHeaders
-   put jsonrpc_GET (restURL, pOAuthToken, pVersionNum) into someJson
-   put json_ToArray (someJson) into someArray
-   return someArray
-end jsonrpc_GetArray
-
-
---> JSON RPC
--
-function jsonrpc_GET restURL, pOAuthToken, pVersionNum, pExtraHeaders
-   rest_SetJsonHeaders pOAuthToken, pVersionNum, pExtraHeaders
-   put url restURL into someJson
-   return someJson
-end jsonrpc_GET
-
-
---> JSON
--
 function json_FromArray pArray, pForceRootType, pPretty
+   -- put jsonExport (pArray) into someJSON -- not the same
+   
    repeat for each key tKey in pArray
       if pArray[tKey] is an array then
          put "}"&json_FromArray(pArray[tKey]) into pArray[tKey]
       end if
    end repeat
-   return(mergJSONEncode("pArray",pForceRootType,pPretty))
+   return (mergJSONEncode("pArray",pForceRootType,pPretty))
 end json_FromArray
 
 function json_ToArray pJSON
+   local tArray,tKeys
    if pJSON is empty then return false
+   -- put jsonImport (pJSON) into tArray -- not the same
+   
    try -- as otherwise an error with non-json causes script to exit
-      local tArray,tKeys
       if pJSON is empty then return empty
       repeat for each line tKey in mergJSONDecode(pJSON,"tArray")
          put json_ToArray(tArray[tKey]) into tArray[tKey]
@@ -60,6 +35,42 @@ function json_ToArray pJSON
       return empty
    end try
 end json_ToArray
+
+
+--> JsonRPC | Array
+-
+function jsonrpc_GetArray restURL, pOAuthToken, pExtraHeaders, pVersionNum
+   put jsonrpc_GET (restURL, pOAuthToken, pExtraHeaders, pVersionNum) into someJson
+   put json_ToArray (someJson) into resultArray
+   return resultArray
+end jsonrpc_GetArray
+
+function jsonrpc_PostArray jsonArray, restURL, pOAuthToken, pExtraHeaders, pVersionNum
+   put json_FromArray (jsonArray) into someJSON
+   put jsonrpc_POST (someJSON, restUrl, pOAuthToken, pExtraHeaders, pVersionNum) into jsonResult
+   put json_ToArray (jsonResult) into resultArray
+   return resultArray
+end jsonrpc_PostArray
+
+
+--> jsonRPC
+-
+function jsonrpc_POST someJSON, restUrl, pOAuthToken, pExtraHeaders, pVersionNum
+   -- change to a command
+   rest_SetJsonHeaders pOAuthToken, pVersionNum, pExtraHeaders
+   post someJSON to url restUrl
+   put it into jsonResult
+   return jsonResult
+end jsonrpc_POST
+
+
+--> JSON RPC
+-
+function jsonrpc_GET restURL, pOAuthToken, pExtraHeaders, pVersionNum
+   rest_SetJsonHeaders pOAuthToken, pVersionNum, pExtraHeaders
+   put url restURL into someJson
+   return someJson
+end jsonrpc_GET
 
 
 --> REST
@@ -166,9 +177,34 @@ function rest_PostJson jsonOrArray, restUrl, pOAuthToken, pVersionNum
    return jsonResult
 end rest_PostJson
 
+command rest_SetBasicHeaders oauthAccessToken, pExtraHeaders
+   put "Content-type: application/json" & CR & "Authorization: Bearer" && oauthAccessToken into newHeaders
+   if pExtraHeaders is not empty then
+      put CR & "Accept: application/json; version=1" after newHeaders
+   end if
+   set the httpHeaders to newHeaders
+   return newHeaders
+end rest_SetBasicHeaders
+
+command rest_SetOauthHeaders oauthAccessToken, pExtraHeaders
+   put "Content-type: application/json" & CR & "Authorization: Bearer" && oauthAccessToken into newHeaders
+   if pExtraHeaders is not empty then
+      put CR & "Accept: application/json; version=1" after newHeaders
+   end if
+   set the httpHeaders to newHeaders
+   return newHeaders
+end rest_SetOauthHeaders
 
 --> Deps
 -
+function secret_Get secretName
+   -- for server use only
+   if the environment is not "server" then pass "secret_Get"
+   --
+   put rigFetchConfigItem (secretName) into someSecret
+   return someSecret
+end secret_Get
+
 function utf8_Encode someText
    put unidecode(uniencode (someText),"UTF8") into encodedText
    return encodedText

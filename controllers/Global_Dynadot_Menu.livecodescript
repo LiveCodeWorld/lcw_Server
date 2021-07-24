@@ -1,37 +1,61 @@
-﻿script "Global_Dynadot_Menu"
+﻿script "Global | Dynadot | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Dynadot_Menu
+name: Global | Dynadot | Menu
 type: controller
 version: 0.1
 
 
+--> Menu | Props
+-
+on mDouble_Dynadot indexView, domainName
+   display_DynadotDomainInfo domainName
+end mDouble_Dynadot
+
+private function _DisplayDisabled testTitle, indexView
+   put the title_Text of indexView into titleText
+   if titleText = testTitle then
+      return "delete"
+   else
+      return false
+   end if
+end _DisplayDisabled
+
+getprop documentation_Params
+   return "Simple Dynadot API,Advanced Dynadot API,Dynadot API Settings"
+end documentation_Params
+
+getprop disabled_DynadotDomains [indexView]
+   return _DisplayDisabled ("Dynadot Domains", indexView)
+end disabled_DynadotDomains
+
+getprop disabled_DynadotManagedDomains [indexView]
+   return _DisplayDisabled ("Managed Domains", indexView)
+end disabled_DynadotManagedDomains
+
+getprop disabled_DynadotOceanDomains [indexView]
+   return _DisplayDisabled ("Ocean Domains", indexView)
+end disabled_DynadotOceanDomains
+
+
 --> Global | Dynadot | Menu
 -
-on menu_DynadotManagedDomains
-   put dynadot_ListManagedDomainNames (true) into domainNames
-   --
-   _DisplayDomains domainNames, "Managed Domains,dynadot_ListManagedDomainNames()"
+on menu_DynadotDomains indexView
+   display_Dynadot indexView
+end menu_DynadotDomains
+
+on menu_DynadotManagedDomains indexView
+   display_DynadotManaged indexView
 end menu_DynadotManagedDomains
 
-on menu_DynadotOceanDomains
-   put dynadot_ListOceanDomainNames() into domainNames
-   --
-   _DisplayDomains domainNames, "Ocean Domains,dynadot_ListOceanDomainNames()"
+on menu_DynadotOceanDomains indexView
+   display_DynadotOcean indexView
 end menu_DynadotOceanDomains
 
-on menu_DynadotParkedDomains
-   put dynadot_ListParkedDomainNames() into domainNames
-   --
-   _DisplayDomains domainNames, "Parked Domains,dynadot_ListParkedDomainNames()"
+on menu_DynadotParkedDomains indexView
+   display_DynadotParked indexView
 end menu_DynadotParkedDomains
-
-on menu_DynadotDomains
-   put dynadot_ListDomainNames() into domainNames
-   --
-   _DisplayDomains domainNames, "Dynadot Domains,dynadot_ListDomainNames()"
-end menu_DynadotDomains
 
 on _
 end _
@@ -55,42 +79,26 @@ on submenu_Dev
 end submenu_Dev
 
 
---> Global | Dynadot | Menu | Props
--
-
---> Global | Dynadot | Menu | Disabled
--
-getprop disabled_DynadotManagedDomains
-   get dynadot_GetIndexedDomainArray()
-   if it is an array then
-      return false
-   else
-      return true
-   end if
-end disabled_DynadotManagedDomains
-
-
 --> Dev | Menu
 -
-on menu_StoredDynadotArray
-   put dynadot_FetchIndexedDomainArray() into domainArray
+on menu_UpdateCachedDynadotData
+   dynadot_UpdateCachedIndexDomainArray
+   put the result into dynadotData
    --
-   display_Array domainArray, "dynadot_FetchIndexedDomainArray()"
-end menu_StoredDynadotArray
+   display_Data dynadotData, "Dynadot Data", "Cached"
+end menu_UpdateCachedDynadotData
 
+on menu_FetchDynadotData
+   put dynadot_FetchIndexedDomainArray() into dynadotData
+   --
+   display_Data dynadotData, "Dynadot Data", "Fetched"
+end menu_FetchDynadotData
 
---> Events
--
-on mDouble_Dynadot indexView, domainName
-   display_DynadotDomainInfo domainName
-end mDouble_Dynadot
+on _
+end _
 
-
---> Private
--
-private command _DisplayDomains domainNames, displayTitle
-   display_Lines domainNames, displayTitle, "mDouble_Dynadot"
-   put the result into displayView
-   set the title_Menu of displayView to "Global | Ocean | Tree | Menu"
-   set the line_Menu of displayView to "Global | Ocean | Line | Menu"
-end _DisplayDomains
+on menu_UpdateOceanInfoArray
+   digitalocean_UpdateDomainInfoArray
+   put the result into oceanInfoArray
+   display_Array oceanInfoArray, "Ocean Info Array,digitalocean_FetchDomainInfoArray()"
+end menu_UpdateOceanInfoArray

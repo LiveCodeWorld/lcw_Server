@@ -1,8 +1,8 @@
-﻿script "Global_Atopia_Top_Menu"
+﻿script "Global | Atopia | Top | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Atopia_Top_Menu
+name: Global | Atopia | Top | Menu
 type: controller
 version: 0.1
 

@@ -16,8 +16,24 @@ local DynodotDomainArray
 -
 command dynadot_UpdateCachedIndexDomainArray
    put dynadot_FetchIndexedDomainArray() into DynodotDomainArray
+   --
    return DynodotDomainArray
 end dynadot_UpdateCachedIndexDomainArray
+
+private command _CheckApiError @responseArray, @errorText
+   if responseArray is not an array then
+      breakpoint
+      return false
+   end if
+   --
+   put responseArray ["Response"]["ResponseHeader"]["error"] into errorText
+   if errorText is empty then
+      return true
+   else
+      put empty into responseArray
+      return false
+   end if
+end _CheckApiError
 
 function dynadot_FetchIndexedDomainArray
    -- v3
@@ -29,6 +45,14 @@ function dynadot_FetchIndexedDomainArray
    end if
    --
    put xml_ToArray (someXML) into responseArray
+   --
+   _CheckApiError responseArray, errorText
+   --
+   if the result is false then
+      put errorText
+      lcw_AnswerWarning "There was an api error fetching Dynadot IndexDomainArray..."
+   end if
+   --
    return responseArray
 end dynadot_FetchIndexedDomainArray
 

@@ -11,37 +11,19 @@ A library for interfacing with DNS services like DigitalOcean and Dynadot
 */
 
 
---> Dynadot | Display
--
-command display_DynadotDomainInfo domainName
-   put dynadot_GetDomainInfoArray (domainName, true) into domainInfoArray
-   
-   put domainName & comma & "Domain Info" into displayTitle
-   display_Array domainInfoArray, displayTitle
-   put the result into arrayView
-   return arrayView
-end display_DynadotDomainInfo
-
-
---> Dynadot | Model | List Array
--
-function dynadot_ConstructDomainListArray responseArray
-   put responseArray ["ListDomainInfoResponse"] ["ListDomainInfoContent"]["DomainInfoList"] into domainListInfoArray
-   repeat for each key dNum in domainListInfoArray
-      put domainListInfoArray [dNum]["Domain"] into domainArray
-      put domainArray ["Name"] into domainName
-      
-      put domainArray ["NameServerSettings"] into domainListArray [domainName]["NameServerSettings"]
-      put domainArray ["Expiration"] into domainListArray [domainName]["Expiration"]
-      put domainArray ["RenewOption"] into domainListArray [domainName]["RenewOption"]
-      put domainArray ["Whois"] into domainListArray [domainName]["Whois"]
-   end repeat
-   return domainListArray
-end dynadot_ConstructDomainListArray
-
-
 --> Dynadot | Folder
 -
+function dynadot_FetchFarmStatus wikiDomain
+   put dynadot_GetDomainNameArray (pForceUpdate) into domainNameArray
+   display_Data domainNameArray
+   repeat for each key domainName in domainNameArray
+      if domainNameArray [domainName]["NameServerSettings"]["type"] = "Dynadot DNS" then
+         put domainName & CR after domainNames
+      end if
+   end repeat 
+   return false
+end dynadot_FetchFarmStatus
+   
 command dynadot_SetFolder domainName, folderName
    -- https://api.dynadot.com/api3.xml?key=mykey&command=set_folder&domain=domian1.com&folder=folder1
    
@@ -51,22 +33,72 @@ command dynadot_SetFolder domainName, folderName
    */
 end dynadot_SetFolder
 
-command dynadot_SetParking domainName, pBoolean
+
+--> Dynadot
+-
+function dynadot_IsParked domainName
+   put dynadot_GetDomainInfoArray (domainName) into domainInfoArray
+   put domainInfoArray ["NameServerSettings"]["Type"] = "Dynadot Parking" into isParked
+   return isParked
+   
+   put "ns1.dynadot.com,ns2.dynadot.com" into defaultNameServerList
+   get dynadot_GetNameServers (domainName)
+   replace CR with comma in it
+   put it = defaultNameServerList into isParked
+   return isParked
+end dynadot_IsParked
+
+command dynadot_SetParked domainName, pBoolean
    -- https://api.dynadot.com/api3.xml?key=mykey&command=set_parking&domain=domain1.com&with_ads=no
    if pBoolean is false then
-      put dns_HostNameServers ("Digital Ocean") into nameServers
-      dynadot_SetNameServers domainName, nameServers
-      put the result into someXML
+      
    else
       put dynadot_GetAdvancedXML ("set_parking", "domain", domainName) into someXML
       /*
       <SuccessCode></SuccessCode>If the operation is successful, "0" for success, "-1" for failure
       */
    end if
-   
+   --
    put xml_ToArray (someXML) into responseArray
    return responseArray
-end dynadot_SetParking
+end dynadot_SetParked
+
+command dynadot_SetDigitalOceanNameServers domainName
+   put dns_HostNameServers ("Digital Ocean") into nameServers
+   --
+   dynadot_SetNameServers domainName, nameServers
+   put the result into someXML
+   --
+   put xml_ToArray (someXML) into responseArray
+   return responseArray
+end dynadot_SetDigitalOceanNameServers
+
+function dynadot_GetNameServers domainName
+   put dynadot_FetchNameServerXml (domainName) into someXML
+   if dynadot_CheckError (someXML) is not empty then
+      breakpoint
+      return empty
+   end if
+   
+   -- success,ns1.digitalocean.com,ns2.digitalocean.com,ns3.digitalocean.com,,,,,,,,,,,Name Servers
+   get line 3 of someXML
+   if item 1 of it is not "success" then
+      breakpoint
+      return empty
+   end if
+   delete item 1 of it
+   
+   repeat for each item nsServerName in it
+      if nsServerName is empty then
+         delete char -1 of nsServerNames
+         return nsServerNames
+      end if
+      put nsServerName & CR after nsServerNames
+   end repeat
+   -- if all possible nameservers are set
+   delete char -1 of nsServerNames
+   return nsServerNames 
+end dynadot_GetNameServers
 
 command dynadot_SetNameServers domainName, nameServers
    -- https://api.dynadot.com/api2.html?key=8S7I2s6Qd8g&command=set_ns&domain=mydomain.com&ns0=ns1.hostns.com&ns1=ns2.hostns.com
@@ -165,32 +197,18 @@ function dynadot_ListDomainNames pIndexedDomainArray
    return domainNames
 end dynadot_ListDomainNames
 
-
---> Dynadot
--
-function dynadot_GetNameServers domainName
-   put dynadot_FetchNameServerXml (domainName) into someXML
-   if dynadot_CheckError (someXML) is not empty then
-      breakpoint
-      return empty
-   end if
-   
-   -- success,ns1.digitalocean.com,ns2.digitalocean.com,ns3.digitalocean.com,,,,,,,,,,,Name Servers
-   get line 3 of someXML
-   if item 1 of it is not "success" then
-      breakpoint
-      return empty
-   end if
-   delete item 1 of it
-   
-   repeat for each item nsServerName in it
-      if nsServerName is empty then
-         delete char -1 of nsServerNames
-         return nsServerNames
-      end if
-      put nsServerName & CR after nsServerNames
+function dynadot_ConstructDomainListArray responseArray
+   put responseArray ["ListDomainInfoResponse"] ["ListDomainInfoContent"]["DomainInfoList"] into domainListInfoArray
+   repeat for each key dNum in domainListInfoArray
+      put domainListInfoArray [dNum]["Domain"] into domainArray
+      put domainArray ["Name"] into domainName
+      
+      put domainArray ["NameServerSettings"] into domainListArray [domainName]["NameServerSettings"]
+      put domainArray ["Expiration"] into domainListArray [domainName]["Expiration"]
+      put domainArray ["RenewOption"] into domainListArray [domainName]["RenewOption"]
+      put domainArray ["Whois"] into domainListArray [domainName]["Whois"]
    end repeat
-   -- if all possible nameservers are set
-   delete char -1 of nsServerNames
-   return nsServerNames 
-end dynadot_GetNameServers
+   return domainListArray
+end dynadot_ConstructDomainListArray
+
+

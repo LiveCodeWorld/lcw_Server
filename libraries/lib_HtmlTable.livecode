@@ -174,7 +174,7 @@ The handlers use Livecodes XML features to process tables.
 function table_Extract xHtml, pStartNode
    put revCreateXMLTree (xHtml, true, true, false) into xmlID
    put table_ExtractFromXmlID (xmlID, pStartNode) into someXML
-   revDeleteXmlTree xmlID
+   revXMLDeleteTree xmlID
    return someXML
 end table_Extract
 

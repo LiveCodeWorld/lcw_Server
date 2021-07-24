@@ -69,7 +69,7 @@ command daemon_Log logLine, pDisplayNow, pLogName
    -- a wrapper to make dispatchinglog request safe
    -- needs to be in the lib_Daemon server stack, in the case that there is no handler of library present
    if pLogName is empty then put the live_Logging of me into displayLogNow
-
+   
    put the log_View of me into logView
    if exists (logView) then
       dispatch "log_SetTimeStampEntry" to logView with logLine,pLogName
@@ -128,7 +128,8 @@ end live_Logging
 -
 command daemon_DisplayLogArray
    put daemon_FetchLogArray() into logArray
-   display_Array logArray, "daemon_DisplayLogArray", "Global | Daemon | Log | Menu", "Global | Daemon | Log | Line | Menu"
+   display_Array logArray, "daemon_DisplayLogArray"
+   display_SetInteractions the result, "Daemon | Log"
 end daemon_DisplayLogArray
 
 command daemon_AddRequestToLogArray requestArray

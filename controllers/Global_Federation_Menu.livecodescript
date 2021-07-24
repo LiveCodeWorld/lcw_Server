@@ -1,21 +1,65 @@
-﻿script "Global_Federation_Menu"
+﻿script "Global | Federation | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Federation_Menu
+name: Global | Federation | Menu
 type: controller
-version: 0.1
+version: 0.2
 
 
---> Working on
+--> Menu | Init
 -
-on mDoubleUp_Test indexView, wikiDomain
+getprop modelDocumentation_Params
+   return "Federation Model,Author Model,Server Model,-,All"
+end modelDocumentation_Params
+
+command serverData_SetSummary serverModel, pListHow
+   put the keys of serverModel into serverNames
+   sort serverNames
+   repeat for each line serverName in serverNames
+      put word 1 to -1 of serverName into serverName
+      if serverName is empty then next repeat
+      --
+      fedserver_UpdateServerModel serverModel, serverName
+      put the result into summaryText
+      put word -2 of summaryText into domainNum
+      put word 1 of summaryText into serverPageNum
+      --
+      switch pListHow
+         case "Extended"
+            put "1. [[" & serverName && "Server" & "]] (" & summaryText & ")" into indexLine
+            break
+         case "Simple"
+            put "- [[" & serverName && "Server" & "]]" into indexLine
+            break
+         default
+            put "1. [[" & serverName && "Server" & "]] (" & domainNum && "domains)" into indexLine
+      end switch
+      put indexLine & CR after markdownList
+   end repeat
+   delete char -1 of markdownList
    
-end mDoubleUp_Test
+   switch pListHow
+      case "Simple"
+         -- don't sort again
+         break
+      case "Extended"
+         -- don't sort again
+         sort numeric descending markdownList by word -2 of each
+         break
+      default
+         sort numeric descending markdownList by token -3 of each
+   end switch
+   return markdownList
+end serverData_SetSummary
 
 
 --> Global | Federation | Menu
 -
+on submenu_Display
+   return "Global | Federation | Display | Menu"
+end submenu_Display
+
 on menu_ModelDocumentation arrayView, modelName
    switch modelName
       case "All"
@@ -31,24 +75,24 @@ on menu_ModelDocumentation arrayView, modelName
    launch url launchURL
 end menu_ModelDocumentation
 
-on menu_PublishServerDetails arrayView
+on menu_PublishAllServerDetails arrayView
    put the displayed_Data of arrayView into serverData
    serverData_SetSummary serverData
    put the result into serverIndex
    --
    fedwiki_UpdatePageItem serverIndex, "0a8b96e99434a34d", "welcome-visitors", "server.fedwiki.org"
    --
+   put federation_ConstructServerModel() into federationServerModel
    repeat for each key serverName in serverData
       set the cursor to busy
-      federation_UpdateServerPage serverName, serverData
+      federation_UpdateServerPage serverName, federationServerModel
    end repeat
    --
    launch url "http://server.fedwiki.org"
-end menu_PublishServerDetails
+end menu_PublishAllServerDetails
 
 on _
 end _
-
 
 on menu_AzureEntites
    put lcw_Ask ("Choose a domain to index..", "david.bovill.me") into wikiDomain
@@ -59,39 +103,13 @@ on submenu_Build
    return "Global | Federation | Build | Menu"
 end submenu_Build
 
-on menu_Display arrayView, displayWhat
-   switch displayWhat
-      case "Local Fedray"
-         display_LocalFedray
-         exit to top
-         break
-      case "-"
-      case "Federation Model"
-         put fedray_Fetch() into someArray
-         set the line_Menu of arrayView to "Global | Federation | Line | Menu"
-         break
-      case "Server Model"
-         put federation_FetchServerData() into someArray
-         set the line_Menu of arrayView to "Global | Federation | Server | Line | Menu"
-         break
-      case "Author Model"
-         put federation_FetchAuthorData() into someArray
-         set the line_Menu of arrayView to "Global | Federation | Author | Line | Menu"
-         break
-   end switch
-   set the displayed_Array [displayWhat] of arrayView to someArray
-end menu_Display
+on _
+end _
 
 on submenu_Dev
    return "Dev | Menu"
 end submenu_Dev
 
-
---> Global | Federation | Menu | Props
--
-
---> Global | Federation | Menu | Disabled
--
 
 --> Dev | Menu
 -
@@ -114,3 +132,4 @@ on menu_StoreAuthorArray
    -- atopia_StorePersonArray "david-bovill", wDomainArray
    put atopia_FetchPersonJSON ("david-bovill")
 end menu_StoreAuthorArray
+

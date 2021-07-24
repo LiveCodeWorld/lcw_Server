@@ -139,12 +139,12 @@ command server_SetArray serverArray, pServerURL
    return serverPrefArray
 end server_SetArray
 
-command server_DeleteArray pServerURL, pProjectName
+command server_DeleteArray serverURL
    if pServerURL is empty then put server_GetURL() into pServerURL
    -- 
-   put server_FetchPrefArray (pProjectName) into serverArray
+   put server_FetchPrefArray() into serverArray
    delete variable serverArray [serverURL]
-   server_SavePrefArray serverArray, pProjectName
+   server_SavePrefArray serverArray
 end server_DeleteArray
 
 

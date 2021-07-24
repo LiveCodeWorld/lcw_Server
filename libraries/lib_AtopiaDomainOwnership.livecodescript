@@ -13,12 +13,163 @@ These handlers hack into Atopia servers config.json and owner.json files to try 
 
 --> Working on
 -
-function atopia_ExtractDomainOwners pOwnershipArray
-   if pOwnershipArray is not an array then put atopia_GetOwnershipArray() into pOwnershipArray
+
+--> Atopia | Fetch | Owner
+-
+function atopia_FetchOwnerArrayFromConfig wikiDomain, pConfigArray
+   set the itemdelimiter to "."
+   repeat
+      put atopia_GetOwnerFilePath (wikiDomain, pConfigArray) into ownerFilePath
+      if ownerFilePath is not empty then
+         exit repeat
+      end if
+      
+      delete item 1 of wikiDomain
+      if the number of items of wikiDomain <2 then
+         return empty
+      end if
+   end repeat
    
+   put atopia_FetchData (ownerFilePath) into ownerJSON
+   put json_ToArray (ownerJSON) into ownerArray
+   return ownerArray
+end atopia_FetchOwnerArrayFromConfig
+
+function atopia_FetchOwnerArray wikiDomain
+   put atopia_FetchOwnerJson (wikiDomain) into ownerJSON
+   if item 1 of ownerJSON is "error"  or ownerJSON is empty then return empty
+   put json_ToArray (ownerJSON) into ownerArray
+   return ownerArray
+end atopia_FetchOwnerArray
+
+function atopia_FetchDefaultOwnerArray defaultOwnerJsonPath
+   put atopia_FetchData (defaultOwnerJsonPath) into ownerJson
+   if item 1 of ownerJSON is "error"  or ownerJSON is empty then return empty
+   put json_ToArray (ownerJSON) into ownerArray
+   return ownerArray
+end atopia_FetchDefaultOwnerArray
+
+function atopia_FetchPersonaEmail wikiDomain
+   put atopia_WikiStatusFolder (wikiDomain) into wikiStatusFolder
+   put wikiStatusFolder & "persona.identity" into ownerJsonPath
+   
+   put atopia_FetchData (ownerJsonPath) into personaData
+   return personaData
+end atopia_FetchPersonaEmail
+
+
+--> Atopia | OweshipArray | Fetch
+-
+function atopia_FetchDomainOwnerArray wikiDomain, pConfigArray
+   put atopia_FetchOwnerArray (wikiDomain) into ownerArray
+   if ownerArray is an array then return ownerArray
+   
+   -- let's try the config.json
+   put atopia_FetchOwnerArrayFromConfig (wikiDomain, pConfigArray) into ownerArray
+   if ownerArray is an array then return ownerArray
+   
+   -- let's see if it an old persona site
+   put atopia_FetchPersonaEmail (wikiDomain) into personaEmail
+   if personaEmail is not empty then
+      put atopia_ConstructPersonaOwnerArray (personaEmail) into ownerArray
+      return ownerArray
+   end if
+   
+   return empty
+end atopia_FetchDomainOwnerArray
+
+function atopia_ConstructConfigDomainArray ownerName
+   put atopia_GetOwnerAuthArray (ownerName) into ownerAuthArray
+   put ownerAuthArray into domainArray
+   delete variable domainArray ["ownerArray"]
+   -- put _DefaultOwnerPath (ownerName) into domainArray ["id"]
+   --
+   return domainArray
+end atopia_ConstructConfigDomainArray
+
+function atopia_ListDefaultOwners
+   put pref_FetchArray ("lcw_DefaultOwnerArray") into defaultOwnerArray
+   put keys (defaultOwnerArray) into defaultOwnerNames
+   return defaultOwnerNames
+end atopia_ListDefaultOwners
+
+function atopia_GetOwnerAuthArray ownerName
+   put pref_FetchValue (ownerName, "lcw_DefaultOwnerArray") into ownerArray
+   return ownerArray
+end atopia_GetOwnerAuthArray
+
+command atopia_SetOwnerAuthArray ownerName, ownerArray
+   pref_SaveValue ownerName, ownerArray, "lcw_DefaultOwnerArray"
+   return the result
+end atopia_SetOwnerAuthArray
+
+
+--> Atopia | Config
+-
+function atopia_FetchConfigArray
+   put atopia_FetchConfigJSON() into configJSON
+   put json_ToArray (configJSON) into configArray
+   return configArray
+end atopia_FetchConfigArray
+
+command atopia_StoreConfigArray configArray
+   put json_FromArray (configArray, true, true) into configJSON
+   --
+   atopia_StoreConfigJSON configJSON
+   --
+   put the result into shellResult
+   return shellResult
+end atopia_StoreConfigArray
+
+function atopia_FetchConfigJSON
+   put _GetWikiConfigPath() into configPath
+   put atopia_FetchData (configPath) into someJSON
+   return someJSON
+end atopia_FetchConfigJSON
+
+command atopia_StoreConfigJSON configJSON
+   put _GetWikiConfigPath() into configPath
+   --
+   atopia_StoreData configPath, configJSON
+   --
+   put the result into shellResult
+   return shellResult
+end atopia_StoreConfigJSON
+
+private function _DefaultOwnerPath userName
+   put toLower(userName) into userName
+   put merge ("/root/.wiki/fedwiki_owners/[[userName]]_owner.json") into ownerPath
+   return ownerPath
+end _DefaultOwnerPath
+
+private function _GetWikiConfigPath
+   put ".wiki/config.json" into configPath
+   return configPath
+end _GetWikiConfigPath
+
+
+--> Atopia | Config
+-
+function atopia_FetchConfigFolderList
+   put atopia_FetchConfigArray() into configArray
+   put atopia_ListConfigFolders (configArray) into wikiDomains
+   return wikiDomains
+end atopia_FetchConfigFolderList
+
+function atopia_ListConfigFolders configArray
+   put configArray ["wikidomains"] into wikiDomainArray
+   put keys (wikiDomainArray) into wikiDomains
+   return wikiDomains
+end atopia_ListConfigFolders
+
+
+--> Atopia | Domain | Owners
+-
+function atopia_ExtractDomainOwners ownershipArray
+   -- for local array ownershipArray format?
    set the cursor to busy
-   repeat for each key ownerEmail in pOwnershipArray
-      put pOwnershipArray [ownerEmail]["domains"] into domainArray
+   repeat for each key ownerEmail in ownershipArray
+      put ownershipArray [ownerEmail]["domains"] into domainArray
       repeat for each key indexNum in domainArray
          put domainArray [indexNum]["domain"] into domainName
          put ownerEmail into domainNameArray [domainName]
@@ -59,7 +210,7 @@ end atopia_GetDomainConfigArray
 
 function atopia_FetchEmail wikiDomain, pConfigArray
    -- tries hard to find it on the server
-   put atopia_FetchAndFindOwnerArray (wikiDomain, pConfigArray) into ownerArray
+   put atopia_FetchDomainOwnerArray (wikiDomain, pConfigArray) into ownerArray
    put atopia_GetOwnerEmail (ownerArray) into ownerEmail
    return ownerEmail
    
@@ -124,9 +275,9 @@ function atopia_FindOwnerFilePath wikiDomain, pConfigArray
    return ownerFilePath
 end atopia_FindOwnerFilePath
 
-function atopia_GetDomainsFromEmail userEmail, pOwnershipArray
+function atopia_GetLocalDomainsFromEmail userEmail, pOwnershipArray
    if pOwnershipArray is not an array then
-      put atopia_GetOwnershipArray() into pOwnershipArray
+      put atopia_GetLocalEmailOwnerData() into pOwnershipArray
    end if
    put pOwnershipArray [userEmail]["domains"] into domainArray
    repeat for each key indexNum in domainArray
@@ -136,60 +287,11 @@ function atopia_GetDomainsFromEmail userEmail, pOwnershipArray
    delete char -1 of domainNames
    url_SortDomainIndex domainNames
    return domainNames
-end atopia_GetDomainsFromEmail
+end atopia_GetLocalDomainsFromEmail
 
 
 --> Atopia | Domain | Owner | Build
 -
-command atopia_DeleteFromOwnershipArray wikiFolder
-   breakpoint
-end atopia_DeleteFromOwnershipArray
-
-command atopia_AddToOwnershipArray wikiFolder
-   breakpoint
-   
-   -- still to do - delete old stuff
-   
-   put atopia_GetOwnershipArray() into ownershipArray
-   put atopia_FetchConfigArray() into configArray
-   --
-   -- still to do - check if domain is already there
-   _AddDomainToOwnershipArray ownershipArray, wikiFolder, configArray
-   --
-   atopia_SetOwnershipArray ownershipArray
-   return ownershipArray
-end atopia_AddToOwnershipArray
-
-command atopia_ConstructOwnershipArray pDeleteExisting, pIndexView
-   put atopia_FetchFolders() into wikiFolders
-   if pDeleteExisting is true then
-      atopia_SetOwnershipArray empty
-      put empty into ownershipArray
-   else
-      put atopia_GetOwnershipArray() into ownershipArray
-   end if
-   --
-   atopia_AddOwnershipToDomainArray ownershipArray, wikiFolders, pIndexView
-   --
-   atopia_SetOwnershipArray ownershipArray
-   -- put the result into modelDataFile
-   return ownershipArray
-end atopia_ConstructOwnershipArray
-
-command atopia_AddOwnershipToDomainArray @ownershipArray, wikiFolders, pIndexView
-   local indexedArray
-   
-   put atopia_FetchConfigArray() into configArray   
-   repeat for each line wikiFolder in wikiFolders
-      _AddDomainToOwnershipArray ownershipArray, wikiFolder, configArray
-      --
-      set the cursor to busy
-      if exists (pIndexView) then
-         set the selected_Index of pIndexView to wikiFolder
-      end if
-   end repeat
-end atopia_AddOwnershipToDomainArray
-
 function atopia_DomainIsBadInDomainArray folderName, atopiaData
    put atopiaData ["good"] into goodArray
    put atopiaData ["bad"] into badArray
@@ -223,59 +325,8 @@ function atopia_FetchEmailFromConfig  wikiDomain, pConfigArray
    return ownerEmail
 end atopia_FetchEmailFromConfig
 
-function atopia_FetchAndFindOwnerArray wikiDomain, pConfigArray
-   put atopia_FetchOwnerArray (wikiDomain) into ownerArray
-   if ownerArray is an array then return ownerArray
-   
-   -- let's try the config.json
-   put atopia_FetchOwnerArrayFromConfig (wikiDomain, pConfigArray) into ownerArray
-   if ownerArray is an array then return ownerArray
-   
-   -- let's see if it an old persona site
-   put atopia_FetchPersonaEmail (wikiDomain) into personaEmail
-   if personaEmail is not empty then
-      put atopia_ConstructPersonaOwnerArray (personaEmail) into ownerArray
-      return ownerArray
-   end if
-   
-   return empty
-end atopia_FetchAndFindOwnerArray
 
-
---> Atopia | Fetch | Owner
--
-function atopia_FetchOwnerArrayFromConfig wikiDomain, pConfigArray
-   put atopia_GetOwnerFilePath (wikiDomain, pConfigArray) into ownerFilePath
-   if ownerFilePath is empty then return empty
-   
-   put atopia_FetchData (ownerFilePath) into ownerJSON
-   put json_ToArray (ownerJSON) into ownerArray
-   return ownerArray
-end atopia_FetchOwnerArrayFromConfig
-
-function atopia_FetchOwnerArray wikiDomain
-   put atopia_FetchOwnerJson (wikiDomain) into ownerJSON
-   if item 1 of ownerJSON is "error"  or ownerJSON is empty then return empty
-   put json_ToArray (ownerJSON) into ownerArray
-   return ownerArray
-end atopia_FetchOwnerArray
-
-function atopia_FetchPersonaEmail wikiDomain
-   put atopia_WikiStatusFolder (wikiDomain) into wikiStatusFolder
-   put wikiStatusFolder & "persona.identity" into ownerJsonPath
-   
-   put atopia_FetchData (ownerJsonPath) into personaData
-   return personaData
-end atopia_FetchPersonaEmail
-
-function atopia_FetchConfigJSON
-   put ".wiki/config.json" into somePath
-   put atopia_FetchData (somePath) into someJSON
-   return someJSON
-end atopia_FetchConfigJSON
-
-
---> Atopia | ConfigArray | Model
+--> Atopia | Local | ConfigArray | Model
 -
 function atopia_GetConfigArray 
    put the model_Array ["atopia_Config.array"] of me into configArray
@@ -289,57 +340,24 @@ command atopia_SetConfigArray configArray
 end atopia_SetConfigArray
 
 
---> Atopia | ConfigArray | Fetch
--
-function atopia_ListConfigFolders configArray
-   put configArray ["wikidomains"] into wikiDomainArray
-   put keys (wikiDomainArray) into wikiDomains
-   return wikiDomains
-end atopia_ListConfigFolders
-
-function atopia_FetchConfigFolderList
-   put atopia_FetchConfigArray() into configArray
-   put atopia_ListConfigFolders (configArray) into wikiDomains
-   return wikiDomains
-end atopia_FetchConfigFolderList
-
-function atopia_FetchConfigArray
-   put atopia_FetchConfigJSON() into configJSON
-   put json_ToArray (configJSON) into configArray
-   return configArray
-end atopia_FetchConfigArray
-
-
 --> Private
 -
-private command _AddDomainToOwnershipArray @ownershipArray, wikiFolder, configArray
-   put atopia_FetchAndFindOwnerArray (wikiFolder, configArray) into ownerArray
-   put atopia_GetOwnerEmail (ownerArray) into ownerEmail
-   if ownerEmail is empty then
-      put "No email" into ownerEmail
-   end if
-   
-   -- could add to fedray here
-   
-   put ownershipArray [ownerEmail]["domains"] into indexedArray
-   array_AddToNumbered indexedArray, "domain", wikiFolder
-   put the result into newIndexNum
-   put ownerArray into indexedArray [newIndexNum]["ownerArray"]
-   put indexedArray into ownershipArray [ownerEmail]["domains"]
-end _AddDomainToOwnershipArray
-
-private command fedwiki_DeconstructOwnerArray ownerArray, @ownerEmail, @accountType, @ownerID, @ownerName
+command fedwiki_DeconstructOwnerArray ownerArray, @ownerEmail, @accountType, @ownerID, @ownerName
    put empty into ownerEmail
    put empty into accountType
    put empty into ownerID
    put empty into ownerName
    --
+   put ownerArray ["name"] into ownerName
+   
+   -- TOD: check for Twitter
+   
+   -- check for Google oAuth
    put ownerArray ["google"] into googleOwnerArray
    put googleOwnerArray ["emails"][1]["value"] into ownerEmail
    if ownerEmail is not empty then
       put "google" into accountType
       put googleOwnerArray ["id"] into ownerID
-      put googleOwnerArray ["name"] into ownerName
       return true
    end if
    
@@ -354,7 +372,6 @@ private command fedwiki_DeconstructOwnerArray ownerArray, @ownerEmail, @accountT
          
          put "gitHub" into accountType
          put githubOwnerArray ["id"] into ownerID
-         put googleOwnerArray ["name"] into ownerName
          return true
       else
          -- not a primary email
@@ -362,6 +379,7 @@ private command fedwiki_DeconstructOwnerArray ownerArray, @ownerEmail, @accountT
       end if
    end repeat
    
+   -- Persona
    get ownerArray ["persona"]["emails"][1]["value"]
    if it is not empty then
       put "persona" into accountType

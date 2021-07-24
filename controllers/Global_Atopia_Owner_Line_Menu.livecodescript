@@ -1,8 +1,8 @@
-﻿script "Global_Atopia_Owner_Line_Menu"
+﻿script "Global | Atopia | Owner | Line | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Atopia_Owner_Line_Menu
+name: Global | Atopia | Owner | Line | Menu
 type: controller
 version: 0.1
 

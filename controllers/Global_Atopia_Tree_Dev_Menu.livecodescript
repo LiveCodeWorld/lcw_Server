@@ -15,7 +15,8 @@ version: 0.1
 -
 on menu_ProcessNewFolders indexView
    -- use "menu_CheckDisplayedFolders" instead
-   lcw_AnswerSheet "Check if new folders are bad and trash, move to unhosted and update them?"
+   put "Check if new folders are bad and trash, move to unhosted and update them?" into someQuestion
+   lcw_Answer someQuestion, indexView
    --
    atopia_UpdateArrayAndMove
    put the result into resultArray
@@ -57,7 +58,8 @@ end menu_MoveBadFolders
 on menu_MoveUnhostedBadFolders indexView
    put atopia_ListLocalBadFolders() into domainNames
    atopia_SetDisplay indexView, domainNames, "Bad Folders"   
-   lcw_AnswerSheet "Move all unhosted folders to the _unhosted_sites folder?"
+   put "Move all unhosted folders to the _unhosted_sites folder?" into someQuestion
+   lcw_Answer someQuestion, indexView
    --
    atopi_MoveGoodToUnhosted
    --
@@ -75,7 +77,7 @@ end menu_DomainLsArray
 on menu_DisplayMyDomains indexView
    put "david.bovill@gmail.com" into userEmail
    
-   put atopia_GetDomainsFromEmail (userEmail)
+   put atopia_GetLocalDomainsFromEmail (userEmail)
 end menu_DisplayMyDomains
 
 

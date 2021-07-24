@@ -11,194 +11,171 @@ deps: lib_Fedwiki,lib_FedwikiRoster,lib_FedwikiCreate,lib_GoogleCustomSearch,mod
 This library is for manipulating data about the entire federation.
 */
 
-
 --> Working on
 -
-command federation_StoreAuthorDomains
-   
-end federation_StoreAuthorDomains
-
-function federation_FetchAuthorDomains authorName, pAuthorArray
-   if pAuthorArray is not an array then
-      put federation_FetchAuthorData() into pAuthorArray
-   end if
-   get pAuthorArray [authorName]
-   put keys (it) into domainNames
-   url_SortDomainIndex domainNames
-   return domainNames
-end federation_FetchAuthorDomains
-
-command federation_AuthorCreate authorName, pAuthorDomains, pScriptHelp
-   put "author.fedwiki.org" into wikiDomain
-   put "fedwiki.org,server.fedwiki.org" into forkDomains
+function fedwiki_FetchRecentDomainPageArray authorDomains, pSincePeriod
+   if pSincePeriod is empty then put "1 week" into pSincePeriod
    --
-   put fedwiki_ConstructSlug (authorName) into pageSlug
-   put pageArray_Fetch (wikiDomain, pageSlug) into pageArray
-   if pageArray is empty then
-      put federation_FetchTemplateArray (wikiDomain) into pageArray
-      pageArray_Rename pageArray, authorName
-      if pScriptHelp is not empty then
-         put pScriptHelp into pageArray ["story"][1]["text"]
-      end if
-      pageArray_StripJournal pageArray
-      pageArray_AddFork pageArray, forkDomains
-   end if
+   put federation_LastModifiedDomains (authorDomains, pSincePeriod) into recentAuthorDomains
    --
-   put _AuthorCurlyData (authorName, pAuthorDomains) into curlyData
-   curly_MergePageArray pageArray, curlyData
-   --
-   pageArray_Store wikiDomain, pageSlug, pageArray
-   put the result into shellResult
-   if shellResult is empty then
-      return pageArray
-   else
-      return shellResult
-   end if
-end federation_AuthorCreate
+   put 1000 * date_GetSinceSeconds (pSincePeriod) into sinceSeconds
+   repeat for each line wikiDomain in recentAuthorDomains
+      set the cursor to busy
+      put fedwiki_FetchModifiedPageArray (wikiDomain, sinceSeconds) into modifiedPageArray
+      put modifiedPageArray into editedPageArray [wikiDomain]
+   end repeat
+   return editedPageArray
+end fedwiki_FetchRecentDomainPageArray
 
 
 --> Federation | Recent
 -
-function federation_FetchMyRecentOther pCheckWikiSite
-   -- put federation_FetchMyRecentOther (false) into domainNames
-   -- put federation_FetchMyRecentOther (true) into rosterDomains
-   put atopia_FetchRoster (empty, false) into minusDomains
+function federation_RecentWithoutAtopiaDomains
+   /*
+   put atopia_FetchRosterDomains() into domainsToStrip
+   put atopia_ListWelcomeFolders() into domainsToStrip
+   put fedray_FetchWardsRecentDomains() into fedWithoutAtopiaDomains
+   line_DeleteIndex fedWithoutAtopiaDomains, domainsToStrip
+   */
+   
+   put atopia_FetchTreeWelcomeInfoArray() into atopiaFedray
+   put fedray_FetchWardsRecentFedray() into wardsFedray
+   difference wardsFedray with atopiaFedray
+   put the keys of wardsFedray into recentWithoutAtopiaDomains
    --
-   put fedray_FetchWardsRecentDomains (pCheckWikiSite, minusDomains) into domainNames
+   return recentWithoutAtopiaDomains
+end federation_RecentWithoutAtopiaDomains
+
+function federation_FetchMyRecentOther
+   put atopia_FetchRosterDomains() into minusDomains
+   put fedray_FetchWardsRecentDomains() into domainNames
+   line_DeleteIndex domainNames, minusDomains
    return domainNames
 end federation_FetchMyRecentOther
 
-function federation_RecentWithoutAtopiaDomains pCheckWikiSite
-   put federation_FetchRecentFiltered ("server.fedwiki.org", "atopia-domain-index", "741a0fcdd3ff76b2", pCheckWikiSite) into fedWithoutAtopiaDomains
-   return fedWithoutAtopiaDomains
-end federation_RecentWithoutAtopiaDomains
-
-function federation_FetchRecentFiltered wikiDomain, pageSlug, minusID, pCheckWikiSite
-   put roster_Fetch (wikiDomain, pageSlug, minusID) into domainsToStrip
-   delete line 1 to 2 of domainsToStrip
-   put fedray_FetchWardsRecentDomains (pCheckWikiSite, domainsToStrip) into domainNames
-   return domainNames
-end federation_FetchRecentFiltered
-
-function federation_FetchRecentAtopia
-   put fedray_FetchWardsRecentDomains() into recentFedDomains
-   put atopia_FetchRoster() into atopiaDomains
-   put line_GetCommon (recentFedDomains, atopiaDomains) into recentAtopiaDomains
-   url_SortDomainIndex recentAtopiaDomains
-   return recentAtopiaDomains
-end federation_FetchRecentAtopia
-
 function federation_RecentStripped
    put federation_RecentWithoutAtopiaDomains() into domainNames
-   fedwiki_FilterCheck domainNames
+   federation_CheckDomainExists domainNames
    put the result into badNames
    return badNames
 end federation_RecentStripped
 
 
---> Atopia | SitePages
+--> Fedwiki | Sitemap | Recent
 -
-function atopia_SitePagesToCreate pHow
-   put atopia_ListSites() into atopiaSites
-   put atopia_FetchDomains (pHow) into atopiaDomains
-   line_DeleteIndex atopiaDomains, atopiaSites
-   return atopiaDomains
-end atopia_SitePagesToCreate
+function fedwiki_FetchModifiedPageArray wikiDomain, pSincePeriod
+   put fedwiki_FetchSitemapArray (wikiDomain) into sitemapArray
+   switch
+      case pSincePeriod is empty
+         put fedwiki_ConstructSitePageArray (sitemapArray) into mPageArray
+         break
+      case pSincePeriod is a number
+         put pSincePeriod into sinceSeconds
+         put fedwiki_GetModifiedArray (sitemapArray, sinceSeconds) into mSitemapArray
+         put fedwiki_ConstructSitePageArray (mSitemapArray) into mPageArray
+         break
+      case pSincePeriod is not a number
+         put 1000 * date_GetSinceSeconds (pSincePeriod) into sinceSeconds
+         put fedwiki_GetModifiedArray (sitemapArray, sinceSeconds) into mSitemapArray
+         put fedwiki_ConstructSitePageArray (mSitemapArray) into mPageArray
+         break
+   end switch
+   return mPageArray
+end fedwiki_FetchModifiedPageArray
 
-function atopia_ListSites
-   -- at the moment this is only atopia sites
-   return federation_ListSites()
-end atopia_ListSites
+function fedwiki_ConstructSitePageArray sitemapArray
+   repeat for each key indexNum in sitemapArray
+      put sitemapArray [indexNum] into indexArray
+      put indexArray ["title"] into pageTitle
+      delete variable indexArray ["title"]
+      put indexArray into sitePageArray [pageTitle]
+   end repeat
+   return sitePageArray
+end fedwiki_ConstructSitePageArray
 
-function federation_SitePagesToCreate pHow
-   put federation_ListSites() into fedSites
-   put federation_FetchDomains (pHow) into fedDomains
-   line_DeleteIndex fedDomains, fedSites
-   return fedDomains
-end federation_SitePagesToCreate
-
-function federation_ListSites
-   -- at the moment this is only atopia sites
-   put fedwiki_ListSitemapPages ("sites.fedwiki.org") into sitemapPages
-   line_Delete "Welcome Visitors", sitemapPages
-   sort sitemapPages
-   return sitemapPages
-end federation_ListSites
-
-
---> Federation | Wikidomains
--
-function federation_GetLastModified wikiDomains, fedray
-   put 0 into maxUpdate
-   repeat for each line wikiDomain in wikiDomains
-      put fedray [wikiDomain]["last modified"] into lastUpdate
-      if lastUpdate > maxUpdate then
-         put lastUpdate into maxUpdate
+function fedwiki_GetModifiedArray sitemapArray, sinceSeconds
+   local modifiedArray
+   put item 2 of the extents of sitemapArray into maxNum
+   repeat with indexNum = 1 to maxNum
+      put sitemapArray [indexNum] into sitemapPageArray
+      put sitemapPageArray ["slug"] into pageSlug
+      put sitemapPageArray ["date"] into lastUpdate
+      if lastUpdate > sinceSeconds then
+         put sitemapPageArray into modifiedArray [pageSlug]
       end if
    end repeat
-   return maxUpdate
-end federation_GetLastModified
+   return modifiedArray
+end fedwiki_GetModifiedArray
 
-function federation_FetchFirstDate wikiDomains, fedray
-   -- for a quick hack we get the creation dates of welcome-visitors
+function federation_ConstructServerURL serverName
+   put serverName && "Server" into pageTitle
+   put fedwiki_ConstructSlug (pageTitle) into pageSlug
+   put merge ("http://server.fedwiki.org/view/welcome-visitors/view/[[pageSlug]]") into serverURL
+   return serverURL
+end federation_ConstructServerURL
+
+
+--> Federation | Time
+-
+function federation_LastModifiedDomains wikiDomains, sincePeriod
+   local fedray
+   if sincePeriod is empty then return wikiDomains
+   
+   put 1000 * date_GetSinceSeconds (sincePeriod) into sinceSeconds
+   repeat for each line wikiDomain in wikiDomains
+      set the cursor to busy
+      put fedwiki_GetlastModified (wikiDomain) into lastModified
+      if lastModified > sinceSeconds then
+         put wikiDomain & CR after sinceDomains
+      end if
+   end repeat
+   delete char -1 of sinceDomains
+   url_SortDomainIndex sinceDomains
+   return sinceDomains
+end federation_LastModifiedDomains
+
+function federation_SiteFirstDate wikiDomains, pFedray
+   if pFedray is empty then put fedray_FetchModel() into pFedray
    put the milliseconds into firstDate
    repeat for each line wikiDomain in wikiDomains
-      put fedray [wikiDomain]["created"] into creationDate
+      -- put fedwiki_FetchSiteCreationDate (wikiDomain) into creationDate
+      put fedray_FetchSiteCreationDate (wikiDomain, pFedray) into creationDate
+      --
       if creationDate < firstDate then
          put creationDate into firstDate
       end if
    end repeat
    return firstDate
-end federation_FetchFirstDate
+end federation_SiteFirstDate
+
+function federation_SiteTotalPageNum wikiDomains, fedray
+   local totalPageNum
+   repeat for each line wikiDomain in wikiDomains
+      put fedray [wikiDomain]["pages"] into pageNum
+      add pageNum to totalPageNum
+   end repeat
+   return totalPageNum
+end federation_SiteTotalPageNum
 
 
---> Federation | ServerArray
+--> Federation
 -
-command federation_UpdateServerPage serverName, pServerData
-   if pServerData is empty then put federation_FetchServerData() into pServerData
-   put _ConstructServerCurlyData (serverName, pServerData) into curlyData
-   put "sites.fedwiki.org,roster.fedwiki.org,author.fedwiki.org" into forkDomains
-   put serverName && "Server" into pageTitle
-   federation_UpdateTemplate pageTitle, "server.fedwiki.org", curlyData, forkDomains
-   put the result into pageArray
-   --
-   put pServerData [serverName] into serverArray
-   federation_StoreServerArray serverName, serverArray
-   --
-   return pageArray
-end federation_UpdateServerPage
-
-function _ConstructServerCurlyData serverName, serverData
-   -- just in case let's update
-   serverData_UpdateServerInfo serverData, serverName
-   put the result into summaryText
-   --
-   serverData_Deconstruct serverData, serverName, serverDomains, domainNum, serverPageNum, createdDate, ipAddress
-   put the result into rosterText
-   put serverData_GetAuthorNames (serverName, serverData) into authorNames
-   --
-   put serverName into curlyData ["all"]["serverName"]
-   put _ServerMeta (domainNum, serverPageNum, ipAddress, createdDate) into curlyData ["id"]["da8cf69872f38050"] -- meta
-   put rosterText into curlyData ["id"]["741a0fcdd3ff76b2"] -- roster
-   put fedwiki_MarkdownIndex (serverDomains) into curlyData ["id"]["0458144c09a51968"] -- index
-   put fedwiki_MarkdownIndex (authorNames) into curlyData ["id"]["3b90e7841cc695fa"] -- authors
-   --
-   return curlyData
-end _ConstructServerCurlyData
-
-function _ServerMeta domainNum, pageNum, ipAddress, pCreatedDate
-   if pCreatedDate is empty then put "not known" into pCreatedDate
-   put "Domains:" && domainNum into serverMeta
-   put CR & "Pages:" && pageNum after serverMeta
-   put CR & "Created:" && pCreatedDate after serverMeta
-   put CR & "IP Address:" && ipAddress after serverMeta
-   return serverMeta
-end _ServerMeta
+function federation_GoodBadDomainArray fedDomains
+   repeat for each line someDomain in fedDomains
+      set the cursor to busy
+      if fedwiki_WikiExists (someDomain) then
+         put empty into domainArray ["good"][someDomain]
+      else
+         put empty into domainArray ["bad"][someDomain]
+      end if
+   end repeat
+   return domainArray
+end federation_GoodBadDomainArray
 
 
 --> DomainArray
 -
-function domainLinkArray_FetchFromSitemaps domainArray, pCacheSitemaps
+function domainLinkArray_FetchFromSitemaps domainArray
    -- from sitemaps
    put domainArray ["domain"] into fromDomain
    put domainArray ["pageArray"] into pageSlugArray
@@ -219,8 +196,7 @@ function domainLinkArray_FetchFromSitemaps domainArray, pCacheSitemaps
       repeat for each key itemNum in forkArray
          put forkArray [itemNum]["site"] into toDomain
          if cachedSitemapArray [toDomain] is not an array then
-            -- load all sitemaps into cache so next time "domainLinkArray_FetchFromSitemaps()" is faster
-            put fedwiki_FetchSitemapArray (toDomain, pCacheSitemaps) into forkSitemapArray
+            put fedwiki_FetchSitemapArray (toDomain) into forkSitemapArray
             put forkSitemapArray into cachedSitemapArray [toDomain]
          end if
          --
@@ -270,11 +246,11 @@ function domainLinkArray_FetchFromSitemaps domainArray, pCacheSitemaps
    return domainLinkArray
 end domainLinkArray_FetchFromSitemaps
 
-function domainArray_Construct wikiDomain, pCacheSitemaps
+function domainArray_Construct wikiDomain
    set the cursor to watch
    put wikiDomain into domainArray ["domain"]
    --
-   put fedwiki_FetchSitemapArray (wikiDomain, pCacheSitemaps) into sitemapArray
+   put fedwiki_FetchSitemapArray (wikiDomain) into sitemapArray
    if sitemapArray is empty then return empty
    repeat for each key indexNum in sitemapArray
       set the cursor to busy
@@ -289,82 +265,8 @@ function domainArray_Construct wikiDomain, pCacheSitemaps
 end domainArray_Construct
 
 
---> Working on
+--> Private
 -
-function federation_ConstructServerURL serverName
-   put serverName && "Server" into pageTitle
-   put fedwiki_ConstructSlug (pageTitle) into pageSlug
-   put merge ("http://server.fedwiki.org/view/welcome-visitors/view/[[pageSlug]]") into serverURL
-   return serverURL
-end federation_ConstructServerURL
-
-function _AuthorCurlyData authorName, pAuthorDomains
-   -- put the script_ExternalCalls of sObject into externalCalls
-   -- put fedwiki_HkeyMarkdownIndex (externalCalls) into curlyData ["id"]["46fefa6edbe8111f"]
-   if pAuthorDomains is empty then
-      put federation_FetchAuthorDomains (authorName) into pAuthorDomains
-   end if
-   
-   -- fetch and update fedray
-   put fedray_Fetch() into fedray
-   put _FetchSitemapData (pAuthorDomains) into sitemapData
-   _UpdateSitemaps fedray, pAuthorDomains, sitemapData
-   put the result into pageTotal
-   fedray_Store fedray
-   
-   -- set author domain roster
-   put authorName & CR & CR & pAuthorDomains into rosterText
-   put rosterText into curlyData ["id"]["46fefa6edbe8111f"]
-   
-   -- set author metadata
-   put _AuthorStatText (authorName, pAuthorDomains, pageTotal, fedray) into curlyData ["id"]["988ad6e34d9ba4c8"]
-   return curlyData
-end _AuthorCurlyData
-
-private function _FetchSitemapData wikiDomains
-   -- probably more useful to simply use "load" and cache them
-   repeat for each line wikiDomain in wikiDomains
-      set the cursor to busy
-      put fedwiki_FetchSitemapArray (wikiDomain, false) into sitemapData [wikiDomain]
-   end repeat
-   return sitemapData
-end _FetchSitemapData
-
-private command _UpdateSitemaps @fedray, wikiDomains, pSitemapData
-   put 0 into pageTotal
-   if pSitemapData is not an array then
-      put _FetchSitemapData (wikiDomains) into pSitemapData
-   end if
-   --
-   repeat for each line wikiDomain in wikiDomains
-      put pSitemapData [wikiDomain] into sitemapArray
-      fedray_UpdateDomain fedray, wikiDomain, false, sitemapArray
-      put the result into pageNum
-      add pageNum to pageTotal
-   end repeat
-   return pageTotal
-end _UpdateSitemaps
-
-function _AuthorStatText authorName, authorDomains, pageTotal, fedray
-   put the number of lines of authorDomains into siteNum
-   if siteNum = 1 then
-      put "one site" into siteText
-   else
-      put siteNum && "sites" into siteText
-   end if
-   put federation_GetLastModified (authorDomains, fedray) into lastActive
-   date_ConvertMilliseconds lastActive
-   put federation_FetchFirstDate (authorDomains, fedray) into fedStartDate
-   date_ConvertMilliseconds fedStartDate
-   --
-   put "[[authorName]] has [[siteText]], and has been writing in the federation since [[fedStartDate]].  He has created a total of [[pageTotal]] wiki-pages," into mTemplate
-   put space & "and was last active in the federation on [[lastActive]]" after mTemplate
-   -- put ", and created [[lastMonthNum]] new pages in [[lastMonth]]" after mTemplate
-   put "." after mTemplate
-   put merge (mTemplate) into authorStatText
-   return authorStatText
-end _AuthorStatText
-
 private command _SetFromToArray @fromToArray, fromDomain, fromTitle, fromSlug, toDomain, toTitle, toSlug, linkType, externalURL  
    /*
    -- put toDomain & slash & toSlug into toPage
@@ -418,15 +320,3 @@ end _FindInternalForkLink
 
 --> Dep
 -
-private function line_GetCommon index1, index2
-   -- could use arrays
-   set the wholematches to true
-   put empty into commonIndex
-   repeat for each line someLine in index1
-      if someLine is among the lines of index2 then
-         put someLine & return after commonIndex
-      end if
-   end repeat
-   delete last char of commonIndex
-   return commonIndex
-end line_GetCommon

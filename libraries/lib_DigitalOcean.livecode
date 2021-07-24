@@ -12,11 +12,46 @@ A library for interfacing with the DigitalOcean hosting service - http://digital
 */
 
 constant OceanApiRoot = "https://api.digitalocean.com/v2/"
-local OceanApiKey
 
 
 --> Working on
 -
+--> DigitalOcean | Fetch
+-
+function digitalocean_FetchDropletIP dropletName, pDropletInfoArray
+   -- a bit hacky (assumes v4 etc)
+   if pDropletInfoArray is not an array then
+      put digitalocean_FetchDropletInfoArray() into pDropletInfoArray
+   end if
+   put pDropletInfoArray ["droplets"] into dropletArray
+   
+   repeat for each key dropletNum in dropletArray
+      put dropletArray [dropletNum]["name"] into foundName
+      if foundName = dropletName then
+         put dropletArray [dropletNum]["networks"]["v4"][1]["ip_address"] into dropletIP
+         return dropletIP
+      end if
+   end repeat
+   return empty
+end digitalocean_FetchDropletIP
+
+function digitalocean_FetchDropletName someTLD, pDomainArray, pDropletInfoArray
+   /*
+   This looks for the "@" address of type "A" int the DNS records
+   */
+   if pDomainArray is not an array then
+      put digitalocean_FetchDomainArray (someTLD) into pDomainArray
+   end if
+   put digitalocean_ExtractIpAddessFrom (pDomainArray) into someIP
+   --
+   if pDropletInfoArray is empty then
+      put digitalocean_FetchDropletInfoArray() into pDropletInfoArray
+   end if
+   put digitalocean_TranslateIP (someIP, pDropletInfoArray) into dropletName
+   return dropletName
+end digitalocean_FetchDropletName
+
+
 --> DigitalOcean | Shell
 -
 function digitalOcean_FetchFileFromIP somePath, dropletIP, pSshUserName   
@@ -87,62 +122,6 @@ function digitalOcean_FetchAccountJSON
    put digitalocean_FetchJsonArray ("account") into resultArray
    return resultArray
 end digitalOcean_FetchAccountJSON
-
-
---> DigitalOcean | Fetch
--
-function digitalocean_FetchDropletName someTLD, pDomainArray
-   /*
-   This looks for the "@" address of type "A" int the DNS records
-   */
-   local pDropletInfoArray
-   if pDomainArray is not an array then
-      -- put digitalocean_GetDomainArray (someTLD) into domainArray
-      put digitalocean_FetchDomainArray (someTLD) into pDomainArray
-   end if
-   put digitalocean_ExtractIpAddessFrom (pDomainArray) into someIP
-   put digitalocean_TranslateIP (someIP, pDropletInfoArray) into dropletName
-   return dropletName
-end digitalocean_FetchDropletName
-
-
---> DigitalOcean | Find
--
-function digitalOcean_FindServerFarms pDomainInfoArray
-   local allDomainNames, serverFarms, notServerFarms
-   digitalocean_SplitIntoFarms allDomainNames, serverFarms, notServerFarms, pDomainInfoArray
-   return serverFarms
-end digitalOcean_FindServerFarms
-
-function digitalOcean_FindNotServerFarms pDomainInfoArray
-   local allDomainNames, serverFarms, notServerFarms
-   digitalocean_SplitIntoFarms allDomainNames, serverFarms, notServerFarms, pDomainInfoArray
-   return notServerFarms
-end digitalOcean_FindNotServerFarms
-
-command digitalocean_SplitIntoFarms @allDomainNames, @serverFarms, @notServerFarms, pDomainInfoArray
-   put digitalOcean_ListAllDomainNames (pDomainInfoArray) into allDomainNames
-   set the itemdelimiter to "."
-   repeat for each line someLine in allDomainNames
-      if item 1 of someLine is "*" then
-         put item 2 to -1 of someLine & CR after serverFarms
-      else
-         put someLine & CR after notServerFarms
-      end if
-   end repeat
-   delete char -1 of serverFarms
-   delete char -1 of notServerFarms
-   
-   set the wholematches to true
-   put 1 into lineNum
-   repeat for each line testNot in notServerFarms
-      if testNot is among the lines of serverFarms then
-         delete line lineNum of notServerFarms
-      else
-         add 1 to lineNum
-      end if
-   end repeat
-end digitalocean_SplitIntoFarms
 
 
 --> DigitalOcean | Wiki
@@ -228,7 +207,9 @@ end digitalocean_GetNSrecordID
 -
 function digitalocean_FetchArecordNames oceanDomainName
    put digitalocean_FetchArecordArray (oceanDomainName) into aRecordArray
-   return keys (aRecordArray)
+   put keys (aRecordArray) into aRecordNames
+   sort aRecordNames
+   return aRecordNames
 end digitalocean_FetchArecordNames
 
 function digitalocean_FetchArecordArray oceanDomainName
@@ -323,8 +304,8 @@ command digitalocean_DeleteArecord oceanDomainName, subDomain
       return merge("error, can't find A record for [[subDomain]] of [[oceanDomainName]]")
    end if
    digitalocean_DeleteDomainRecord oceanDomainName, recordID
-   put the result into theResult
-   return theResult
+   put the result into resultArray
+   return resultArray
 end digitalocean_DeleteArecord
 
 
@@ -335,6 +316,8 @@ function digitalocean_FetchDomainRecordArray oceanDomainName
    -- curl -X GET -H 'Content-Type: application/json' -H 'Authorization: Bearer $Token' "[[fdas]"
    
    put "domains/" & oceanDomainName & "/records" into domainPath
+   put "?per_page=200" after domainPath
+   --
    put digitalocean_FetchJsonArray (domainPath) into domainInfoArray
    return domainInfoArray
 end digitalocean_FetchDomainRecordArray
@@ -350,6 +333,7 @@ function digitalocean_RetrieveDomainRecord oceanDomainName, recordID
    -- curl -X GET -H 'Content-Type: application/json' -H 'Authorization: Bearer b7d03a6947b217efb6f3ec3bd3504582' "[[apiUrl]]"
    
    put "domains/" & oceanDomainName & "/records/" & recordID into domainPath
+   --
    put digitalocean_FetchJsonArray (domainPath) into domainInfoArray
    return domainInfoArray
 end digitalocean_RetrieveDomainRecord
@@ -584,16 +568,24 @@ end digitalocean_SetApiKey
 
 command digitalocean_SetAuthHeaders
    -- http_SetBasicAuthentication "Bearer", somePassWord, moreHeaders
-   put digitalocean_GetApiKey() into OceanApiKey
+   put digitalocean_GetApiKey() into oceanApiKey
    
    put "Content-Type: application/json" into someHeader
-   put CR & "Authorization: Bearer" && OceanApiKey after someHeader
+   put CR & "Authorization: Bearer" && oceanApiKey after someHeader
    set the httpheaders to someHeader
 end digitalocean_SetAuthHeaders
 
 
 --> Deps
 -
+function secret_Get secretName
+   -- for server use only
+   if the environment is not "server" then pass "secret_Get"
+   --
+   put rigFetchConfigItem (secretName) into someSecret
+   return someSecret
+end secret_Get
+
 function http_CheckIP dropletIP
    -- lib_HTTP
    -- this checks to see if it is a valid IP adresss (rough check)
