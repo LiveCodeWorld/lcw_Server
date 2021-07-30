@@ -74,7 +74,7 @@ function pageItem_GetFirstImage itemHTML
    
    -- lets do a bit of hacking first
    put html_ExtractOpeningTag ("img", itemHTML) into imgTag
-   xml_TidyNode imgTag
+   xhtml_TidyNode imgTag
    --
    put html_GetImageArray (imgTag) into imageArray
    if imageArray is an array is false then return empty
@@ -92,26 +92,6 @@ function pageItem_GetFirstImage itemHTML
    end switch
 end pageItem_GetFirstImage
 
-function html_GetImageArray imgTag
-   put revXMLCreateTree (imgTag, false, true, false) into treeID
-   put xml_TreeNodeAttributeArray ("img", treeID) into imageArray
-   revXMLDeleteTree treeID
-   return imageArray
-end html_GetImageArray
-
-command xml_TidyNode @someNode
-   replace "'" with quote in someNode
-   replace ";" with space in someNode -- revXMLAttributes does not like ";"
-end xml_TidyNode
-
-function html_GetIframeSrc iframeHTML
-   put revXMLCreateTree (iframeHTML, false, true, false) into treeID
-   put xml_TreeNodeAttributeArray ("iframe", treeID) into iframeArray
-   revXMLDeleteTree treeID
-   --
-   return iframeArray ["src"]
-end html_GetIframeSrc
-
 command html_DeconstructImageArray imageAttributeArray, @srcURL, @imageCaption, @imageWidth, @imageHeight, @imageClass
    -- put keys (imageAttributeArray) into class, height, width, alt, srcv, data-index, data-atf, data-iml, data-deferred
    put imageAttributeArray ["scr"] into srcURL
@@ -120,77 +100,6 @@ command html_DeconstructImageArray imageAttributeArray, @srcURL, @imageCaption, 
    put imageAttributeArray ["height"] into imageHeight
    put imageAttributeArray ["class"] into imageClass
 end html_DeconstructImageArray
-
-
---> Html | Favicon
--
-function html_ConstructFaviconLink xHTML, someURL
-   -- can be "apple-touch-icon"
-   if xHTML is empty then return empty
-   put revXMLCreateTree (xHTML, false, true, false) into treeID
-   --
-   put "html/head/title" into someNode
-   put html_ExtractNodeContents (someNode, xHTML) into pageTitle
-   put revXMLMatchingNode (treeID, "html/head", "link", "rel", "icon", 1) into someNode
-   if someNode is empty then
-      revXMLDeleteTree treeID
-      return empty
-   end if
-   put revXMLAttribute (treeID, someNode, "href") into faviconLink
-   --
-   revXMLDeleteTree treeID
-   
-   set the itemdelimiter to slash
-   if token 1 of faviconLink is among the items of "http/https" then
-      put faviconLink into faviconURL
-   else
-      put item 1 to 3 of someURL & faviconLink into faviconURL
-   end if
-   get "<img src='[[faviconURL]]' style='vertical-align: middle; width:16px; height:16px' /><a target=_blank style='vertical-align: middle; padding-left: 10px; padding-right: 12px; text-decoration: none;' href='[[someURL]]'>[[pageTitle]]</a>"
-   put merge (it) into faviconLink
-   return faviconLink
-end html_ConstructFaviconLink
-
-function html_ExtractFavicon someHTML
-   -- <link rel="icon" href="/resources/images/favicon.png">
-   -- <link id='favicon' href='/favicon.png' rel='icon' type='image/png'>
-   
-   /*
-   put merge ("<link\sid='favicon'\s(.*)/>") into someReg
-   replace "'" with quote in someReg
-   --
-   if matchText (someHTML, someReg, metaContent) is true then
-      return metaContent
-   else
-      return "Not found"
-   end if
-   */
-   
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   -- put revXMLMatchingNode (treeID, "/head", "link", "rel", "icon", -1) into someNode -- without htmlTidy
-   put revXMLMatchingNode (treeID, "html/head", "link", "rel", "icon", 1) into someNode -- if you use htmlTidy
-   put revXMLAttribute (treeID, someNode, "href") into faviconLink
-   revXMLDeleteTree treeID
-   return faviconLink
-end html_ExtractFavicon
-
-
---> Html
--
-function html_ExtractHeaderDescription headerSection
-   put revXMLCreateTree (headerSection, false, true, false) into treeID
-   --
-   put revXMLMatchingNode (treeID, "head", "meta", "name", "description", -1, false) into dNode
-   if dNode is empty then
-      put empty into metaDescription
-   else
-      put word 1 to -1 of revXMLAttribute (treeID, dNode, "content") into metaDescription
-   end if
-   --
-   revXMLDeleteTree treeID
-   --
-   return metaDescription
-end html_ExtractHeaderDescription
 
 function html_ExtractHeaderTitle headerSection
    if headerSection is empty then return empty
@@ -259,31 +168,6 @@ function html_ExtractTitle someHTML
    -- put html_ExtractNodeContents ("html/head/title", someHTML) into htmlTitle
    return htmlTitle
 end html_ExtractTitle
-
-function html_ListImageNodes someHTML, pNode
-   if someHTML is empty then return empty
-   if pNode is empty then put "/" into pNode
-   
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLChildNames (treeID, pNode, CR, "img", true) into childNodes
-   revXMLDeleteTree treeID
-   --
-   repeat for each line childNode in childNodes
-      put pNode & childNode & CR after imageNodes
-   end repeat
-   delete char -1 of imageNodes
-   return imageNodes
-end html_ListImageNodes
-
-function html_GetNodeAttributeArray someNode, someHTML
-   if someHTML is empty then return empty
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLAttributes (treeID, someNode, tab, CR) into attributeTable
-   revXMLDeleteTree treeID
-   --
-   split attributeTable with CR and tab
-   return attributeTable
-end html_GetNodeAttributeArray
 
 
 --> HTML | Link
@@ -458,42 +342,6 @@ function html_ExtractAllLinks someHtml
       end if
    end repeat
 end html_ExtractAllLinks
-
-
---> HTML | Nodes
--
-function html_ExtractNode someNode, someHTML
-   -- similar as "xml_ExtractNode" (differs in strictness of "revXMLCreateTree") 
-   -- could tidy someHTML first
-   if someHTML is empty then return empty
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLText (treeID, someNode) into nodeXml
-   revXMLDeleteTree treeID
-   return nodeXml
-end html_ExtractNode
-
-function html_ExtractNodeContents someNode, someHTML
-   if someHTML is empty then return empty
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLNodeContents (treeID, someNode) into innerContent -- this is not what I think of as "contents" :)
-   revXMLDeleteTree treeID
-   return innerContent
-end html_ExtractNodeContents
-
-function html_ExtractChildNodeNames someNode, someHTML
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLChildNames (treeID, someNode, CR, empty, true) into tNodeNames
-   revXMLDeleteTree treeID
-   return tNodeNames
-end html_ExtractChildNodeNames
-
-function html_ListNodes someHTML
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLRootNode (treeID) into rootNode
-   put revXMLTree (treeID, rootNode, CR, space, true, -1) into allNodes
-   revXMLDeleteTree treeID
-   return allNodes
-end html_ListNodes
 
 
 --> HTML | CLI
@@ -926,19 +774,6 @@ function html_StripTags pHtml
    -----
    return pHtml
 end html_StripTags
-
-
---> HTML | Attributes
--
-function html_ExtractAttribute attributeName, someNode, someHTML
-   -- similar as "xml_ExtractNode" (differs in strictness of "revXMLCreateTree") 
-   -- could tidy someHTML first
-   if someHTML is empty then return empty
-   put revXMLCreateTree (someHTML, false, true, false) into treeID
-   put revXMLAttribute (treeID, someNode, attributeName) into nodeXml
-   revXMLDeleteTree treeID
-   return nodeXml
-end html_ExtractAttribute
 
 
 --> HTML | Tags

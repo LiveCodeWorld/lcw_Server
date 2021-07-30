@@ -9,6 +9,25 @@ version: 0.3
 
 --> Working on
 -
+private command _DisplayAtopia domainNames, aTitle, pTitleMenu, pLineMenu, pDoubleUp, pDisplayView
+   if pTitleMenu is empty then put "Global | Atopia | Menu" into pTitleMenu
+   if pLineMenu is empty then put "Global | Atopia | Line | Menu" into pLineMenu
+   if pDoubleUp is empty then put "mDoubleUp_Domain" into pDoubleUp
+   --
+   display_Data domainNames, aTitle, "Atopia", pDisplayView
+   put the result into displayView
+   --
+   -- display_SetInteractions displayView, menuBit, pDoubleUp
+   set the title_Menu of displayView to pTitleMenu
+   set the line_Menu of displayView to pLineMenu
+   set the mouse_DoubleUp of displayView to pDoubleUp
+   --
+   return displayView
+end _DisplayAtopia
+
+
+--> Check
+-
 function federation_FetchLastReportDate
    put fedwiki_FetchSitemap ("history.fedwiki.org") into sitemapArray
    display_Data sitemapArray, "history.fedwiki.org"
@@ -91,18 +110,6 @@ command display_Atopia aTitle, domainNames, pTitleMenu, pLineMenu, pDoubleUp, pD
    --
    return indexView
 end display_Atopia
-
-private command _DisplayAtopia domainNames, aTitle, pTitleMenu, pLineMenu, pDoubleUp, pDisplayView
-   if pTitleMenu is empty then put "Global | Atopia | Menu" into pTitleMenu
-   if pLineMenu is empty then put "Global | Atopia | Line | Menu" into pLineMenu
-   if pDoubleUp is empty then put "mDoubleUp_Domain" into pDoubleUp
-   --
-   display_Data domainNames, aTitle, "Atopia", pDisplayView
-   put the result into indexView
-   display_SetIndexMenus indexView, pTitleMenu, pLineMenu, pDoubleUp
-   --
-   return indexView
-end _DisplayAtopia
 
 private command _DisplayAtopiaDomain wikiDomain, atopiaDomains, indexTitle, mTitle, mLineTitle, mDoubleClick
    put display_FindView (wikiDomain) into indexView
