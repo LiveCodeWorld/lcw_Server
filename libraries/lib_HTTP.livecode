@@ -44,32 +44,6 @@ function curl_GetUrl someUrl, followRedirects, showHeaders
 end curl_GetUrl
 
 
---> Dig
--
-function dig_GetNS someDomain
-   -- dig fedwiki.org NS +noall +answer +short
-   url_MakeTLD someDomain
-   put merge ("dig [[someDomain]] NS +noall +answer +short") into someShell
-   put shell (someShell) into nameServers
-   return word 1 to -1 of nameServers
-end dig_GetNS
-
-function dig_GetIP someDomain
-   put merge ("dig [[someDomain]] +short") into someShell
-   put shell (someShell) into someIP
-   return word 1 to -1 of someIP
-end dig_GetIP
-
-function dig_GetDomain someIP
-   /*
-   dig +noall +answer +short cyberciti.biz
-   */
-   put "dig -x" && someIP into someShell
-   put shell (someShell) into someDomain
-   return word 1 to -1 of someDomain
-end dig_GetDomain
-
-
 --> HTTP
 -
 function http_CheckIP dropletIP
