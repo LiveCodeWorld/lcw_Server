@@ -95,7 +95,6 @@ command atopia_StoreDomainArray atopiaFedray
    if atopiaFedray is not an array then return "Error, atopiaFedray is not an array. Delete instead?"
    --
    put json_FromArray (atopiaFedray) into someJSON
-   -- put atopia_GetJsonSecret() into apiKey
    put secret_Get ("AtopiaJsonApiKey", "jsonApiKey") into apiKey
    fedwiki_PutPluginJSON someJSON, "atopia-domain-index", "server.fedwiki.org", apiKey
    put the result into putError
