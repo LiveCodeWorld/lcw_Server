@@ -1,6 +1,7 @@
 ﻿script "model_Atopia"
 --> MetaData
 -
+copyright: David Bovill
 license: GPLv3
 name: model_Atopia
 type: model
@@ -13,52 +14,19 @@ In this library we interface with the following models:
 2. Atopia Domain Array (uses a json-plugin store)
 
 AtopiaFedray has the same data structure as fedray
-
-
-function atopia_FetchRecentFolders pSincePeriod
-   -- relying on the lastmodified of a folder on linux is not reliable
-   -- use "atopia_ListSinceDomains()" which relies on the "tree" command to specify the lastmodified of the "site-index.json" files
-   
-   if pSincePeriod is empty then put "1 week" into pSincePeriod
-   put date_GetSinceSeconds (pSincePeriod) into sinceSeconds
-   
-   put atopia_FetchFilteredFolderLsArray() into lsArray
-   delete variable lsArray ["fedwiki_owners"]
-   --
-   repeat for each key wikiDomain in lsArray
-      put lsArray [wikiDomain]["lastmodified"] into lastmodified
-      convert lastmodified from internet date to seconds
-      if lastmodified > sinceSeconds then
-         put wikiDomain & CR after recentFolders
-      end if
-   end repeat
-   delete char -1 of recentFolders
-   --
-   url_SortDomainIndex recentFolders
-   return recentFolders
-end atopia_FetchRecentFolders
 */
 
 
 --> Working on
 -
 function atopia_ListNewStoredCatFolders pListStored
-   put transport_FetchAtopiaCatModel() into atopiaCatModel
+   put atopia_FetchCatModel() into atopiaCatModel
    --
    put atopiaCatModel ["new sites"] into newSiteArray
    put keys (newSiteArray) into newAtopiaSites
    url_SortDomainIndex newAtopiaSites
    return newAtopiaSites
 end atopia_ListNewStoredCatFolders
-
-function atopia_ListNewCatFolders
-   put atopia_ConstructCatModel() into atopiaCatModel
-   --
-   put atopiaCatModel ["new sites"] into newSiteArray
-   put keys (newSiteArray) into newAtopiaSites
-   url_SortDomainIndex newAtopiaSites
-   return newAtopiaSites
-end atopia_ListNewCatFolders
 
 function atopia_ListNewRosterFolders pAtopiaDomains
    -- compare Atopia roster sites with actual folders on server
@@ -80,34 +48,6 @@ function atopia_ListNewRosterFolders pAtopiaDomains
    return newRemoteDomains
 end atopia_ListNewRosterFolders
 
-
---> Atopia | DomainArray | Model
--
-function atopia_FetchDomainArray
-   -- also "fedserver_FetchFedray" of model_FedServer
-   put fedwiki_FetchPluginJSON ("atopia-domain-index", "server.fedwiki.org") into someJSON
-   put json_ToArray (someJSON) into atopiaFedray
-   if atopiaFedray is false then return empty
-   return atopiaFedray
-end atopia_FetchDomainArray
-
-command atopia_StoreDomainArray atopiaFedray
-   if atopiaFedray is not an array then return "Error, atopiaFedray is not an array. Delete instead?"
-   --
-   put json_FromArray (atopiaFedray) into someJSON
-   put secret_Get ("AtopiaJsonApiKey", "jsonApiKey") into apiKey
-   fedwiki_PutPluginJSON someJSON, "atopia-domain-index", "server.fedwiki.org", apiKey
-   put the result into putError
-   return putError
-end atopia_StoreDomainArray
-
-function secret_Get secretName
-   -- for server use only
-   if the environment is not "server" then pass "secret_Get"
-   --
-   put rigFetchConfigItem (secretName) into someSecret
-   return someSecret
-end secret_Get
 
 
 --> Atopia | DomainArray | Model | Files
@@ -239,6 +179,21 @@ end atopia_ListEmptySites
 
 --> Atopia | Model | List | Recent
 -
+function atopia_GetLaterThanSeconds pSincePeriod
+   -- converts user-friendly pSincePeriod to seconds
+   switch pSincePeriod
+      case "last update"
+         put atopia_GetLastUpDate() into laterThanSeconds
+         break
+      case empty
+         put date_GetSinceSeconds ("1 week") into laterThanSeconds
+         break
+      default
+         put date_GetSinceSeconds (pSincePeriod) into laterThanSeconds
+   end switch
+   return laterThanSeconds
+end atopia_GetLaterThanSeconds
+
 function atopia_ListSinceDomains pSincePeriod  
    put atopia_GetLaterThanSeconds (pSincePeriod) into laterThanSeconds
    put atopia_ListRecentDomains (laterThanSeconds) into wikiDomains
@@ -307,3 +262,40 @@ command atopia_DeleteFromRoster wikiDomains
    atopia_StoreRosterDomains rosterDomains
    return rosterDomains
 end atopia_DeleteFromRoster
+
+
+--> Private
+-
+private function date_GetSinceSeconds sincePeriod, pSinceSeconds
+   -- used for user friendly dispay / input
+   if pSinceSeconds is empty then
+      put the seconds into pSinceSeconds
+   end if
+   --
+   put word 1 of sincePeriod into sinceNum
+   put word 2 of sincePeriod into sinceWord
+   --
+   switch sinceWord
+      case "min"
+      case "mins"
+      case "minute"
+      case "minutes"
+         put sinceNum * 60 into periodInSeconds
+         break
+      case "hour"
+      case "hours"
+         put sinceNum * 60 * 60 into periodInSeconds
+         break
+      case "day"
+      case "days"
+         put sinceNum * 24 * 60 * 60 into periodInSeconds
+         break
+      case "week"
+      case "weeks"
+         put sinceNum * 7 * 24 * 60 * 60 into periodInSeconds
+         break
+   end switch
+   subtract periodInSeconds from pSinceSeconds
+   --
+   return pSinceSeconds
+end date_GetSinceSeconds

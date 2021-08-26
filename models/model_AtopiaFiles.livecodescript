@@ -20,12 +20,12 @@ There are other ways of accessing information stored about the server though pag
 
 --> Variables
 -
-/* All the constants below are only used by handlers in this model. */
-
 constant AtopiaDropletName = "Atopia"
+local AtopiaDropletIP = "46.101.23.193"
+
+# For ssh_DoRemoteShell
 constant AtopiaSshUser = "root"
 constant AtopiaDomain = "fedwiki.org"
-local AtopiaDropletIP
 
 
 --> Atopia | Dangerous
@@ -243,38 +243,6 @@ function atopia_WikiRootFolder
 end atopia_WikiRootFolder
 
 
---> Atopia | IP
--
-function atopia_CheckIP someIP, pForceFetch
-   put pForceFetch is not false into pForceFetch
-   put atopia_GetIP (pForceFetch) = someIP into isAtopiaServer
-   return isAtopiaServer
-end atopia_CheckIP
-
-function atopia_GetIP pForceFetch
-   if AtopiaDropletIP is not empty and pForceFetch is not true then
-      -- cached
-      return AtopiaDropletIP
-   else
-      get atopia_FetchIP()
-      if item 1 of it is "Error" then
-         exit to top
-         return empty
-      else
-         put it into AtopiaDropletIP
-      end if
-   end if
-end atopia_GetIP
-
-function atopia_FetchIP
-   get digitalOcean_GetDropletIP (AtopiaDropletName)
-   if http_CheckIP (it) is false then return "Error, fetching ip address for droplet" && dropletName
-   
-   put it into AtopiaDropletIP
-   return AtopiaDropletIP
-end atopia_FetchIP
-
-
 --> Atopia | Top
 -
 function atopia_FetchTopTSV cseName
@@ -376,3 +344,48 @@ function atopia_WikiRootFolder
    put "/root/.wiki/" into wikiRootFolder
    return wikiRootFolder
 end atopia_WikiRootFolder
+
+
+--> Atopia | IP
+-
+function atopia_GetIP
+   return AtopiaDropletIP
+end atopia_GetIP
+
+command atopia_SetIP
+   put atopia_FetchIP() into AtopiaDropletIP
+   return AtopiaDropletIP
+end atopia_SetIP
+
+function atopia_FetchIP
+   get digitalOcean_GetDropletIP (AtopiaDropletName)
+   if http_CheckIP (it) is false then return "Error, fetching ip address for droplet" && dropletName
+   
+   put it into AtopiaDropletIP
+   return AtopiaDropletIP
+end atopia_FetchIP
+
+function atopia_CheckIP someIP, pForceFetch
+   put pForceFetch is not false into pForceFetch
+   put atopia_GetIP (pForceFetch) = someIP into isAtopiaServer
+   return isAtopiaServer
+end atopia_CheckIP
+
+function http_CheckIP dropletIP
+   # Checks to see if it is a valid IP adresss
+   -- rough check for now. Improve please!
+   set the itemdelimiter to "."
+   if the number of items of dropletIP is not 4 then return false
+   repeat for each item testItem in dropletIP
+      if testItem is not a number then return false
+   end repeat
+   return true
+end http_CheckIP
+
+--> Deps
+-
+command text_AddTrailing @someText, someChar
+   if char -1 of someText is not someChar then
+      put someChar after someText
+   end if
+end text_AddTrailing

@@ -11,7 +11,7 @@ version: 0.1
 -
 local LocalArray
 
-on menu_Init tObject, mTarget
+command _Init tObject
    put display_FindView ("Federation") into newFolderView
    put exists (newFolderView) into newFolderViewExists
    put newFolderViewExists into LocalArray ["newFolderViewExists"]
@@ -21,8 +21,14 @@ on menu_Init tObject, mTarget
    else
       put empty into LocalArray ["newFolderIndex"]
    end if
-end menu_Init
+end _Init
 
+getprop  menu_Target [tObject]
+   _Init tObject
+   put the display_View of tObject into dView
+   return dView
+end menu_Target
+   
 getprop disabled_StoreAtopiaFedray
    if LocalArray ["newFolderViewExists"] then
       return false
@@ -208,7 +214,7 @@ on menu_AtopiaFedrayUpdater
 end menu_AtopiaFedrayUpdater
 
 on menu_WardsFedrayUpdater
-   put fedray_FetchWards() into fedray
+   put ward_FetchSiteModel() into fedray
    display_FedrayUpdate fedray, "Federation Fedray"
 end menu_WardsFedrayUpdater
 

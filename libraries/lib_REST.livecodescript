@@ -40,27 +40,28 @@ end json_ToArray
 --> JsonRPC | Array
 -
 function jsonrpc_GetArray restURL, pOAuthToken, pExtraHeaders, pVersionNum
-   put jsonrpc_GET (restURL, pOAuthToken, pExtraHeaders, pVersionNum) into someJson
-   put json_ToArray (someJson) into resultArray
-   return resultArray
+   put jsonrpc_GET (restURL, pOAuthToken, pExtraHeaders, pVersionNum) into utf8Json
+   put textEncode (utf8Json, "UTF-8") into rJson
+   put json_ToArray (rJson) into rArray
+   return rArray
 end jsonrpc_GetArray
 
-function jsonrpc_PostArray jsonArray, restURL, pOAuthToken, pExtraHeaders, pVersionNum
-   put json_FromArray (jsonArray) into someJSON
-   put jsonrpc_POST (someJSON, restUrl, pOAuthToken, pExtraHeaders, pVersionNum) into jsonResult
-   put json_ToArray (jsonResult) into resultArray
-   return resultArray
+function jsonrpc_PostArray postData, restUrl, pOAuthToken, pExtraHeaders, pVersionNum
+   put json_FromArray (postData) into postJSON
+   -- put textDecode (postJSON, "UTF-8") into postJSON -- seems to cause an issue sometimes???
+   --
+   put jsonrpc_POST (someJSON, restUrl, pOAuthToken, pExtraHeaders, pVersionNum) into utf8Json
+   --
+   put textEncode (utf8Json, "UTF-8") into rPageJson
+   put json_ToArray (rPageJson) into rPageArray
+   return rPageArray
 end jsonrpc_PostArray
 
-
---> jsonRPC
--
 function jsonrpc_POST someJSON, restUrl, pOAuthToken, pExtraHeaders, pVersionNum
-   -- change to a command
    rest_SetJsonHeaders pOAuthToken, pVersionNum, pExtraHeaders
    post someJSON to url restUrl
-   put it into jsonResult
-   return jsonResult
+   put it into utf8Json
+   return utf8Json
 end jsonrpc_POST
 
 

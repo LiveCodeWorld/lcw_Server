@@ -16,6 +16,7 @@ constant OceanApiRoot = "https://api.digitalocean.com/v2/"
 
 --> Working on
 -
+
 --> DigitalOcean | Fetch
 -
 function digitalocean_FetchDropletIP dropletName, pDropletInfoArray
@@ -69,6 +70,22 @@ command digitalOcean_StoreData someData, dropletName, pathToStore, pSshUserName
    return the result
 end digitalOcean_StoreData
 
+command digitalOcean_StoreFile pathToStore, localFile, dropletName, sshUserName
+   put digitalOcean_GetDropletIP (dropletName) into serverAddress
+   server_StoreFile localFile, pathToStore, serverAddress, sshUserName
+   put the result into someResult
+   return someResult
+end digitalOcean_StoreFile
+
+command digitalOcean_DeleteFile pathToDelete, dropletName, sshUserName
+   put digitalOcean_GetDropletIP (dropletName) into serverAddress
+   if http_CheckIP (serverAddress) is false then return "error, fetching ip address for droplet" && dropletName
+   
+   server_DeleteFile pathToDelete, serverAddress, sshUserName
+   put the result into someResult
+   return someResult
+end digitalOcean_DeleteFile
+
 command digitalOcean_StoreText someData, dropletName, pathToStore, pSshUserName
    put the tempname into localFile
    put someData into url ("file://" & localFile)
@@ -85,24 +102,6 @@ function digitalOcean_FetchFile somePath, pDropletName, pSshUserName
    put digitalOcean_FetchFileFromIP (somePath, dropletIP, pSshUserName) into someData
    return someData
 end digitalOcean_FetchFile
-
-command digitalOcean_StoreFile pathToStore, localFile, dropletName, sshUserName
-   put digitalOcean_GetDropletIP (dropletName) into serverAddress
-   if http_CheckIP (serverAddress) is false then return "error, fetching ip address for droplet" && dropletName
-   
-   server_StoreFile localFile, pathToStore, serverAddress, sshUserName
-   put the result into someResult
-   return someResult
-end digitalOcean_StoreFile
-
-command digitalOcean_DeleteFile pathToDelete, dropletName, sshUserName
-   put digitalOcean_GetDropletIP (dropletName) into serverAddress
-   if http_CheckIP (serverAddress) is false then return "error, fetching ip address for droplet" && dropletName
-   
-   server_DeleteFile pathToDelete, serverAddress, sshUserName
-   put the result into someResult
-   return someResult
-end digitalOcean_DeleteFile
 
 
 --> DigitalOcean | Account

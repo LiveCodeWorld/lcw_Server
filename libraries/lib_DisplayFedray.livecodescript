@@ -9,27 +9,20 @@ version: 0.4
 
 --> Working on
 -
-
---> Display | Fedray | Atopia
--
-command display_AtopiaFedray pDisplayView
-   put atopia_FetchDomainArray() into fedray
-   -- put keys (fedray) into fedDomains
-   -- url_SortDomainindex fedDomains
+command display_FederationServers
+   put fedserver_FetchModel() into sModel
    --
-   display_Data fedray, "Atopia Domains", "Atopia Fedray", pDisplayView
-   put the result into pDisplayView
-   display_SetInteractions pDisplayView, "Atopia | Build", "mDoubleUp_WikiDomain"
-   return pDisplayView
-end display_AtopiaFedray
+   display_Tools sModel, "Federation Servers", "Federation | Server", "LCW", "lcw_Server"
+end display_FederationServers
 
-command display_Fedray
-   put fedray_FetchModel() into fedray
-   display_Data fedray, "Federation Model", "Federation"
+command display_FederationModels
+   put transport_ListModelFiles() into shortFiles
+   --
+   display_Tools shortFiles, "Federation Models", "Federation | Model", "LCW", "lcw_Revigniter"
    put the result into displayView
-   display_SetInteractions displayView, "Federation", "mDoubleUp_WikiDomain"
-   -- set the title_Menu of displayView to  "Global | Federation | Build | Menu"
-end display_Fedray
+   --
+   return displayView
+end display_FederationModels
 
 command display_FederationBuilder
    put atopia_FetchRosterDomains() into atopiaDomains
@@ -54,6 +47,28 @@ command display_FedrayUpdate fedray, titleText
    end if
    return indexView
 end display_FedrayUpdate
+
+
+--> Display | Fedray | Atopia
+-
+command display_AtopiaFedray pDisplayView
+   put atopia_FetchDomainArray() into fedray
+   -- put keys (fedray) into fedDomains
+   -- url_SortDomainindex fedDomains
+   --
+   display_Data fedray, "Atopia Domains", "Atopia Fedray", pDisplayView
+   put the result into pDisplayView
+   display_SetInteractions pDisplayView, "Atopia | Build", "mDoubleUp_WikiDomain"
+   return pDisplayView
+end display_AtopiaFedray
+
+command display_Fedray
+   put fedray_FetchModel() into fedray
+   display_Data fedray, "Federation Model", "Federation"
+   put the result into displayView
+   display_SetInteractions displayView, "Federation", "mDoubleUp_WikiDomain"
+   -- set the title_Menu of displayView to  "Global | Federation | Build | Menu"
+end display_Fedray
 
 
 --> Display | Update | Old
@@ -111,43 +126,6 @@ command display_UpdateBothFedrays indexView
    set the displayed_Index ["Updated Sites"] of indexView to updatedSites
 end display_UpdateBothFedrays
 
-command display_AndAddNewFederationSites indexView
-   -- no idea about this one (see also "display_UpdateBothFedrays")
-   -- only updates indexes (no trashing) 
-   -- uses "fedray_UpdateLastModified"
-   -- see also
-   
-   put fedray_ListNewWardSites() into recentFederationDomains
-   sort recentFederationDomains
-   set the displayed_Index ["Wards New Sites"] of indexView to recentFederationDomains
-   --
-   put fedray_FetchModel() into fedray
-   repeat for each line wikiDomain in recentFederationDomains
-      display_Spin wikiDomain, indexView
-      put the result into lineNum
-      --
-      set the line_Colour [lineNum] of indexView to red
-      atopia_ToggleIsIndexed wikiDomain, true, true
-      --
-      fedray_UpdateLastModified fedray, wikiDomain
-      --
-      get the result
-      if it is empty then
-         set the line_Colour [lineNum] of indexView to red
-         set the deleted_Line of indexView to lineNum
-      else
-         put wikiDomain & CR after newSites
-         set the line_Colour [lineNum] of indexView to green
-      end if
-   end repeat
-   delete char -1 of newSites
-   fedray_StoreModel fedray
-   --
-   put fedray_ListNewWardSites (true) into newSites
-   set the displayed_Index ["New Federation Sites"] of indexView to newSites
-   return newSites
-end display_AndAddNewFederationSites
-
 command display_RecentSites pSincePeriod, pDisplayView, pPalette
    if pSincePeriod is empty then put "1 week" into pSincePeriod
    --
@@ -177,19 +155,6 @@ command display_RecentAtopiaSites pSincePeriod, pIndexView
    put the result into indexView
    return indexView
 end display_RecentAtopiaSites
-
-command display_WardsRecentDomains pDisplayView, pPalette
-   put fedray_FetchWardsRecentDomains() into recentFederationDomains
-   --   
-   put "Global | Federation | Tree | Menu" into mTitle
-   put "Global | Federation | Line | Menu" into mLineTitle
-   --
-   display_Data recentFederationDomains, "Ward's 8 day Scrape", "Federation", pDisplayView, pPalette
-   put the result into pDisplayView
-   display_SetIndexMenus pDisplayView, mTitle, mLineTitle, mDoubleUp
-   --
-   return pDisplayView
-end display_WardsRecentDomains
 
 
 --> Display | Fedray

@@ -13,6 +13,28 @@ This library is for manipulating data about the entire federation.
 
 --> Working on
 -
+
+--> Federation | Ward
+-
+function federation_RecentWithoutAtopiaDomains
+   put atopia_FetchTreeWelcomeInfoArray() into atopiaFedray
+   put ward_FetchRecentDomainArray() into wardsFedray
+   difference wardsFedray with atopiaFedray
+   put the keys of wardsFedray into recentWithoutAtopiaDomains
+   --
+   return recentWithoutAtopiaDomains
+end federation_RecentWithoutAtopiaDomains
+
+function federation_FetchMyRecentOther
+   put atopia_FetchRosterDomains() into minusDomains
+   put ward_ListRecentDomains() into domainNames
+   line_DeleteIndex domainNames, minusDomains
+   return domainNames
+end federation_FetchMyRecentOther
+
+
+--> Federation
+-
 function fedwiki_FetchRecentDomainPageArray authorDomains, pSincePeriod
    if pSincePeriod is empty then put "1 week" into pSincePeriod
    --
@@ -26,32 +48,6 @@ function fedwiki_FetchRecentDomainPageArray authorDomains, pSincePeriod
    end repeat
    return editedPageArray
 end fedwiki_FetchRecentDomainPageArray
-
-
---> Federation | Recent
--
-function federation_RecentWithoutAtopiaDomains
-   /*
-   put atopia_FetchRosterDomains() into domainsToStrip
-   put atopia_ListWelcomeFolders() into domainsToStrip
-   put fedray_FetchWardsRecentDomains() into fedWithoutAtopiaDomains
-   line_DeleteIndex fedWithoutAtopiaDomains, domainsToStrip
-   */
-   
-   put atopia_FetchTreeWelcomeInfoArray() into atopiaFedray
-   put fedray_FetchWardsRecentFedray() into wardsFedray
-   difference wardsFedray with atopiaFedray
-   put the keys of wardsFedray into recentWithoutAtopiaDomains
-   --
-   return recentWithoutAtopiaDomains
-end federation_RecentWithoutAtopiaDomains
-
-function federation_FetchMyRecentOther
-   put atopia_FetchRosterDomains() into minusDomains
-   put fedray_FetchWardsRecentDomains() into domainNames
-   line_DeleteIndex domainNames, minusDomains
-   return domainNames
-end federation_FetchMyRecentOther
 
 function federation_RecentStripped
    put federation_RecentWithoutAtopiaDomains() into domainNames

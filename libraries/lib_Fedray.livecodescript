@@ -14,6 +14,54 @@ See also "model_Fedray"
 --> Working on
 -
 
+--> Fedray | Ward
+-
+function fedray_FetchUpdated
+   put ward_FetchSiteModel() into fedray
+   repeat for each line wikiDomain in fedDomains
+      set the cursor to busy
+      fedray_UpdateLastModified fedray, wikiDomain, true
+   end repeat
+   return fedray
+end fedray_FetchUpdated
+
+function fedray_FetchSizeRoster pCheck
+   set the cursor to watch
+   put ward_FetchSiteModel() into fedSiteArray
+   repeat for each key wikiDomain in fedSiteArray
+      if pCheck is true then
+         set the cursor to busy
+         put fedwiki_FetchSitemapArray (wikiDomain) into sitemapArray
+         if sitemapArray is an array then
+            put item 2 of the extents of sitemapArray into pageNum
+         else
+            put empty into rosterArray ["Bad sites"][wikiDomain]
+            next repeat
+         end if
+      else
+         put domainArray ["pages"] into pageNum
+      end if
+      
+      put fedSiteArray [wikiDomain] into domainArray
+      switch
+         case pageNum < 6
+            put domainArray into rosterArray ["Mayfly sites"][wikiDomain]
+            break
+         case 13 > pageNum and pageNum  > 5
+            put domainArray into rosterArray ["Baby sites"][wikiDomain]
+            break
+         case 31 > pageNum and pageNum > 12
+            put domainArray into rosterArray ["Working sites"][wikiDomain]
+            break
+         default
+            -- case pageNum > 30
+            put domainArray into rosterArray ["Mega sites"][wikiDomain]
+      end switch
+   end repeat
+   return rosterArray
+end fedray_FetchSizeRoster
+
+
 --> Fedray | Time
 -
 function fedray_GetLastModified wikiDomains, pFedray
@@ -102,42 +150,6 @@ function fedray_ConstructRoster pCheck
    return rosterText
 end fedray_ConstructRoster
 
-function fedray_FetchSizeRoster pCheck
-   set the cursor to watch
-   put fedray_FetchWards() into fedSiteArray
-   repeat for each key wikiDomain in fedSiteArray
-      if pCheck is true then
-         set the cursor to busy
-         put fedwiki_FetchSitemapArray (wikiDomain) into sitemapArray
-         if sitemapArray is an array then
-            put item 2 of the extents of sitemapArray into pageNum
-         else
-            put empty into rosterArray ["Bad sites"][wikiDomain]
-            next repeat
-         end if
-      else
-         put domainArray ["pages"] into pageNum
-      end if
-      
-      put fedSiteArray [wikiDomain] into domainArray
-      switch
-         case pageNum < 6
-            put domainArray into rosterArray ["Mayfly sites"][wikiDomain]
-            break
-         case 13 > pageNum and pageNum  > 5
-            put domainArray into rosterArray ["Baby sites"][wikiDomain]
-            break
-         case 31 > pageNum and pageNum > 12
-            put domainArray into rosterArray ["Working sites"][wikiDomain]
-            break
-         default
-            -- case pageNum > 30
-            put domainArray into rosterArray ["Mega sites"][wikiDomain]
-      end switch
-   end repeat
-   return rosterArray
-end fedray_FetchSizeRoster
-
 
 --> Fedray
 -
@@ -161,19 +173,3 @@ command fedray_Filter @domainArray, pMinPageNum
    put goodArray into domainArray
    return badArray
 end fedray_Filter
-
-
---> Fedray | Update
--
-function fedray_FetchUpdated
-   put fedray_FetchWards() into fedray
-   repeat for each line wikiDomain in fedDomains
-      set the cursor to busy
-      fedray_UpdateLastModified fedray, wikiDomain, true
-   end repeat
-   return fedray
-end fedray_FetchUpdated
-
-
---> Private
--

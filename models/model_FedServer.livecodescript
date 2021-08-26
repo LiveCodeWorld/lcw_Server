@@ -20,32 +20,8 @@ It is currently stored and consteucted and composed a number of ways to see what
 - 3) It can be fetched from a store (federation_FetchModel ("Server Model"))
 */
 
-
---> Federation | Server | Roster | Model
+--> Federation | Server | Model | Utils
 -
-function federation_FetchRoster serverName
-   -- see also fedray_FetchDomains()
-   put _ConstructServerPageSlug (serverName) into pSlug 
-   put roster_Fetch ("server.fedwiki.org", pSlug, "741a0fcdd3ff76b2") into rosterText
-   return word 1 to -1 of rosterText
-end federation_FetchRoster
-
-command federation_StoreRoster rosterText
-   put _ConstructServerPageSlug (serverName) into pSlug 
-   roster_Store "server.fedwiki.org", pSlug, rosterText, "741a0fcdd3ff76b2"
-   put the result into pageArray
-   return pageArray
-end federation_StoreRoster
-
-
---> Fedserver
--
-function federation_ListDocumentedServerNames
-   put fedwiki_ListSitemapPages ("server.fedwiki.org") into wikiPages
-   filter wikiPages with "* Server"
-   return wikiPages
-end federation_ListDocumentedServerNames
-
 function federation_ListServerNames
    put federation_FetchModel ("Server Model") into federationServerModel
    put keys (federationServerModel) into serverNames
@@ -148,84 +124,6 @@ command federation_UpdateServerModel @federationServerModel, serverName
    put serverPageNum && "pages in" && domainNum && "domains" into summaryText
    return summaryText
 end federation_UpdateServerModel
-
-
---> Fedserver | Fedray | Model
--
-/*
-The fedServerModel contains
-*/
-
-function fedserver_FetchFedray serverName
-   put fedserver_FetchModel (serverName) into fedserverModel
-   put fedserverModel ["domains"] into serverFedray
-   return serverFedray
-end fedserver_FetchFedray
-
-command fedserver_StoreFedray serverName, serverFedray
-   put fedserver_FetchModel (serverName) into fedserverModel
-   put serverFedray into fedserverModel ["domains"]
-   fedserver_StoreModel serverName, fedserverModel
-   put the result into putError
-   return putError
-end fedserver_StoreFedray
-
-
---> Fedserver | Model | Constructed
--
-function fedserver_ConstructModel serverName
-   put federation_ConstructServerModel() into federationServerModel
-   put federationServerModel [serverName] into fedserverModel
-   return fedserverModel
-end fedserver_ConstructModel
-
-
---> Fedserver | Model
--
-/*
-Federation server models are stored on pages named "ServerName Model" on the wiki "server.fedwiki.org"
-
-Each server model has the following structure:
-
-- federationServerArray ["domains"] = fedray
-- federationServerArray ["pageNum"]
-- federationServerArray ["ipAddress"]
-- federationServerArray ["domainNum"]
-
-of which "fedray" is the most important
-*/
-
-function fedserver_FetchModel serverName
-   put _ConstructServerPageSlug (serverName) into pSlug
-   --
-   put fedwiki_FetchPluginJSON (pSlug, "server.fedwiki.org") into someJSON
-   put json_ToArray (someJSON) into fedserverModel
-   if fedserverModel is false then return empty
-   return fedserverModel
-end fedserver_FetchModel
-
-command fedserver_StoreModel serverName, fedserverModel
-   put _ConstructServerPageSlug (serverName) into pSlug
-   --
-   put json_FromArray (fedserverModel) into someJSON
-   put atopia_GetJsonSecret() into apiKey
-   fedwiki_PutPluginJSON someJSON, pSlug, "server.fedwiki.org", apiKey
-   put the result into putError
-   return putError
-end fedserver_StoreModel
-
-
---> Atopia | Plugin | Secret
--
-function atopia_GetJsonSecret
-   put secret_Get ("AtopiaJsonApiKey", "jsonApiKey") into apiKey
-   return apiKey
-end atopia_GetJsonSecret
-
-command atopia_SetJsonSecret apiKey
-   secret_Set "AtopiaJsonApiKey", apiKey, "jsonApiKey"
-   return the result
-end atopia_SetJsonSecret
 
 
 --> Private

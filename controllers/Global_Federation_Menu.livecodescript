@@ -9,6 +9,11 @@ version: 0.2
 
 --> Menu | Init
 -
+on mDoubleUp_Federation displayView, someLine
+   breakpoint
+   put the title_Text of displayView into someTitle
+end mDoubleUp_Federation
+
 getprop modelDocumentation_Params
    return "Federation Model,Author Model,Server Model,-,All"
 end modelDocumentation_Params
@@ -56,6 +61,15 @@ end serverData_SetSummary
 
 --> Global | Federation | Menu
 -
+on menu_FederationBuilder
+   display_FederationBuilder
+end menu_FederationBuilder
+
+on menu_WardsFedrayUpdater
+   put ward_FetchSiteModel() into fedray
+   display_FedrayUpdate fedray, "Federation Fedray"
+end menu_WardsFedrayUpdater
+
 on submenu_Display
    return "Global | Federation | Display | Menu"
 end submenu_Display
@@ -75,7 +89,104 @@ on menu_ModelDocumentation arrayView, modelName
    launch url launchURL
 end menu_ModelDocumentation
 
-on menu_PublishAllServerDetails arrayView
+on submenu_Build
+   return "Global | Federation | Build | Menu"
+end submenu_Build
+
+on submenu_Federation
+   return "Global | Federation | Display | Menu"
+end submenu_Federation
+
+on menu_DisplayFederationServers
+   display_FederationServers
+end menu_DisplayFederationServers
+
+on menu_FederationBuilder
+   display_FederationBuilder
+end menu_FederationBuilder
+
+on menu_WardsFedrayUpdater
+   put ward_FetchSiteModel() into fedray
+   display_FedrayUpdate fedray, "Federation Fedray"
+end menu_WardsFedrayUpdater
+
+on _
+end _
+
+on submenu_Dev
+   return "Dev | Menu"
+end submenu_Dev
+
+
+--> Dev | Menu
+-
+on _FedrayLoadUpdate displayView
+   put the displayed_Index of displayView into atopiaFolders
+   fedray_LoadUpdateTests atopiaFolders, displayView
+end _FedrayLoadUpdate
+
+on _BuildWardsWithoutAtopia displayView
+   set the cursor to watch
+   --
+   put atopia_FetchDomainArray() into fedray
+   put fedray_FetchUnion() into fedrayWithoutAtopia
+   --
+   difference fedrayWithoutAtopia with fedray
+   put the keys of fedrayWithoutAtopia into withoutAtopiaDomains
+   -- 
+   _BuildWithoutAtopia fedray, withoutAtopiaDomains, displayView
+   put the result into resultArray
+   --
+   -- lcw_Answer "Store fedray?", displayView
+   fedray_StoreModel fedray
+   --
+   display_Data resultArray, "WithoutAtopia", "Build Wards"
+   put the result into displayView
+   set the title_Menu of displayView to "Global | Fedray | Rebuild | Menu" 
+   --
+   return resultArray
+end _BuildWardsWithoutAtopia
+
+on _CheckAtopiaDomainArray displayView
+   put the displayed_Array of displayView into atopiaDomainArray
+   put the keys of atopiaDomainArray into atopiaDomains
+   repeat for each line wikiDomain in atopiaDomains
+      put fedwiki_JsonSiteMapUrl (wikiDomain) into sitemapURL
+      load url sitemapURL with "atopia_CheckDomainAndUpdateMetadata"
+      exit repeat
+   end repeat
+end _CheckAtopiaDomainArray
+
+on _UpdateFederation
+   display_UpdateFederation
+end _UpdateFederation
+
+on _UpdateFederation indexView
+   display_UpdateFederation
+end _UpdateFederation
+
+on _UpdateBothFedrays indexView
+   display_UpdateBothFedrays indexView
+end _UpdateBothFedrays
+
+on _AddNewFederationSites indexView
+   -- only updates indexes (no trashing) - uses "fedray_UpdateLastModified"
+   display_AndAddNewFederationSites indexView
+end _AddNewFederationSites
+
+on _AddOwnedToFedray indexView
+   put atopia_GetLocalEmailOwnerData() into ownershipArray
+   fedray_AddOwnershipArray ownershipArray, "atopia.array"
+end _AddOwnedToFedray
+
+on _
+end _
+
+on _DisplayFederationServers
+   display_FederationServers
+end _DisplayFederationServers
+
+on _PublishAllServerDetails arrayView
    put the displayed_Data of arrayView into serverData
    serverData_SetSummary serverData
    put the result into serverIndex
@@ -89,31 +200,14 @@ on menu_PublishAllServerDetails arrayView
    end repeat
    --
    launch url "http://server.fedwiki.org"
-end menu_PublishAllServerDetails
+end _PublishAllServerDetails
 
-on _
-end _
-
-on menu_AzureEntites
+on _AzureEntites
    put lcw_Ask ("Choose a domain to index..", "david.bovill.me") into wikiDomain
    display_AzureEntities wikiDomain
-end menu_AzureEntites
+end _AzureEntites
 
-on submenu_Build
-   return "Global | Federation | Build | Menu"
-end submenu_Build
-
-on _
-end _
-
-on submenu_Dev
-   return "Dev | Menu"
-end submenu_Dev
-
-
---> Dev | Menu
--
-on menu_StoreAuthorArray
+on _StoreAuthorArray
    breakpoint
    put "david.bovill@gmail.com" into ownerEmail
    --
@@ -131,5 +225,5 @@ on menu_StoreAuthorArray
    atopia_StorePersonArray "people-template", wDomainArray
    -- atopia_StorePersonArray "david-bovill", wDomainArray
    put atopia_FetchPersonJSON ("david-bovill")
-end menu_StoreAuthorArray
+end _StoreAuthorArray
 

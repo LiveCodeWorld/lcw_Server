@@ -11,14 +11,19 @@ version: 0.2
 -
 local LocalArray
 
-on menu_Init tObject
+getprop menu_Target [tObject]
+   _Init tObject
+   return the display_View of tObject
+end menu_Target
+
+on _Init tObject
    put item 1 of the selected_Path of tObject into serverName
    put serverName into LocalArray ["serverName"]
    put federation_ListDocumentedServerNames() into serverPageNames
    put serverPageNames into LocalArray ["serverPageNames"]
    put (serverName && "Server") is among the lines of serverPageNames into isDocumented
    put isDocumented into LocalArray ["isDocumented"]
-end menu_Init
+end _Init
 
 command serverData_UpdateServer @serverModel, serverName, fedray, pUpdateFedray
    breakpoint
@@ -138,60 +143,3 @@ on menu_DeleteServer arrayView
    set the displayed_Data of arrayView to serverModel
    federation_StoreModel "Server Model", serverModel
 end menu_DeleteServer
-
-on _
-end _
-
-on submenu_Dev
-   return "Dev | Menu"
-end submenu_Dev
-
-
---> Global | Federation | Server | Line | Menu | Props
--
-
---> Global | Federation | Server | Line | Menu | Disabled
--
-
---> Dev | Menu
--
-on menu_DisplayedServerArray arrayView
-   put the top_Array of arrayView into serverArray
-   --
-   display_Array serverArray, "top_Array"
-end menu_DisplayedServerArray
-
-on menu_RemoteServerArray arrayView
-   put _ServerName() into serverName
-   --
-   lcw_Answer "Remove server array from wiki model. Testing and not stored for now..."
-   
-   put federation_FetchModel ("Server Model") into federationServerModel
-   put federationServerModel [serverName] into serverArray
-   --
-   display_Array serverArray, "federation_FetchServerModel"
-end menu_RemoteServerArray
-
-on _
-end _
-
-on menu_UpdateSeverModel arrayView
-   put _ServerName() into serverName
-   --
-   lcw_Answer "Update server array using fedray and teh displayed data. Not quite sure what it does, but testing and not stored for now..."
-   
-   set the cursor to watch
-   --
-   put true into pUpdateFedray
-   put fedray_FetchWards() into fedray
-   --
-   put the displayed_Data of arrayView into serverModel
-   --
-   serverData_UpdateServer serverModel, serverName, fedray, pUpdateFedray
-   --
-   set the displayed_Data of arrayView to serverModel
-end menu_UpdateSeverModel
-
-on menu_CreateFedrayModels displayView
-   menu_DoGlobal "menu_CreateFedrayModels", "Global | Federation | Build | Menu"
-end menu_CreateFedrayModels

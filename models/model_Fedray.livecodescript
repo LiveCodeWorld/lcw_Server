@@ -21,6 +21,74 @@ The Atopia Fedray Model for instance is stored
 
 */
 
+/*
+--> Old
+-
+function old_FetchDomainArray
+   -- also "fedserver_FetchFedray" of model_FedServer
+   put fedwiki_FetchPluginJSON ("atopia-domain-index", "server.fedwiki.org") into someJSON
+   put json_ToArray (someJSON) into atopiaFedray
+   if atopiaFedray is false then return empty
+   return atopiaFedray
+end old_FetchDomainArray
+
+command old_StoreDomainArray atopiaFedray
+   if atopiaFedray is not an array then return "Error, atopiaFedray is not an array. Delete instead?"
+   --
+   put json_FromArray (atopiaFedray) into someJSON
+   put secret_Get ("AtopiaJsonApiKey", "jsonApiKey") into apiKey
+   fedwiki_PutPluginJSON someJSON, "atopia-domain-index", "server.fedwiki.org", apiKey
+   --
+   put the result into writeError
+   return writeError
+end old_StoreDomainArray
+
+function old_FetchFederationModel modelTitle
+   put fedwiki_ConstructSlug (modelTitle) into pageSlug
+   put fedwiki_FetchPluginData (pageSlug, FedModelDomain) into fedray
+   if fedray is false then return empty
+   return fedray
+end old_FetchFederationModel
+
+command old_StoreFederationModel modelName, fedray
+   put fedwiki_ConstructSlug (modelTitle) into pageSlug
+   -- put atopia_GetJsonSecret() into apiKey
+   put secret_Get ("AtopiaJsonApiKey", "jsonApiKey") into apiKey
+   put json_FromArray (fedray) into someJSON
+   fedwiki_PutPluginJSON someJSON, pageSlug, FedModelDomain, apiKey
+   put the result into putError
+   return putError
+end old_StoreFederationModel
+
+command federation_Migrate
+   federation_MigrateModel "Federation Model"
+end federation_Migrate
+
+on federation_MigrateModel modelName
+   put federationFetchOldModel (modelName) into modelData
+   federation_StoreModel modelName, modelData
+end federation_MigrateModel
+*/
+
+function jwt_ConstructToken userName
+   put the seconds into tIAT
+   put tIAT + 10 into tNBF
+   put tIAT + 60 into tEXP
+   
+   put "jwt test" into tJWTpayloadA ["sub"]
+   put userName into tJWTpayloadA ["name"]
+   put "true" into tJWTpayloadA ["admin"]
+   
+   # NOTE: SECONDS NEED TO BE A STRING, OTHERWISE THE DATA OF JSONEXPORT IS NOT VALID.
+   put tIAT & "" into tJWTpayloadA ["iat"]
+   put tNBF & "" into tJWTpayloadA ["nbf"]
+   put tEXP & "" into tJWTpayloadA ["exp"]
+   put uuid() into tJWTpayloadA ["jti"]
+   
+   put rigJWTencode( , tJWTpayloadA) into tJWT
+   return tJWT
+end jwt_ConstructToken
+
 
 --> Working on
 -
@@ -92,90 +160,6 @@ function fedray_GetAuthorDomains authorNames, authorNameData
    --
    return authorDomains
 end fedray_GetAuthorDomains
-
-
---> Fedray | Model
--
-function fedray_FetchModel
-   put federation_FetchModel ("Federation Model") into fedray
-   return fedray
-end fedray_FetchModel
-
-command fedray_StoreModel fedray
-   federation_StoreModel "Federation Model", fedray
-   put the result into putError
-   return putError
-end fedray_StoreModel
-
-
---> Fedray | Model
--
-/*
-Federation models are wiki pages on "roster.fedwiki.org" named "[[ModelName]] Model"
-The wiki pages contain a json plugin which stored the model 
-*/
-
-constant FedModelDomain = "roster.fedwiki.org"
-
-function federation_ModelDomain
-   return FedModelDomain
-end federation_ModelDomain
-
-command federation_Launch modelTitle
-   put federation_ModelDomain() into modelDomain
-   fedwiki_Launch modelDomain, modelTitle
-   return the result
-end federation_Launch
-
-function federation_ModelExists modelTitle
-   put federation_ListModels() into modelTitles
-   set the wholematches to true
-   put modelTitle is among the lines of modelTitles into modelExists
-   return modelExists
-end federation_ModelExists
-
-function federation_ListModels
-   put fedwiki_ListSitemapPages (FedModelDomain) into pageTitles
-   filter pageTitles with "* Model"
-   return pageTitles
-end federation_ListModels
-
-command federation_CreateModelPage modelTitle
-   if federation_ModelExists (modelTitle) then
-      return merge ("Error, model '[[modelTitle]]' already exists. Delete first if you want to create it anew.")
-   end if
-   
-   put fedwiki_ConstructSlug (modelTitle) into pageSlug
-   put empty into forkDomains
-   --
-   put pageArray_FetchTemplate (FedModelDomain, "Model Template", modelTitle, forkDomains) into pageArray
-   pageArray_Store FedModelDomain, pageSlug, pageArray
-   --
-   return pageArray
-end federation_CreateModelPage
-
-command federation_DeleteModelPage modelTitle
-   put fedwiki_ConstructSlug (modelTitle) into pageSlug
-   pageArray_Delete FedModelDomain, pageSlug
-   return the result
-end federation_DeleteModelPage
-
-function federation_FetchModel modelTitle
-   put fedwiki_ConstructSlug (modelTitle) into pageSlug
-   put fedwiki_FetchPluginData (pageSlug, FedModelDomain) into fedray
-   if fedray is false then return empty
-   return fedray
-end federation_FetchModel
-
-command federation_StoreModel modelTitle, fedray
-   put fedwiki_ConstructSlug (modelTitle) into pageSlug
-   -- put atopia_GetJsonSecret() into apiKey
-   put secret_Get ("AtopiaJsonApiKey", "jsonApiKey") into apiKey
-   put json_FromArray (fedray) into someJSON
-   fedwiki_PutPluginJSON someJSON, pageSlug, FedModelDomain, apiKey
-   put the result into putError
-   return putError
-end federation_StoreModel
 
 
 --> Private

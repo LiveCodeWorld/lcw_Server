@@ -8,7 +8,7 @@ version: 0.4
 
 /*
 Here we fetch and store domain-arrays as json in json-plugin's on the Atopia server.
-A domainArray is an array of wiki domains that is compaitble with the structure provided by Ward (see "fedray_FetchWards")
+A domainArray is an array of wiki domains that is compaitble with the structure provided by Ward.
 */
 
 

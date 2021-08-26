@@ -1,7 +1,7 @@
 ﻿script "model_AtopiaCreate"
 --> MetaData
 -
-copyright: Anonymous
+copyright: David Bovill
 license: GPLv3
 name: model_AtopiaCreate
 type: model
@@ -23,7 +23,6 @@ constant AtopiaSshUser = "root"
 --> Atopia | Files | Model | Store
 -
 command atopia_StoreData somePath, someData
-   -- digitalOcean_StoreData someData, AtopiaDropletName, somePath, AtopiaSshUser
    put the tempname into localFile
    put someData into url ("binfile://" & localFile)
    atopia_StoreFile localFile, somePath
@@ -32,28 +31,54 @@ command atopia_StoreData somePath, someData
    return shellResult
 end atopia_StoreData
 
-command digitalOcean_StoreData someData, dropletName, pathToStore, pSshUserName
-   put the tempname into localFile
-   put someData into url ("binfile://" & localFile)
-   digitalOcean_StoreFile pathToStore, localFile, dropletName, pSshUserName
-   return the result
-end digitalOcean_StoreData
-
 command atopia_StoreFile localFile, pathToStore
-   digitalOcean_StoreFile pathToStore, localFile, AtopiaDropletName, AtopiaSshUser
+   put atopia_GetIP() into atopiaIP
+   server_StoreFile localFile, pathToStore, atopiaIP, AtopiaSshUser
    put the result into shellResult
    return shellResult
 end atopia_StoreFile
 
-command digitalOcean_StoreFile pathToStore, localFile, dropletName, sshUserName
-   put atopia_GetIP (pForceFetch) into atopiaIP
-   
-   server_StoreFile localFile, pathToStore, atopiaIP, sshUserName
-   put the result into someResult
-   return someResult
-end digitalOcean_StoreFile
+command atopia_DeleteFile pathToDelete
+   put atopia_GetIP() into atopiaIP
+   ssh_DeleteFile AtopiaSshUser, atopiaIP, pathToDelete
+   put the result into shellResult
+   return shellResult
+end atopia_DeleteFile
 
-command server_StoreFile localFile, pathToStore, serverAddress, sshUser, pSshKeyPath
+
+--> Private
+-
+private command ssh_DeleteFile sshUser, remoteDomain, somePath
+   -- can we ensure it only deletes a single file?
+   shell_BashParamEscape somePath
+   --
+   put "rm" && somePath into remoteCommand
+   ssh_DoRemoteShell sshUser, remoteDomain, remoteCommand
+   put the result into shellResult
+   return shellResult
+end ssh_DeleteFile
+
+private command ssh_DoRemoteShell sshUserName, serverAddress, remoteShell, pWhichKey
+   -- requires public ssh key to be installed on server
+   put "ssh" into someShell
+   if pWhichKey is not empty then
+      breakpoint -- not tested
+      put the defaultfolder into oFolder
+      set the defaultfolder to "~/.ssh"
+      put space & "-i" && pWhichKey after someShell
+   end if
+   --
+   put space & sshUserName & "@" & serverAddress && remoteShell after someShell
+   --
+   put word 1 to -1 of shell (someShell) into shellResult
+   --
+   if pWhichKey is not empty then
+      set the defaultfolder to oFolder
+   end if
+   return shellResult
+end ssh_DoRemoteShell
+
+private command server_StoreFile localFile, pathToStore, serverAddress, sshUser, pSshKeyPath
    -- uses "scp" and private keys for security
    if serverAddress is empty or sshUser is empty then
       return "Error, serverAddress is empty or sshUser is empty"
@@ -69,7 +94,7 @@ command server_StoreFile localFile, pathToStore, serverAddress, sshUser, pSshKey
    return shellResult
 end server_StoreFile
 
-command shell_StoreFile sshUser, remoteDomain, remotePath, localFile, pSshKeyPath
+private command shell_StoreFile sshUser, remoteDomain, remotePath, localFile, pSshKeyPath
    /*
    scp –P 40050 Desktop/url.txt yatri@192.168.1.50:~/Desktop/url.txt
    scp hierarchical.png root@178.62.43.72:~/.wiki/actual.world/pages/hierarchical.png
@@ -80,12 +105,10 @@ command shell_StoreFile sshUser, remoteDomain, remotePath, localFile, pSshKeyPat
    
    */
    
-   -- shell_BashParamEscape localFile
    put kwote (word 1 to -1 of localFile) into localFile
    
-   -- shell_BashParamEscape fullPath
    -- The outside set of quotes are for the local shell, and the inside quotes are for the remote shell.
-   --    scp "my local file.txt" user@192.168.1.100:"'/folder/my spacey folder name/'"
+   -- scp "my local file.txt" user@192.168.1.100:"'/folder/my spacey folder name/'"
    put word 1 to -1 of remotePath into remotePath
    put "'" before remotePath
    put "'" after remotePath
@@ -103,23 +126,23 @@ command shell_StoreFile sshUser, remoteDomain, remotePath, localFile, pSshKeyPat
    return shellResult
 end shell_StoreFile
 
+private command shell_BashParamEscape @someParam
+   put word 1 to -1 of someParam into someParam
+   if text_IsQuoted(someParam) is false then
+      repeat for each char someChar in " |()"
+         replace someChar with ("\" & someChar) in someParam
+      end repeat
+   end if
+end shell_BashParamEscape
 
---> Atopia | Files | Model | Delete
--
-command atopia_DeleteFile pathToDelete
-   digitalOcean_DeleteFile pathToDelete, AtopiaDropletName, AtopiaSshUser
-   put the result into shellResult
-   return shellResult
-end atopia_DeleteFile
-
-command ssh_DeleteFile sshUser, remoteDomain, somePath
-   -- can we ensure it only deletes a single file?
-   shell_BashParamEscape somePath
-   --
-   put "rm" && somePath into remoteCommand
-   ssh_DoRemoteShell sshUser, remoteDomain, remoteCommand
-   put the result into shellResult
-   return shellResult
-end ssh_DeleteFile
-
-
+private function text_IsQuoted someText, pString
+   local quotedText
+   put "['" & quote & "]" into someQuote
+   if pString is empty then
+      put "(?m)" & someQuote & "(.*)" & someQuote into someReg
+   else
+      put "(?m)" & someQuote & "(.*" & pString & ".*)" & someQuote into someReg
+   end if
+   put matchtext (someText, someReg, quotedText) into someBoolean
+   return someBoolean
+end text_IsQuoted

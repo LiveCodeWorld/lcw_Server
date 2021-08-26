@@ -193,7 +193,7 @@ end pageArray_AddMonkeyKeyWordSection
 function monkey_ConstructKeyWordLinks someText
    put monkey_ExtractKeyWords (someText) into kWords
    put md_ConstructKeyWordLinkSection (kWords) into kWordSection
-   reeturn kWordSection
+   return kWordSection
 end monkey_ConstructKeyWordLinks
 
 function monkey_ExtractKeyWords someText

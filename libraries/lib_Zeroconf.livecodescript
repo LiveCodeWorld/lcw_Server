@@ -1,7 +1,7 @@
 ﻿script "lib_Zeroconf"
 --> MetaData
 -
-copyright: Anonymous
+copyright: David Bovill
 license: GPLv3
 name: lib_Zeroconf
 type: library
@@ -17,6 +17,11 @@ At the moment it only works on Macos (mobile and desktop).
 
 --> Working on
 -
+function zero_IsRunning
+   get LocalArray ["bPointer"]
+   return it is not empty
+end zero_IsRunning
+
 command display_Zeroconf
    put zeroconf_GetArray() into zArray
    put zArray ["_http._tcp."] into zWebArray
@@ -27,10 +32,6 @@ command display_Zeroconf
    --
    return displayView
 end display_Zeroconf
-
-function zero_IsRunning
-   return  true
-end zero_IsRunning
 
 command zero_StartServer sName
    put the hostname into sDomain

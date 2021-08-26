@@ -20,7 +20,6 @@ local LocalArray
 --> Menu | Props
 -
 
-
 --> Global | Federation | Display | Menu
 -
 on menu_FederationNeedingUpdate displayView
@@ -83,45 +82,3 @@ end menu_WardsRecentDomains
 on menu_ThisWeeksFederationSites arrayView
    display_RecentSites "1 week", arrayView
 end menu_ThisWeeksFederationSites
-
-on _
-end _
-
-on submenu_Dev
-   return "Dev | Menu"
-end submenu_Dev
-
-
---> Dev | Menu
--
-on menu_ServerModel arrayView
-   put fedserver_FetchModel() into someArray
-   set the displayed_Array ["Server Model"] of arrayView to someArray
-   set the line_Menu of arrayView to "Global | Federation | Server | Line | Menu"
-end menu_ServerModel
-
-on menu_FederationModel arrayView
-   put fedray_FetchModel() into someArray
-   set the displayed_Array ["Federation Model"] of arrayView to someArray
-   set the line_Menu of arrayView to "Global | Federation | Line | Menu"
-end menu_FederationModel
-
-on menu_FederationAuthorModel arrayView
-   put author_FetchModelArray() into someArray
-   set the displayed_Array ["Federation Author Model"] of arrayView to someArray
-   set the line_Menu of arrayView to "Global | Federation | Author | Line | Menu"
-end menu_FederationAuthorModel
-
-on _
-end _
-
-on menu_DeadModel arrayView
-   put federation_FetchModel ("Dead Model") into someArray
-   set the displayed_Array ["Dead Model"] of arrayView to someArray
-   set the line_Menu of arrayView to "Global | Federation | Line | Menu"
-end menu_DeadModel
-
-on menu_LocalFedray arrayView
-   display_LocalFedray
-end menu_LocalFedray
-
