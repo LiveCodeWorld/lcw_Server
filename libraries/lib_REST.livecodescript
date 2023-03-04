@@ -50,7 +50,7 @@ function jsonrpc_PostArray postData, restUrl, pOAuthToken, pExtraHeaders, pVersi
    put json_FromArray (postData) into postJSON
    -- put textDecode (postJSON, "UTF-8") into postJSON -- seems to cause an issue sometimes???
    --
-   put jsonrpc_POST (someJSON, restUrl, pOAuthToken, pExtraHeaders, pVersionNum) into utf8Json
+   put jsonrpc_POST (postJSON, restUrl, pOAuthToken, pExtraHeaders, pVersionNum) into utf8Json
    --
    put textEncode (utf8Json, "UTF-8") into rPageJson
    put json_ToArray (rPageJson) into rPageArray

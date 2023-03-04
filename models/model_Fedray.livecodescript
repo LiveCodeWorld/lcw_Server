@@ -127,7 +127,7 @@ function fedray_FetchAuthorDomains authorNames
    replace comma with CR in authorNames
    repeat for each line authorName in authorNames
       get authorNameData [authorName]
-      union authorNameArray with it
+      union authorNameArray with it into authorNameArray
    end repeat
    put keys (authorNameArray) into authorDomains
    url_SortDomainIndex authorDomains
