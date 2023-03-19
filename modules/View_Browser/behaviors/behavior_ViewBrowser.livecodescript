@@ -169,7 +169,7 @@ setprop browser_HtmlText someHTML
 end browser_HtmlText
 
 
---> View
+--> Objects
 -
 private function _BrowserWidget
    return the long id of me
@@ -179,9 +179,6 @@ getprop view_Object
    return the long id of me
 end view_Object
 
-
---> Object
--
 getprop browser_View
    return the long id of me
 end browser_View
