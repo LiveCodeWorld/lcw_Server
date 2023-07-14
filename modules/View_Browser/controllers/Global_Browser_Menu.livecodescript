@@ -129,6 +129,9 @@ on menu_DisplayUrl browserView, which
          _BrowserScrollbars false, browserView
          break
       case "-"
+      case "Rnbo"
+         put "https://cycling74.com/products/rnbo" into someURL
+         break
       case "ChatGPT"
          put "https://chat.openai.com/chat" into someURL
          break

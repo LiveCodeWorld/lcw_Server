@@ -73,6 +73,27 @@ setprop displayed_Domain domainOrURL
    set the browser_URL of browserWidget to someURL
 end displayed_Domain
 
+getprop displayed_Data
+   put the browser_URL of me into someURL
+   if someURL is empty then
+      return the browser_HtmlText of me
+   else
+      return someURL
+   end if
+end displayed_Data
+
+setprop displayed_Data urlOrHtml
+   set the itemdelimiter to ":"
+   put item 1 of urlOrHtml is among the items of "http:https" into isUrl
+   --
+   if isUrl then
+      set the browser_URL of me to urlOrHtml
+   else
+      set the browser_HtmlText of me to urlOrHtml
+   end if
+   return isUrl
+end displayed_Data
+
 
 --> Events
 -
