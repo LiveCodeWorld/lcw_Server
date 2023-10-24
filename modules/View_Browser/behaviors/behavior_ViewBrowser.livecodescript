@@ -158,6 +158,11 @@ setprop browser_Javascript someJavascript
    return doResult
 end browser_Javascript
 
+getprop browser_Snapshot
+   export snapshot from _BrowserWidget() to pictVariable as PNG
+   return pictVariable
+end browser_Snapshot
+
 getprop browser_JavascriptHandlers
    put the javascriptHandlers of _BrowserWidget() into handlerList
    return handlerList

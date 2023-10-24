@@ -38,32 +38,6 @@ function dig_GetDomain someIP
    return word 1 to -1 of someDomain
 end dig_GetDomain
 
-
---> Bonjour
--
-command bonjour_CreateAlias someName
-   -- not easy to script (needs some magic)
-   -- probably better to script a nameserver?
-   -- put shell ("dns-sd -P Livewiki _http._tcp local 8081 livewiki.local david.local path=/ &")
-   return empty
-   
-   if pPath is empty then put "/" into pPath
-   put tolower (someName) into someName
-   put someName & ".local" into newLocalDomain
-   put someName into BonjourName
-   put toUpper (char 1 of BonjourName) into BonjourName
-   put "dns-sd -P [[BonjourName]] _http._tcp local 3000 [[newLocalDomain]] david.local path=[[pPath]]" into someShell
-end bonjour_CreateAlias
-
---> Bonjour
--
-command bonjour_RegisterPortMapper pMapperPort
-   put merge ("dns-sd -R 'LiveCode Port Mapper' _livecode._udp. . [[pMapperPort]] pdl=application/livecode") into someShell
-   shell_ExecuteInBackground someShell
-   put the result into shellResult
-   return shellResult
-end bonjour_RegisterPortMapper
-
 function socket_ListUsedPorts
    -- On Linux you can use netstat -atp | grep -i "listen")
    -- To show all open ports applications on your machine are listening to you can use this workaround

@@ -6,11 +6,8 @@ name: Global | Server | Menu
 type: controller
 version: 0.2
 
-/*For some strange reason this provokes recursion. Try adding it and track down the menu bug!
-
-on submenu_Dynadot
-   return "Global | Dynadot | Menu"
-end submenu_Dynadot*/
+/*
+*/
 
 
 --> Menu | Init
@@ -24,41 +21,35 @@ getprop disabled_DisplayServerArray
    end if
 end disabled_DisplayServerArray
 
+getprop checked_PresentationServer [displayView]
+   return presentation_ServerIsRunning()
+end checked_PresentationServer
+
 
 --> Global | Server | Menu
 -
-on menu_ListAtopiaFolders
-   display_AtopiaDomainFolders
-end menu_ListAtopiaFolders
+on menu_PresentationServer displayView
+   if presentation_ServerIsRunning() then
+      presentation_StopServer
+   else
+      presentation_StartServer
+   end if
+end menu_PresentationServer
 
-on _
+private on _
 end _
 
-on menu_DisplayDynadot
-   display_DynadotParked
-end menu_DisplayDynadot
+on menu_ZeroConfServer
+   zero_StartServer
+end menu_ZeroConfServer
+
+on menu_StartSearch
+   zeroconf_StartSearch
+end menu_StartSearch
+
+private on __
+end __
 
 on submenu_Dev
-   return "Dev | Menu"
+   return menu_DevTitle ("Global | Server | Menu")
 end submenu_Dev
-
-
---> Dev | Menu
--
-on menu_DisplayServerArray
-   put the server_Array of stack "lib_RemoteServer" into serverArray
-   display_Array serverArray, "the server_Array"
-end menu_DisplayServerArray
-
-on _
-end _
-
-on menu_LoadLiveCodeWorld
-   server_LoadDetails "rest.livecode.world"
-   menu_DisplayServerArray
-end menu_LoadLiveCodeWorld
-
-on menu_ShowStoredTokens
-   put pref_GetValue ("GitHubAuthoringToken") into GitHubAuthoringToken
-   put GitHubAuthoringToken
-end menu_ShowStoredTokens

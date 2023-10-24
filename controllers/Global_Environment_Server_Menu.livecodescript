@@ -1,7 +1,7 @@
 ﻿script "Global | Environment | Server | Menu"
 --> MetaData
 -
-copyright: Anonymous
+copyright: David Bovill
 license: GPLv3
 name: Global | Environment | Server | Menu
 type: controller
@@ -17,10 +17,6 @@ local LocalArray
 
 --> Menu | Props
 -
-getprop menu_IsSimple
-   return mArray_GetSimple()
-end menu_IsSimple
-
 getprop menu_Target [tObject]
    -- called once for each menu
    return the display_View of tObject

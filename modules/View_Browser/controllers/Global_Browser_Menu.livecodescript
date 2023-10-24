@@ -70,8 +70,11 @@ end _NotWorking
 
 --> Global | Browser | Menu
 -
-on menu_DisplayUrl browserView, which
+on menu_DisplayUrl pBrowserView, which
    switch which
+      case "Ttyd"
+         put "http://localhost:8080" into someURL
+         break
       case "Exodus"
          get "https://cicolab.notion.site/British-Council-Exodus-94adff44064349b898a013d4eebe296e"
          put it into someURL
@@ -84,13 +87,7 @@ on menu_DisplayUrl browserView, which
          put "https://www.notion.so/cicolab/Exodus-LARPs-d00dd528651a496d83cc710fabb7d44a" into someURL
          break
       case "Nestr"
-         put "https://app.nestr.io/" into someURL
-         set the url of browserView to someURL
-         --
-         wait 60 ticks
-         put js_ConstructSetUserNameSelector ("david@regovern.org") after sJavascript
-         put CR & js_ConstructSetPasswordSelector ("2Bk3uASK&9nJ") after sJavascript
-         set the browser_Javascript of browserView to sJavascript 
+         display_NestrBrowser
          return empty
       case "-"
       case "Infinitown"
@@ -148,10 +145,23 @@ on menu_DisplayUrl browserView, which
    if the shiftKey is "Down" then
       launch url someURL
    else
-      set the url of browserView to someURL
-      -- set the browser_URL of browserView to someURL
+      display_Browser someURL, pBrowserView, true
    end if
 end menu_DisplayUrl
+
+command display_NestrBrowser pNestrURL, pBrowserView
+   if pNestrURL is empty then put "https://app.nestr.io/" into pNestrURL
+   --
+   display_Browser pNestrURL, pBrowserView
+   put the result into browserView
+   --
+   wait 60 ticks
+   put js_ConstructSetUserNameSelector ("david@regovern.org") after sJavascript
+   put CR & js_ConstructSetPasswordSelector ("2Bk3uASK&9nJ") after sJavascript
+   set the browser_Javascript of browserView to sJavascript 
+   --
+   return browserView
+end display_NestrBrowser
 
 on menu_EditUrl browserView
    put the url of browserView into someURL
@@ -167,6 +177,19 @@ on menu_EditHtml browserView
    put the htmltext of browserView
    -- put the browser_HtmlText of browserView
 end menu_EditHtml
+
+on menu_TestCssHide browserView
+   put "const feedbackContainer = document.querySelector('._hj_feedback_container');" into someJS
+   put CR & "const headerElement = document.querySelector('header');" after someJS
+   put CR & "feedbackContainer.style.display = 'none';" after someJS
+   put CR & "headerElement.style.display = 'none';" after someJS
+   --
+   set the browser_Javascript of browserView to someJS
+end menu_TestCssHide
+
+on menu_Snapshot browserView
+   put the browser_Snapshot of browserView into somePNG
+end menu_Snapshot
 
 private on __
 end __
@@ -189,6 +212,16 @@ end submenu_Card
 
 private command ___
 end ___
+
+on menu_TtydExecute browserView
+   ttyd_Execute "whoami", browserView
+   --
+   ttyd_Execute "ls -la", browserView
+end menu_TtydExecute
+
+on menu_TtydClear browserView
+   ttyd_Execute "clear", browserView
+end menu_TtydClear
 
 on menu_DisplayBrowserTemplate
    display_ViewTemplate "View|Browser"

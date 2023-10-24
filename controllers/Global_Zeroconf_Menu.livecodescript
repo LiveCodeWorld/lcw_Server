@@ -48,21 +48,3 @@ on menu_StartServer
       zero_StartServer sName
    end if
 end menu_StartServer
-
-on _
-end _
-
-on submenu_Dev
-   return "Dev | Menu"
-end submenu_Dev
-
-
---> Dev | Menu
--
-on menu_Experiment mTarget
-   put mTarget
-end menu_Experiment
-
-
---> Deps
--

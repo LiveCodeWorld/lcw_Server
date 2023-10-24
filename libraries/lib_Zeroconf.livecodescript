@@ -8,11 +8,19 @@ type: library
 version: 0.1
 
 /*
-This library is for interfacig with zeroconf (bonjour) services.
+This library is for interfacing with zeroconf (bonjour) services.
 
 We wrap the Livecode "mergBonjour" code, and explore related crossplatform solutions.
 At the moment it only works on Macos (mobile and desktop).
 */
+
+
+--> Variables
+-
+local LocalArray
+
+constant ServerIP = 12345
+constant ServerName = "Zerconf Server"
 
 
 --> Working on
@@ -22,6 +30,40 @@ function zero_IsRunning
    return it is not empty
 end zero_IsRunning
 
+function zeroconf_IsSearching
+   put LocalArray ["sPointer"] into sPointer
+   return sPointer is not empty
+end zeroconf_IsSearching
+
+
+--> Zeroconf | Events
+-
+on mergBonjourServiceFound pType, pDomain, pName, pHostName, pIPs, pPort
+   beep
+   --
+   zeroconf_Log pType, pDomain, pName, pHostName, pIPs, pPort
+   put the result into zArray
+   put zArray ["_http._tcp."] into zWebArray
+   --
+   display_Zeroconf
+end mergBonjourServiceFound
+
+on mergBonjourServiceRemoved pType, pDomain, pName, pHostName
+   -- bug: pHostName is empty?
+   beep
+   --
+   zeroconf_RemoveLog pType, pDomain, pName, pHostName
+   put the result into zArray
+   put zArray ["_http._tcp."] into zWebArray
+   --
+   display_Zeroconf
+   --
+   put the params
+end mergBonjourServiceRemoved
+
+
+--> Display
+-
 command display_Zeroconf
    put zeroconf_GetArray() into zArray
    put zArray ["_http._tcp."] into zWebArray
@@ -33,14 +75,17 @@ command display_Zeroconf
    return displayView
 end display_Zeroconf
 
-command zero_StartServer sName
+
+--> Zeroconf | Server
+-
+command zero_StartServer pDescriptiveName
    put the hostname into sDomain
+   put "local." into sDoman
    --
-   mergBonjourRegisterService "_http._tcp.", 12345, sDoman, sName
+   mergBonjourRegisterService "_http._tcp.", ServerIP, sDoman, pDescriptiveName
    put the result into LocalArray ["bPointer"]
    --
-   httpdStart "ZeroRequest", 12345, "My Server"
-   --
+   httpdStart "ZeroRequest", ServerIP, ServerName
    put it into LocalArray ["sPort"]
    put the result into sError
    --
@@ -63,27 +108,8 @@ on ZeroRequest pSocketID, pRequest
 end ZeroRequest
 
 
---> Variables
+--> Zeroconf | Search
 -
-local LocalArray
-
-
---> Zeroconf
--
-function zeroconf_GetArray
-   put LocalArray ["zeroconf"] into zArray
-   return zArray
-end zeroconf_GetArray
-
-command zeroconf_SetArray zArray
-   put zArray into LocalArray ["zeroconf"]
-end zeroconf_SetArray
-
-function zeroconf_IsSearching
-   put LocalArray ["sPointer"] into sPointer
-   return sPointer is not empty
-end zeroconf_IsSearching
-
 command zeroconf_StartSearch
    put LocalArray ["sPointer"] into sPointer
    if sPointer is empty then
@@ -104,6 +130,21 @@ command zeroconf_StopSearch
    end if
 end zeroconf_StopSearch
 
+
+--> Zeroconf | Model
+-
+function zeroconf_GetArray
+   put LocalArray ["zeroconf"] into zArray
+   return zArray
+end zeroconf_GetArray
+
+command zeroconf_SetArray zArray
+   put zArray into LocalArray ["zeroconf"]
+end zeroconf_SetArray
+
+
+--> Zeroconf | Log
+-
 command zeroconf_Log pType, pDomain, pName, pHostName, pIPs, pPort
    put zeroconf_GetArray() into zArray
    --
@@ -128,35 +169,29 @@ command zeroconf_RemoveLog pType, pDomain, pName, pHostName
 end zeroconf_RemoveLog
 
 
---> Zeroconf | Events
+--> Bonjour
 -
-on mergBonjourServiceFound pType, pDomain, pName, pHostName, pIPs, pPort
-   beep
-   --
-   zeroconf_Log pType, pDomain, pName, pHostName, pIPs, pPort
-   put the result into zArray
-   put zArray ["_http._tcp."] into zWebArray
-   --
-   display_Zeroconf
-   --
-   put "http://vaudeville.local:12345" into someUrl
-   -- post the params to url someUrl
-   put it
-end mergBonjourServiceFound
-
-on mergBonjourServiceRemoved pType, pDomain, pName, pHostName
-   -- bug: pHostName is empty?
-   beep
-   --
-   zeroconf_RemoveLog pType, pDomain, pName, pHostName
-   put the result into zArray
-   put zArray ["_http._tcp."] into zWebArray
-   --
-   display_Zeroconf
-   --
-   put the params
-end mergBonjourServiceRemoved
+command bonjour_CreateAlias someName
+   -- not easy to script (needs some magic)
+   -- probably better to script a nameserver?
+   -- put shell ("dns-sd -P Livewiki _http._tcp local 8081 livewiki.local david.local path=/ &")
+   return empty
    
+   if pPath is empty then put "/" into pPath
+   put tolower (someName) into someName
+   put someName & ".local" into newLocalDomain
+   put someName into BonjourName
+   put toUpper (char 1 of BonjourName) into BonjourName
+   put "dns-sd -P [[BonjourName]] _http._tcp local 3000 [[newLocalDomain]] david.local path=[[pPath]]" into someShell
+end bonjour_CreateAlias
+
+command bonjour_RegisterPortMapper pMapperPort
+   put merge ("dns-sd -R 'LiveCode Port Mapper' _livecode._udp. . [[pMapperPort]] pdl=application/livecode") into someShell
+   shell_ExecuteInBackground someShell
+   put the result into shellResult
+   return shellResult
+end bonjour_RegisterPortMapper
+
 
 --> Deps
 -

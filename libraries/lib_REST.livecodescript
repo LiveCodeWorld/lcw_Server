@@ -77,9 +77,10 @@ end jsonrpc_GET
 --> REST
 -
 command rest_SetJsonHeaders pOAuthToken, pVersionNum, pExtraHeaders
-   put "Content-type: application/json" into someHeader
+   put "Content-type: application/json; charset=utf-8" into someHeader
    put CR & "Accept: application/json" after someHeader
-   put CR & "Accept-Charset: utf-8" after someHeader
+   -- put CR & "Accept-Charset: utf-8" after someHeader -- https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Charset
+   -- put CR & "Content-type: charset: UTF-8" after someHeader -- charset=UTF-8
    --
    if pVersionNum is not empty then
       put "; version=" & pVersionNum after someHeader
