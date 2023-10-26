@@ -28,6 +28,23 @@ end checked_PresentationServer
 
 --> Global | Server | Menu
 -
+on menu_CreateNgrokDomain
+   put lcw_Ask("Choose a domain to add:", "wiki.thought.garden", "Ngrok Doamin") into sDomain
+   --
+   ngrok_CreateDomain sDomain, "eu"
+   put the result into rData
+end menu_CreateNgrokDomain
+
+on menu_NgrokBearerToken
+   put ngrok_GetBearerToken() into ngrokBearerToken
+   --
+   put lcw_Ask("Set Ngrok bearer token:", ngrokBearerToken, "Authorization: Bearer {API_KEY}") into ngrokBearerToken
+   ngrok_SetBearerToken ngrokBearerToken
+end menu_NgrokBearerToken
+
+private on ___
+end ___
+
 on menu_PresentationServer displayView
    if presentation_ServerIsRunning() then
       presentation_StopServer

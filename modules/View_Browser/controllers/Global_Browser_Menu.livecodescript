@@ -145,7 +145,9 @@ on menu_DisplayUrl pBrowserView, which
    if the shiftKey is "Down" then
       launch url someURL
    else
-      display_Browser someURL, pBrowserView, true
+      display_Browser someURL, pBrowserView
+      put the result into browserView
+      display_ToolStack browserView
    end if
 end menu_DisplayUrl
 
