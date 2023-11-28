@@ -7,19 +7,13 @@ type: library
 version: 0.2
 
 /*
--- command dynadot_SetAuthHeaders
-put dynadot_GetApiKey() into OceanApiKey
-
-put "Content-Type: application/json" into someHeader
-put CR & "Authorization: Bearer" && OceanApiKey after someHeader
-set the httpheaders to someHeader
-end dynadot_SetAuthHeaders
 */
 
 --> Variables
 -
 constant DynadotApiStem = "https://api.dynadot.com/api2.html"
 constant AdvancedDynadotApiStem = "https://api.dynadot.com/api3.xml"
+constant AdvancedDynadotApiJsonStem = "https://api.dynadot.com/api3.json"
 constant DynadotAdvancedApiHelpUrl = "https://www.dynadot.com/domain/api3.html"
 constant DynadotDomainApiHelpUrl = "https://www.dynadot.com/domain/api2.html"
 local DynadotApiKey
@@ -27,6 +21,129 @@ local DynadotApiKey
 
 --> Working on
 -
+function dynadot_ConstructRestUrl someCommand, paramArray
+   put AdvancedDynadotApiJsonStem & "?key=" & dynadot_GetApiKey() & "&command=" & someCommand into restURL
+   
+   # Add params
+   if paramArray is an array then
+      repeat for each key keyName in paramArray
+         put paramArray [keyName] into keyValue
+         --
+         put "&" & keyName & "=" & keyValue after restURL
+      end repeat
+   else
+      get the paramcount
+      put (it - 1)/2 into maxPairNum
+      repeat with pairNum = 1 to maxPairNum
+         put (pairNum - 1)*2 + 2 into keyNum
+         put param (keyNum) into keyName
+         if keyName is empty then exit repeat
+         
+         put keyNum + 1 into valueNum
+         put param (valueNum) into keyValue
+         --
+         put "&" & keyName & "=" & keyValue after restURL
+      end repeat
+   end if
+   --
+   return restURL
+end dynadot_ConstructRestUrl
+
+
+--> Dynadot
+-
+function dynadot_FetchArrayFromXml
+   -- v3
+   -- https://api.dynadot.com/api3.xml?key=mykey&command=list_domain
+   put dynadot_GetAdvancedXML ("list_domain") into someXML
+   if dynadot_CheckError (someXML) is not empty then
+      breakpoint
+   end if
+   --
+   put xml_ToArray (someXML) into responseArray
+   _CheckApiError responseArray, errorText
+   --
+   if the result is false then
+      put errorText
+      lcw_AnswerWarning "There was an api error fetching Dynadot IndexDomainArray..."
+   end if
+   return responseArray
+end dynadot_FetchArrayFromXml
+
+function dynadot_FetchArray someCommand, pKey, pValue
+   put AdvancedDynadotApiJsonStem & "?key=" & dynadot_GetApiKey() & "&command=" & someCommand into restURL
+   
+   # Add params
+   get the paramcount
+   put (it - 1)/2 into maxPairNum
+   repeat with pairNum = 1 to maxPairNum
+      put (pairNum - 1)*2 + 2 into keyNum
+      put param (keyNum) into keyName
+      if keyName is empty then exit repeat
+      
+      put keyNum + 1 into valueNum
+      put param (valueNum) into keyValue
+      --
+      put "&" & keyName & "=" & keyValue after restURL
+   end repeat
+   
+   # Json RPC GET
+   put dynadot_GetApiKey() into authToken
+   put jsonrpc_GetArray (restURL, authToken) into rData
+   return rData
+end dynadot_FetchArray
+
+function dynadot_GetAdvancedJson someCommand, pKey, pValue
+   -- https://api.dynadot.com/api3.json?key=mykey&command=list_domain
+   put AdvancedDynadotApiJsonStem & "?key=" & dynadot_GetApiKey() & "&command=" & someCommand into restURL
+   -- put AdvancedDynadotApiJsonStem & "?command=" & someCommand into restURL
+   
+   # Add params
+   get the paramcount
+   put (it - 1)/2 into maxPairNum
+   repeat with pairNum = 1 to maxPairNum
+      put (pairNum - 1)*2 + 2 into keyNum
+      put param (keyNum) into keyName
+      if keyName is empty then exit repeat
+      
+      put keyNum + 1 into valueNum
+      put param (valueNum) into keyValue
+      --
+      put "&" & keyName & "=" & keyValue after restURL
+   end repeat
+   
+   put dynadot_GetApiKey() into authToken
+   -- put jsonrpc_GetArray (restURL, authToken)
+   put jsonrpc_GET (restURL, authToken) into rJSON
+   return rJSON
+end dynadot_GetAdvancedJson
+
+function dynadot_GetAdvancedXML someCommand, pKey, pValue
+   put AdvancedDynadotApiStem & "?key=" & dynadot_GetApiKey() & "&command=" & someCommand into someUrl
+   
+   # Add params
+   get the paramcount
+   put (it - 1)/2 into maxPairNum
+   repeat with pairNum = 1 to maxPairNum
+      put (pairNum - 1)*2 + 2 into keyNum
+      put param (keyNum) into keyName
+      if keyName is empty then exit repeat
+      
+      put keyNum + 1 into valueNum
+      put param (valueNum) into keyValue
+      --
+      put "&" & keyName & "=" & keyValue after someUrl
+   end repeat
+   --
+   put url someUrl into someXML
+   --
+   if dynadot_CheckError (someXML) is not empty then
+      breakpoint
+      return empty
+   end if
+   return someXML
+end dynadot_GetAdvancedXML
+
 function dynadot_CheckError someXML
    switch line 1 of someXML
       case "error,unknown command"
@@ -76,31 +193,6 @@ function dynadot_FetchSearchXml domainName
    return someResult
 end dynadot_FetchSearchXml
 
-function dynadot_GetAdvancedXML someCommand, pKey, pValue
-   -- put dynadot_ConstructAdvancedURL (someCommand, pKey, pValue) into someURL
-   put AdvancedDynadotApiStem & "?key=" & dynadot_GetApiKey() & "&command=" & someCommand into someUrl
-   get the paramcount
-   put (it - 1)/2 into maxPairNum
-   repeat with pairNum = 1 to maxPairNum
-      put (pairNum - 1)*2 + 2 into keyNum
-      put param (keyNum) into keyName
-      if keyName is empty then exit repeat
-      
-      put keyNum + 1 into valueNum
-      put param (valueNum) into keyValue
-      --
-      put "&" & keyName & "=" & keyValue after someUrl
-   end repeat
-   --
-   put url someUrl into someXML
-   --
-   if dynadot_CheckError (someXML) is not empty then
-      breakpoint
-      return empty
-   end if
-   return someXML
-end dynadot_GetAdvancedXML
-
 
 --> Dynadot | REST | URLs
 -
@@ -143,6 +235,21 @@ end secret_Get
 
 --> Private
 -
+private command _CheckApiError @responseArray, @errorText
+   if responseArray is not an array then
+      breakpoint
+      return false
+   end if
+   --
+   put responseArray ["Response"]["ResponseHeader"]["error"] into errorText
+   if errorText is empty then
+      return true
+   else
+      put empty into responseArray
+      return false
+   end if
+end _CheckApiError
+
 private command dynadot_XmlResponseErrorExit responseArray
    if dynadot_GetTestResponse (responseArray) is false  then
       put someUrl & CR & CR & someXML

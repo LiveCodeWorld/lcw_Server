@@ -33,9 +33,9 @@ end test_Params
 
 --> Global | Dynadot | DomainInfo | Line | Menu
 -
-on menu_Test mTarget, abc
-   put mTarget & CR & abc
-end menu_Test
+on menu_DisplayValue dView
+   put the selected_Value of dView
+end menu_DisplayValue
 
 on _
 end _

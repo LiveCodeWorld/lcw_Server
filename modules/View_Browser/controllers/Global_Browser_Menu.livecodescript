@@ -67,6 +67,20 @@ command _NotWorking
    end switch
 end _NotWorking
 
+command display_NestrBrowser pNestrURL, pBrowserView
+   if pNestrURL is empty then put "https://app.nestr.io/" into pNestrURL
+   --
+   display_Browser pNestrURL, pBrowserView
+   put the result into browserView
+   --
+   wait 60 ticks
+   put js_ConstructSetUserNameSelector ("david@regovern.org") after sJavascript
+   put CR & js_ConstructSetPasswordSelector ("2Bk3uASK&9nJ") after sJavascript
+   set the browser_Javascript of browserView to sJavascript 
+   --
+   return browserView
+end display_NestrBrowser
+
 
 --> Global | Browser | Menu
 -
@@ -151,20 +165,6 @@ on menu_DisplayUrl pBrowserView, which
    end if
 end menu_DisplayUrl
 
-command display_NestrBrowser pNestrURL, pBrowserView
-   if pNestrURL is empty then put "https://app.nestr.io/" into pNestrURL
-   --
-   display_Browser pNestrURL, pBrowserView
-   put the result into browserView
-   --
-   wait 60 ticks
-   put js_ConstructSetUserNameSelector ("david@regovern.org") after sJavascript
-   put CR & js_ConstructSetPasswordSelector ("2Bk3uASK&9nJ") after sJavascript
-   set the browser_Javascript of browserView to sJavascript 
-   --
-   return browserView
-end display_NestrBrowser
-
 on menu_EditUrl browserView
    put the url of browserView into someURL
    put lcw_Ask ("Edit the displayed url...", someURL, "url", browserView) into newURL
@@ -196,10 +196,6 @@ end menu_Snapshot
 private on __
 end __
 
-on submenu_Wiki
-   return "Global | Wiki | Menu"
-end submenu_Wiki
-
 on submenu_Story
    return "Global | Wiki | Story | Menu"
 end submenu_Story
@@ -208,29 +204,9 @@ on submenu_Rough
    return "Global | Browser | Rough | Menu"
 end submenu_Rough
 
-on submenu_Card
-   return "Global | Card | Menu"
-end submenu_Card
-
 private command ___
 end ___
 
-on menu_TtydExecute browserView
-   ttyd_Execute "whoami", browserView
-   --
-   ttyd_Execute "ls -la", browserView
-end menu_TtydExecute
-
-on menu_TtydClear browserView
-   ttyd_Execute "clear", browserView
-end menu_TtydClear
-
-on menu_DisplayBrowserTemplate
-   display_ViewTemplate "View|Browser"
-   put the result
-end menu_DisplayBrowserTemplate
-
-on menu_EditBrowserBehavior browserView
-   put the behavior of browserView into bObject
-   edit the script of bObject
-end menu_EditBrowserBehavior
+on submenu_Dev
+   return menu_DevTitle ("Global | Browser | Menu")
+end submenu_Dev

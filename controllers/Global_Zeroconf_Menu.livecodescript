@@ -43,8 +43,8 @@ end menu_StartSearch
 
 on menu_StartServer
    if zero_IsRunning() then
-      zero_StopServer
+      zeroconf_StopServer
    else
-      zero_StartServer sName
+      zeroconf_StartServer sName
    end if
 end menu_StartServer

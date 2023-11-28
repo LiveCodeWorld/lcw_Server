@@ -42,6 +42,10 @@ on menu_NgrokBearerToken
    ngrok_SetBearerToken ngrokBearerToken
 end menu_NgrokBearerToken
 
+on submenu_Dynadot
+   return "Global | Dynadot | Menu"
+end submenu_Dynadot
+
 private on ___
 end ___
 
@@ -57,7 +61,7 @@ private on _
 end _
 
 on menu_ZeroConfServer
-   zero_StartServer
+   zeroconf_StartServer
 end menu_ZeroConfServer
 
 on menu_StartSearch

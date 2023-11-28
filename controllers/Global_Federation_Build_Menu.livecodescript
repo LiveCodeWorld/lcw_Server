@@ -165,7 +165,7 @@ on menu_FixDeadDomains displayView
    end repeat
    --
    set the displayed_Array ["Federation Model"] of displayView to fedray
-   set the line_Menu of displayView to "Global | Federation | Line | Menu"
+   set the line_Menu of displayView to "Global | Federation | Tree | Line | Menu"
    fedray_StoreModel deadData, "Dead"
    --
    lcw_Answer "Store newly created Federation Model?", displayView

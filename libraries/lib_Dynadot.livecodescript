@@ -11,6 +11,175 @@ A library for interfacing with DNS services like DigitalOcean and Dynadot
 */
 
 
+--> Working on
+-
+command dynadot_AddSubdomain domainName, subDomainName, subTunnel
+   local paramArray
+   put dynadot_GetDns (domainName) into dnsArray
+   -- display_Data dnsArray
+   --
+   put dnsArray ["GetDnsResponse"]["GetDns"]["NameServerSettings"] into nsSettingsArray
+   put dynadot_GetSubDomainNames (dnsArray) into existingSubdomains -- redundant repeat loop to speedup
+   put nsSettingsArray ["MainDomains"] into mainDomainArray
+   put nsSettingsArray ["SubDomains"] into subDomainArray
+   
+   # Reconstruct Main ParamArray
+   put domainName into paramArray ["domain"]
+   _ReAddMaindomains paramArray, mainDomainArray
+   
+   # Re-add original subdomains
+   dynadot_ReAddSubdomains paramArray, subDomainArray
+   put the result into lastSubNum
+   
+   if subDomainName is not among the lines of existingSubdomains then
+      # Add new subDomainNames
+      put lastSubNum + 1 into subNum
+      dynadot_AddSubdomainNum paramArray, subDomainName, subNum, subTunnel, "cname"
+   end if
+   
+   put _DataFromParamArray(paramArray) into rData
+   return rData
+end dynadot_AddSubdomain
+
+command dynadot_AddSubdomainNum @paramArray, subDomainName, subNum, cNameValue, subRecordType
+   subtract 1 from subNum
+   --
+   put "subdomain" & subNum into subDomainKey
+   put subDomainName into paramArray [subDomainKey]
+   --
+   put "sub_record_type" & subNum into subRecordTypeKey
+   put subRecordType into paramArray [subRecordTypeKey]
+   --
+   put "sub_record" & subNum into subRecordKey
+   put cNameValue into paramArray [subRecordKey]
+end dynadot_AddSubdomainNum
+
+command dynadot_ReAddSubdomains @paramArray, subDomainArray
+   put item 2 of the extents of subDomainArray into lastSubNum
+   repeat with subNum = 1 to lastSubNum
+      get subDomainArray [subNum]["RecordType"]
+      put tolower (it) into subRecordType
+      put subDomainArray [subNum]["Subhost"] into subDomainName
+      put subDomainArray [subNum]["Value"] into subValue
+      --
+      dynadot_AddSubdomainNum paramArray, subDomainName, subNum, subValue, subRecordType
+   end repeat
+   return lastSubNum
+end dynadot_ReAddSubdomains
+
+command dynadot_SetMainDomain domainName, mainTunnel
+   local paramArray
+   put dynadot_GetDns (domainName) into dnsArray
+   --
+   put dnsArray ["GetDnsResponse"]["GetDns"]["NameServerSettings"] into nsSettingsArray
+   put dynadot_GetSubDomainNames (dnsArray) into existingSubdomains -- redundant repeat loop to speedup
+   put nsSettingsArray ["MainDomains"] into mainDomainArray
+   put nsSettingsArray ["SubDomains"] into subDomainArray
+   
+   # Reconstruct Main ParamArray
+   put domainName into paramArray ["domain"]
+   put mainTunnel into paramArray ["main_record0"]
+   put "cname" into paramArray ["main_record_type0"]
+   
+   # Re-add original subdomains
+   dynadot_ReAddSubdomains paramArray, subDomainArray
+   
+   # Get Data
+   put _DataFromParamArray(paramArray) into rData
+   return rData
+end dynadot_SetMainDomain
+
+
+--> Dynadot | List
+-
+function dynadot_ListAstralDomains
+   return dynadot_ListAllSubDomain ("astralship.wiki")
+end dynadot_ListAstralDomains
+
+function dynadot_ListEarthWikis
+   put dynadot_ListSubdomains ("platform.earth", false) into earthDomains
+   filter earthDomains without "*faasd.platform.earth"
+   line_Delete "together.platform.earth", earthDomains
+   return earthDomains
+end dynadot_ListEarthWikis
+
+function dynadot_ListAllSubDomain domainName
+   put dynadot_ListSubdomains (domainName, false) into astralDomains
+   put domainName & CR before astralDomains
+   return word 1 to -1 of astralDomains
+end dynadot_ListAllSubDomain
+
+function dynadot_ListMissingSubdomains domainName
+   put dynadot_ListSubdomains (domainName, true) into subDomainNames
+   put dynadot_GetDns (domainName) into dnsArray
+   --
+   put dynadot_GetSubDomainNames (dnsArray, subDomainNames) into missingSubdomains
+   return missingSubdomains
+end dynadot_ListMissingSubdomains
+
+function dynadot_StripSubDomainNames sDomains, domainName
+   put dynadot_ListSubdomains (domainName) into dynadotSubDomains
+   put dynadot_GetDns (domainName) into dnsArray
+   --
+   put dnsArray ["GetDnsResponse"]["GetDns"]["NameServerSettings"] into nsSettingsArray
+   put nsSettingsArray ["SubDomains"] into subDomainArray
+   --
+   put item 2 of the extents of subDomainArray into lastSubNum
+   repeat with subNum = 1 to lastSubNum
+      put subDomainArray [subNum]["Subhost"] into subDomainName
+      put subDomainName & "." & domainName into subDomain
+      line_Delete subDomain, sDomains
+   end repeat
+   return sDomains
+end dynadot_StripSubDomainNames
+
+function dynadot_ListSubdomains domainName, pListShort
+   put dynadot_GetDns (domainName) into dnsArray
+   put dynadot_GetSubDomainNames (dnsArray) into subDomainNames
+   if pListShort is true then
+      sort subDomainNames
+      return subDomainNames
+   end if 
+   
+   repeat for each line subDomainName in subDomainNames
+      put subDomainName & "." & domainName & CR after subDomains
+   end repeat
+   delete char -1 subDomains
+   url_SortDomainIndex subDomains
+   return subDomains
+end dynadot_ListSubdomains
+
+
+--> Dynadot | Dns
+-
+function dynadot_GetSubDomainNames dnsArray, pSubDomainNamesToStrip
+   put dnsArray ["GetDnsResponse"]["GetDns"]["NameServerSettings"] into nsSettingsArray
+   put nsSettingsArray ["SubDomains"] into subDomainArray
+   --
+   put item 2 of the extents of subDomainArray into lastSubNum
+   repeat with subNum = 1 to lastSubNum
+      put subDomainArray [subNum]["Subhost"] into subDomainName
+      if subDomainName is among the lines of pSubDomainNamesToStrip then next repeat
+      --
+      put subDomainName & CR after subDomainNames
+   end repeat
+   delete char -1 of subDomainNames
+   return subDomainNames
+end dynadot_GetSubDomainNames
+
+function dynadot_GetDns domainName
+   -- https://api.dynadot.com/api3.json?key=mykey&command=get_dns&domain=mydomain.com
+   put dynadot_FetchArray ("get_dns", "domain", domainName) into dnsArray
+   return dnsArray
+end dynadot_GetDns
+
+command dynadot_SetDns domainName, subDomainName, cNameValue
+   -- put dynadot_FetchArray ("set_dns2", "domain", domainName, "main_record_type", "CNAME", "main_record", cNameValue)
+   get dynadot_FetchArray ("set_dns2", "domain", domainName, "subdomain0", subDomainName, "sub_record_type0", "cname", "sub_record0", cNameValue)
+   return it
+end dynadot_SetDns
+
+
 --> Dynadot | Folder
 -
 function dynadot_FetchFarmStatus wikiDomain
@@ -23,7 +192,7 @@ function dynadot_FetchFarmStatus wikiDomain
    end repeat 
    return false
 end dynadot_FetchFarmStatus
-   
+
 command dynadot_SetFolder domainName, folderName
    -- https://api.dynadot.com/api3.xml?key=mykey&command=set_folder&domain=domian1.com&folder=folder1
    
@@ -151,6 +320,14 @@ function dynadot_ListDomainNames pForceUpdate
    return domainNames
 end dynadot_ListDomainNames
 
+-- function dynadot_ListDomainNames pIndexedDomainArray
+if pIndexedDomainArray is not an array then put dynadot_GetIndexedDomainArray() into pIndexedDomainArray
+put dynadot_ConstructDomainListArray (pIndexedDomainArray) into domainListArray
+put keys (domainListArray) into domainNames
+url_SortDomainIndex domainNames
+return domainNames
+end dynadot_ListDomainNames
+
 function dynadot_ListManagedDomainNames pForceUpdate
    -- list domains whose DNS is managed by dynadot (not parked)
    put dynadot_GetDomainNameArray (pForceUpdate) into domainNameArray
@@ -189,18 +366,11 @@ function dynadot_ListOceanDomainNames pForceUpdate
    return domainNames
 end dynadot_ListOceanDomainNames
 
-function dynadot_ListDomainNames pIndexedDomainArray
-   if pIndexedDomainArray is not an array then put dynadot_GetIndexedDomainArray() into pIndexedDomainArray
-   put dynadot_ConstructDomainListArray (pIndexedDomainArray) into domainListArray
-   put keys (domainListArray) into domainNames
-   url_SortDomainIndex domainNames
-   return domainNames
-end dynadot_ListDomainNames
-
 function dynadot_ConstructDomainListArray responseArray
    put responseArray ["ListDomainInfoResponse"] ["ListDomainInfoContent"]["DomainInfoList"] into domainListInfoArray
-   repeat for each key dNum in domainListInfoArray
-      put domainListInfoArray [dNum]["Domain"] into domainArray
+   put domainListInfoArray ["DomainInfo"] into domainInfoArray
+   repeat for each key dNum in domainInfoArray
+      put domainInfoArray [dNum] into domainArray
       put domainArray ["Name"] into domainName
       
       put domainArray ["NameServerSettings"] into domainListArray [domainName]["NameServerSettings"]
@@ -212,3 +382,32 @@ function dynadot_ConstructDomainListArray responseArray
 end dynadot_ConstructDomainListArray
 
 
+--> Private
+-
+private function _DataFromParamArray paramArray
+   # Construct Rest URL
+   put dynadot_ConstructRestUrl ("set_dns2", paramArray) into restURL
+   
+   # Json RPC GET
+   put dynadot_GetApiKey() into authToken
+   put jsonrpc_GetArray (restURL, authToken) into rData
+   
+   return rData
+end _DataFromParamArray
+
+private command _ReAddMaindomains @paramArray, mainDomainArray
+   put item 2 of the extents of mainDomainArray into lastMainNum
+   repeat with mainNum = 1 to lastMainNum
+      get mainDomainArray [mainNum]["RecordType"]
+      put tolower (it) into mainRecordType
+      put mainDomainArray [mainNum]["Value"] into mainRecord
+      --
+      get mainNum - 1
+      put "main_record" & it into mRecordParam
+      put "main_record_type" & it into mRecordTypeParam
+      --
+      put mainRecord into paramArray [mRecordParam]
+      put mainRecordType into paramArray [mRecordTypeParam]
+   end repeat
+   return lastSubNum
+end _ReAddMaindomains

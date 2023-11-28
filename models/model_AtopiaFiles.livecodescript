@@ -70,6 +70,101 @@ end atopia_GetRemoteBash
 
 --> Working on
 -
+
+--> Atopia | Model | Fetch | Calculate
+-
+function atopia_FetchReservedFoldersList
+   -- here we fetch a list of all the reserved folders that filtering will remove
+   -- can use to check / visualise how the efiltering works
+   put atopia_FetchWikiRootLsFolderArray() into filteredFolderArray
+   atopia_FilterAllFolderArray filteredFolderArray
+   put the result into removedFolderNames
+   return removedFolderNames
+end atopia_FetchReservedFoldersList
+
+
+--> Atopia | Model | Files and Folders
+-
+function atopia_ConstructSitemapPath wikiDomain
+   -- changed to absolute path 
+   put atopia_ConstructDomainFolder (wikiDomain) into atopiaDomainFolder
+   put atopiaDomainFolder & "status/sitemap.json" into siteMapFile
+   return siteMapFile
+end atopia_ConstructSitemapPath
+
+function atopia_ConstructPagePath wikiDomain, pPageSlug
+   -- specific to Atopia Folder (switched to absolute path)
+   -- /root/.wiki/actual.world/pages/some-page   
+   put atopia_ConstructDomainFolder (wikiDomain) into wikiPath
+   if pPageSlug is empty then return wikiPath
+   put "pages/" & pPageSlug after wikiPath
+   return wikiPath
+end atopia_ConstructPagePath
+
+function atopia_WikiDefaultPagesFolder
+   put atopia_GetNodeVersion() into nodeVersion
+   return merge ("/root/.nvm/versions/node/[[nodeVersion]]/lib/node_modules/wiki/node_modules/wiki-server/default-data/pages/")
+end atopia_WikiDefaultPagesFolder
+
+function atopia_ConstructDomainFolder wikiDomain
+   text_AddTrailing wikiDomain, slash
+   put atopia_WikiRootFolder() & wikiDomain into atopiaDomainFolder
+   return atopiaDomainFolder
+end atopia_ConstructDomainFolder
+
+function atopia_WikiRootFolder
+   -- specific to Atopia Folder
+   -- need to generalise to other servers
+   return "/root/.wiki/"
+end atopia_WikiRootFolder
+
+function atopia_WikiStatusFolder wikiDomain
+   -- absolute path for safety
+   put wikiDomain & "/status/" into relFolder
+   return atopia_WikiFolder (relFolder)
+end atopia_WikiStatusFolder
+
+function atopia_WikiPageFolder wikiDomain
+   -- absolute path for safety
+   put wikiDomain & "/pages/" into relFolder
+   return atopia_WikiFolder (relFolder)
+end atopia_WikiPageFolder
+
+function atopia_WikiDomainFolder wikiDomain
+   -- absolute path for safety
+   put atopia_WikiFolder (wikiDomain) into domainFolder
+   put slash after domainFolder
+   return domainFolder
+end atopia_WikiDomainFolder
+
+function atopia_UnhostedFolder
+   return atopia_WikiFolder ("_unhosted_sites/")
+end atopia_UnhostedFolder
+
+function atopia_FolderInTrashFolder wikiDomain
+   put atopia_TrashFolder() & wikiDomain & slash into folderInTrashFolder
+   return folderInTrashFolder
+end atopia_FolderInTrashFolder
+
+function atopia_TrashFolder
+   return atopia_WikiFolder ("_trash/")
+end atopia_TrashFolder
+
+function atopia_WikiFolder pRelativePath
+   put atopia_WikiRootFolder() into wikiRootFolder
+   put pRelativePath after wikiRootFolder
+   return wikiRootFolder
+end atopia_WikiFolder
+
+function atopia_WikiRootFolder
+   -- absolute path for safety
+   put "/root/.wiki/" into wikiRootFolder
+   return wikiRootFolder
+end atopia_WikiRootFolder
+
+
+--> Atopia | Fetch
+-
 function atopia_FetchFiles wikiDomain
    put "ssh root@fedwiki.org" into someShell
    put space & "ls -Rlap" after someShell
@@ -214,34 +309,6 @@ command atopia_CheckGoodFolders @wikiDomains
    return badDomains
 end atopia_CheckGoodFolders
 
-function atopia_ConstructSitemapPath wikiDomain
-   -- changed to absolute path 
-   put atopia_ConstructDomainFolder (wikiDomain) into atopiaDomainFolder
-   put atopiaDomainFolder & "status/sitemap.json" into siteMapFile
-   return siteMapFile
-end atopia_ConstructSitemapPath
-
-function atopia_ConstructPagePath wikiDomain, pPageSlug
-   -- specific to Atopia Folder (switched to absolute path)
-   -- /root/.wiki/actual.world/pages/some-page   
-   put atopia_ConstructDomainFolder (wikiDomain) into wikiPath
-   if pPageSlug is empty then return wikiPath
-   put "pages/" & pPageSlug after wikiPath
-   return wikiPath
-end atopia_ConstructPagePath
-
-function atopia_ConstructDomainFolder wikiDomain
-   text_AddTrailing wikiDomain, slash
-   put atopia_WikiRootFolder() & wikiDomain into atopiaDomainFolder
-   return atopiaDomainFolder
-end atopia_ConstructDomainFolder
-
-function atopia_WikiRootFolder
-   -- specific to Atopia Folder
-   -- need to generalise to other servers
-   return "/root/.wiki/"
-end atopia_WikiRootFolder
-
 
 --> Atopia | Top
 -
@@ -285,65 +352,6 @@ function atopia_FetchDomainLsArray wikiDomain
    put atopia_FetchLsArray (serverPath) into fileArray 
    return fileArray
 end atopia_FetchDomainLsArray
-
-
---> Atopia | Model | Fetch | Calculate
--
-function atopia_FetchReservedFoldersList
-   -- here we fetch a list of all the reserved folders that filtering will remove
-   -- can use to check / visualise how the efiltering works
-   put atopia_FetchWikiRootLsFolderArray() into filteredFolderArray
-   atopia_FilterAllFolderArray filteredFolderArray
-   put the result into removedFolderNames
-   return removedFolderNames
-end atopia_FetchReservedFoldersList
-
-
---> Atopia | Model | Files and Folders
--
-function atopia_WikiStatusFolder wikiDomain
-   -- absolute path for safety
-   put wikiDomain & "/status/" into relFolder
-   return atopia_WikiFolder (relFolder)
-end atopia_WikiStatusFolder
-
-function atopia_WikiPageFolder wikiDomain
-   -- absolute path for safety
-   put wikiDomain & "/pages/" into relFolder
-   return atopia_WikiFolder (relFolder)
-end atopia_WikiPageFolder
-
-function atopia_WikiDomainFolder wikiDomain
-   -- absolute path for safety
-   put atopia_WikiFolder (wikiDomain) into domainFolder
-   put slash after domainFolder
-   return domainFolder
-end atopia_WikiDomainFolder
-
-function atopia_UnhostedFolder
-   return atopia_WikiFolder ("_unhosted_sites/")
-end atopia_UnhostedFolder
-
-function atopia_FolderInTrashFolder wikiDomain
-   put atopia_TrashFolder() & wikiDomain & slash into folderInTrashFolder
-   return folderInTrashFolder
-end atopia_FolderInTrashFolder
-
-function atopia_TrashFolder
-   return atopia_WikiFolder ("_trash/")
-end atopia_TrashFolder
-
-function atopia_WikiFolder pRelativePath
-   put atopia_WikiRootFolder() into wikiRootFolder
-   put pRelativePath after wikiRootFolder
-   return wikiRootFolder
-end atopia_WikiFolder
-
-function atopia_WikiRootFolder
-   -- absolute path for safety
-   put "/root/.wiki/" into wikiRootFolder
-   return wikiRootFolder
-end atopia_WikiRootFolder
 
 
 --> Atopia | IP

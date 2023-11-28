@@ -45,7 +45,7 @@ command atopia_UploadRecording mFilePath, pTitle, pDescription, pVlogDomain
       --
       put fedwiki_ConstructSlug (pTitle) into pageSlug
       --
-      pageArray_Store pVlogDomain, pageSlug, pageArray
+      pageArray_Set pVlogDomain, pageSlug, pageArray
       put the result into wikiURL
       return wikiURL
    end if

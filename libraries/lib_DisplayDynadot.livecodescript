@@ -17,36 +17,29 @@ on mDouble_Dynadot indexView, domainName
    display_DynadotDomainInfo domainName
 end mDouble_Dynadot
 
+on mDoubleUp_DynadotDomain displayView, wikiDomain
+   -- put the title_Text of displayView into someTitle
+   launch url ("http://" & wikiDomain)
+end mDoubleUp_DynadotDomain
+
 
 --> Working on
 -
+command display_DynadotDomain domainName
+   put dynadot_ListAllSubDomain (domainName) into domainNames
+   -- 
+   display_Data domainNames, domainName, "Dynadot"
+   put the result into dView
+   display_SetToolMenus "Dynadot | Domain", dView, "lcw_Server"
+   return domainName
+end display_DynadotDomain
+
 command display_Dynadot pIndexView
    put dynadot_ListDomainNames() into domainNames
    --   
    _DisplayDynadot domainNames, "Dynadot Domains", pIndexView
    return the result
 end display_Dynadot
-
-command display_DynadotDomainInfo domainName
-   local pInspect, pDoubleUp, pCommandObject
-   
-   set the cursor to watch
-   put dynadot_GetDomainInfoArray (domainName, true) into domainInfoArray
-   --
-   put display_FindView ("Domain Info", domainName) into displayView
-   if exists (displayView) is true then
-      set the displayed_Array of displayView to domainInfoArray
-   else
-      display_Array domainInfoArray, domainName, "Domain Info"
-      put the result into displayView
-      display_SetInteractions displayView, "Dynadot | DomainInfo", ""
-   end if
-   --
-   put the stack_Name of displayView into stackName
-   go to stack stackName
-   --
-   return displayView
-end display_DynadotDomainInfo
 
 
 --> Dynadot | Display
@@ -72,6 +65,26 @@ command display_DynadotParked pIndexView
    return the result
 end display_DynadotParked
 
+command display_DynadotDomainInfo domainName
+   local pInspect, pDoubleUp, pCommandObject
+   
+   set the cursor to watch
+   put dynadot_GetDomainInfoArray (domainName, true) into domainInfoArray
+   --
+   put display_FindView ("Domain Info", domainName) into displayView
+   if exists (displayView) is true then
+      set the displayed_Array of displayView to domainInfoArray
+   else
+      display_Array domainInfoArray, domainName, "Domain Info"
+      put the result into displayView
+      display_SetInteractions displayView, "Dynadot | DomainInfo", ""
+   end if
+   --
+   put the stack_Name of displayView into stackName
+   go to stack stackName
+   --
+   return displayView
+end display_DynadotDomainInfo
 
 --> Private
 -

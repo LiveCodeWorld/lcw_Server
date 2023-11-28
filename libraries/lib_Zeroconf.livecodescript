@@ -78,7 +78,7 @@ end display_Zeroconf
 
 --> Zeroconf | Server
 -
-command zero_StartServer pDescriptiveName
+command zeroconf_StartServer pDescriptiveName
    put the hostname into sDomain
    put "local." into sDoman
    --
@@ -91,16 +91,16 @@ command zero_StartServer pDescriptiveName
    --
    put "http://localhost:" & LocalArray ["sPort"] into localURL
    launch url localURL
-end zero_StartServer
+end zeroconf_StartServer
 
-command zero_StopServer
+command zeroconf_StopServer
    httpdStop
    --
    put LocalArray ["bPointer"] into bPointer
    if bPointer is not empty then
       mergBonjourStopService bPointer
    end if
-end zero_StopServer
+end zeroconf_StopServer
 
 on ZeroRequest pSocketID, pRequest
    put "OK" && the ticks && the params && the keys of pRequest ["parameters"] into postResult

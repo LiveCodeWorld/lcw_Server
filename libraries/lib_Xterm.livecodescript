@@ -16,6 +16,52 @@ local LocalArray
 
 --> Working on
 -
+command display_Xterm pXtermBrowser, pStackStyle, pStackRect
+   put "View|Xterm" into viewName
+   put "Xterm Browser" into pStackLabel
+   put xterm_URL() into someURL
+   --
+   switch
+      case pXtermBrowser is true
+         display_ViewTemplate viewName
+         put the result into xtermBrowser
+         set the browser_Url of xtermBrowser to someURL
+         break
+      case exists (pXtermBrowser)
+         put pXtermBrowser into xtermBrowser
+         if pStackLabel is not empty then set the stack_Label of xtermBrowser to pStackLabel
+         set the browser_Url of xtermBrowser to someURL
+         break
+      default
+         if pStackStyle is empty then put "toplevel" into pStackStyle
+         --
+         display_View viewName, someURL, pStackLabel, pStackRect, "browser_URL", pStackStyle
+         put the result into xtermBrowser
+         display_SetMenu xtermBrowser, "Xterm", "title_Menu"
+   end switch
+   return xtermBrowser
+end display_Xterm
+
+
+--> Working on
+-
+getprop xterm_Result [jsScript]
+   put the browser_View of the target into browserWidget
+   set the javascriptHandlers of browserWidget to "xterm_GetJavascriptResult"
+   --
+   do jsScript in browserWidget
+   put the result into sResult -- sometimes does not work
+   put LocalArray ["sResult"] into sResult
+   --
+   put sResult = "visible" into isVisible
+   return isVisible
+end xterm_Result
+
+on xterm_GetJavascriptResult sResult
+   put sResult into LocalArray ["sResult"]
+   return sResult
+end xterm_GetJavascriptResult
+
 
 --> Ttyd
 -
@@ -25,11 +71,13 @@ command ttyd_Execute someShell, browserView
    put merge (jsTemplate) into someJS
    --
    set the browser_Javascript of browserView to someJS
+   return someJS
 end ttyd_Execute
 
 command ttyd_Paste someShell, browserView
    put ttypd_PasteJS (someShell) into someJS
    set the browser_Javascript of browserView to someJS
+   return someJS
 end ttyd_Paste
 
 function ttypd_PasteJS someShell
@@ -38,19 +86,33 @@ function ttypd_PasteJS someShell
    return someJS
 end ttypd_PasteJS
 
+
 --> Xterm
 -
+function xterm_FindView pLineNum
+   if pLineNum is not a number then put 1 into pLineNum
+   --
+   put xterm_ListBrowsers() into xtermViews
+   put line pLineNum of xtermViews into xtermView
+   return xtermView
+end xterm_FindView
+
+function xterm_ListBrowsers pLabel
+   return display_List ("View|Xterm", pLabel)
+end xterm_ListBrowsers
+
+function xterm_IsRunning
+   return xterm_ProcessID() is not empty
+end xterm_IsRunning
+
 function xterm_ProcessID
    put word 1 of shell ("pgrep ttyd") into pid
    return pid
 end xterm_ProcessID
 
-command display_Xterm pXtermBrowser
-   put xterm_URL() into xtermURL
-   display_Browser xtermURL, pXtermBrowser, pShowTools, pStackStyle
-   put the result into pXtermBrowser
-   return pXtermBrowser
-end display_Xterm
+function xterm_URL
+   return "http://localhost:8080"
+end xterm_URL
 
 command xterm_Start
    put "ttyd -p 8080 -W zsh > /dev/null 2>&1 < /dev/null & sleep 1; pgrep ttyd" into someShell
@@ -61,17 +123,6 @@ command xterm_Start
    --
    return pid
 end xterm_Start
-
-function xterm_URL
-   return "http://localhost:8080"
-end xterm_URL
-
-function ttyd_ThemeJson sColour
-   put "green" into sColour
-   put "'background': '[[sColour]]'" into themeJSON
-   replace "'" with quote in themeJSON
-   return themeJSON
-end ttyd_ThemeJson
 
 command xterm_Stop pAsk
    put word 1 of shell ("pgrep ttyd") into pid
@@ -90,3 +141,10 @@ command xterm_Stop pAsk
    -- process_CloseAll
    return killResult
 end xterm_Stop
+
+function ttyd_ThemeJson sColour
+   put "green" into sColour
+   put "'background': '[[sColour]]'" into themeJSON
+   replace "'" with quote in themeJSON
+   return themeJSON
+end ttyd_ThemeJson

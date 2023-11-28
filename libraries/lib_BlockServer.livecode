@@ -12,6 +12,33 @@ This behavior is designed to extend, the basic Livecode Server Daemon, to serve 
 This behavior inherits the Livecode Daemon behavior script.
 */
 
+private command _SetPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
+   -- stores the pageArray as local json and updates the local site map
+   put json_FromArray (pageArray) into pageJSON  
+   fedwiki_SetLocalPageJson pageSlug, pageJSON, pFedwikiDomain, pLocalWikiFolder
+   fedwiki_UpdateLocalSiteMap pageArray, pFedwikiDomain, pCreateMilliSeconds
+   return pageJSON
+end _SetPageArray
+
+function fedwiki_GetWelcomeJSON wikiDomain
+   breakpoint
+   put pageJson_Get (wikiDomain, "welcome-visitors") into someJSON
+   if someJSON is empty then put daemon_GetRouteData ("welcome-visitors.json") into someJSON -- get the default
+   return someJSON
+end fedwiki_GetWelcomeJSON
+
+function fedwiki_GetLocalOrDefaultPageJson pageSlug, wikiDomain
+   breakpoint
+   -- there are a few json files that have defaults for new sites, so here we add the defaults
+   put pageJson_Get (wikiDomain, pageSlug) into someJSON
+   if someJSON is empty then
+      put pageSlug & ".json" into shortJsonFile
+      put daemon_GetRouteData (shortJsonFile) into someJSON -- get the default
+   end if
+   return someJSON
+end fedwiki_GetLocalOrDefaultPageJson
+
+
 --> Objects and Files
 -
 /*
@@ -93,7 +120,7 @@ command fedwiki_ActionMove pageSlug, actionArray, pFedwikiDomain, pLocalWikiFold
    put journalArray into pageArray ["journal"]
    
    put actionArray ["date"] into pCreateMilliSeconds
-   fedwiki_SetLocalPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
+   _SetPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
    return the result
 end fedwiki_ActionMove
 
@@ -130,7 +157,7 @@ command fedwiki_ActionEdit pageSlug, actionArray, pFedwikiDomain, pLocalWikiFold
    
    -- now we sould update the JSON file and possibly the site map
    put actionArray ["date"] into pCreateMilliSeconds
-   fedwiki_SetLocalPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
+   _SetPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
    
    -- and maybe the site map
    return pageArray
@@ -145,7 +172,7 @@ command fedwiki_ActionCreate pageSlug, actionArray, pFedwikiDomain, pLocalWikiFo
    put pageTitle into pageArray ["title"]  
    put actionArray into pageArray ["journal"][1]
    
-   fedwiki_SetLocalPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
+   _SetPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
    return pageArray
 end fedwiki_ActionCreate
 
@@ -156,7 +183,7 @@ command fedwiki_ActionFork pageSlug, actionArray, pFedwikiDomain, pLocalWikiFold
    put forkPageArray ["title"] into pageTitle
    
    put fedwiki_ConstructSlug (pageTitle) into pageSlug
-   fedwiki_SetLocalPageArray pageSlug, forkPageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
+   _SetPageArray pageSlug, forkPageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
    put the result into pageJSON
    return pageJSON
 end fedwiki_ActionFork
@@ -239,22 +266,6 @@ end fedwiki_PageJson
 
 --> Fedwiki | Files
 -
-function fedwiki_GetWelcomeJSON
-   put fedwiki_GetLocalPageJson ("welcome-visitors") into someJSON
-   if someJSON is empty then put daemon_GetRouteData ("welcome-visitors.json") into someJSON -- get the default
-   return someJSON
-end fedwiki_GetWelcomeJSON
-
-function fedwiki_GetLocalOrDefaultPageJson pageSlug
-   -- there are a few json files that have defaults for new sites, so here we add the defaults
-   put fedwiki_GetLocalPageJson (pageSlug) into someJSON
-   if someJSON is empty then
-      put pageSlug & ".json" into shortJsonFile
-      put daemon_GetRouteData (shortJsonFile) into someJSON -- get the default
-   end if
-   return someJSON
-end fedwiki_GetLocalOrDefaultPageJson
-
 command fedwiki_SendSiteMap socketID
    put the fedwiki_SiteMap of me into someJSON
    daemon_SendJSON socketID, someJSON
@@ -273,7 +284,7 @@ command fedwiki_SendHTML  shortFile, socketID
    return "Sent HTML. Socket still open."
 end fedwiki_SendHTML
 
-      
+
 --> Fedwiki | Not Needed As Custom Props?
 -
 command fedwiki_SendPNG shortFile, socketID, someETag

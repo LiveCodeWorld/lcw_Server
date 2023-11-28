@@ -29,7 +29,7 @@ end menu_Target
 --> Global | Browser | Rough | Menu
 -
 on menu_SetRough browserView
-   put scaffold_GetTemplate ("Rough Blue") into roughHTML
+   put scaffold_Get ("Rough Blue") into roughHTML
    set the browser_HtmlText of browserView to roughHTML
    --
    set the browser_Element of browserView to "svg"

@@ -9,6 +9,119 @@ version: 0.4
 
 --> Working on
 -
+command display_RecentSites pSincePeriod, pDisplayView, pPalette
+   if pSincePeriod is empty then put "1 week" into pSincePeriod
+   --
+   put fedray_FetchRecentSites (pSincePeriod, true) into modifiedSites
+   --   
+   display_Data modifiedSites, pSincePeriod, "Federation", pDisplayView, pPalette
+   put the result into pDisplayView
+   display_SetIndexMenus pDisplayView, mTitle, mLineTitle, mDoubleUp
+   --
+   return pDisplayView
+end display_RecentSites
+
+
+--> Display
+-
+command display_WikiDomain wikiDomain, pDisplayView, pPalette
+   set the cursor to watch
+   -- atopia_DeleteWikiSitemap wikiDomain
+   --
+   put fedwiki_FetchSitemapArray (wikiDomain) into sitemapArray
+   put fedwiki_ConstructSitePageArray (sitemapArray) into sitePageArray
+   --
+   display_Data sitePageArray, wikiDomain, "Wiki", pDisplayView, pPalette
+   put the result into displayView
+   --
+   display_SetInteractions displayView, "Wiki | Pages", "mDoubleUp_DisplayPage"
+   --
+   return displayView
+end display_WikiDomain
+
+command display_RecentWikiPages wikiDomains, pSincePeriod, pDisplayView, pPalette
+   local mDoubleUp
+   
+   -- default to display recent site pages in the last week
+   if pSincePeriod is empty then put "1 Week" into pSincePeriod
+   if wikiDomains is empty then
+      put fedray_FetchRecentSites (pSincePeriod, true) into wikiDomains
+   end if
+   --
+   put fedwiki_FetchModifiedPageArray (wikiDomains, pSincePeriod) into modifiedPageArray
+   -- put fedwiki_FetchRecentDomainPageArray (wikiDomains, pSincePeriod) into domainPageArray
+   --
+   display_Data modifiedPageArray, pSincePeriod, "Recent Federation Pages", pDisplayView, pPalette
+   put the result into dView
+   display_SetToolMenus "Federation | Tree", dView, "lcw_Server"
+   return dView
+end display_RecentWikiPages
+
+command display_RecentScrapePages pSincePeriod, pDisplayView, pPalette
+   local mDoubleUp
+   --
+   -- put fedray_FetchRecentSites (pSincePeriod) into modifiedSites
+   put ward_ListRecentDomains() into modifiedSites
+   put fedwiki_FetchRecentDomainPageArray (modifiedSites, pSincePeriod) into domainPageArray
+   --
+   display_Data domainPageArray, "Recent Wiki Pages", "Federation", pDisplayView, pPalette
+   put the result into dView
+   display_SetToolMenus "Federation | Tree", dView, "lcw_Server"
+   return dView
+end display_RecentScrapePages
+
+on mDoubleUp_FederationTree displayView, someLine
+   breakpoint
+   put the title_Text of displayView into someTitle
+end mDoubleUp_FederationTree
+
+command display_WardsRecentDomains pDisplayView, pPalette
+   put ward_ListRecentDomains() into recentFederationDomains
+   --   
+   display_Data recentFederationDomains, "Ward's 8 day Scrape", "Federation", pDisplayView, pPalette
+   put the result into dView
+   display_SetToolMenus "Federation | Tree", dView, "lcw_Server"
+   --
+   return dView
+end display_WardsRecentDomains
+
+command display_AndAddNewFederationSites indexView
+   -- no idea about this one (see also "display_UpdateBothFedrays")
+   -- only updates indexes (no trashing) 
+   -- uses "fedray_UpdateLastModified"
+   -- see also
+   
+   put ward_ListNewSites() into recentFederationDomains
+   sort recentFederationDomains
+   set the displayed_Index ["Wards New Sites"] of indexView to recentFederationDomains
+   --
+   put fedray_FetchModel() into fedray
+   repeat for each line wikiDomain in recentFederationDomains
+      display_Spin wikiDomain, indexView
+      put the result into lineNum
+      --
+      set the line_Colour [lineNum] of indexView to red
+      atopia_ToggleIsIndexed wikiDomain, true, true
+      --
+      fedray_UpdateLastModified fedray, wikiDomain
+      --
+      get the result
+      if it is empty then
+         set the line_Colour [lineNum] of indexView to red
+         set the deleted_Line of indexView to lineNum
+      else
+         put wikiDomain & CR after newSites
+         set the line_Colour [lineNum] of indexView to green
+      end if
+   end repeat
+   delete char -1 of newSites
+   fedray_StoreModel fedray
+   --
+   put ward_ListNewSites (true) into newSites
+   set the displayed_Index ["New Federation Sites"] of indexView to newSites
+   return newSites
+end display_AndAddNewFederationSites
+
 command display_FederationServers
    put fedserver_FetchModel() into sModel
    --
@@ -125,21 +238,6 @@ command display_UpdateBothFedrays indexView
    url_SortDomainIndex thisWeeksModifiedSites
    set the displayed_Index ["Updated Sites"] of indexView to updatedSites
 end display_UpdateBothFedrays
-
-command display_RecentSites pSincePeriod, pDisplayView, pPalette
-   if pSincePeriod is empty then put "1 week" into pSincePeriod
-   --
-   put fedray_FetchRecentSites (pSincePeriod, true) into modifiedSites
-   --   
-   put "Global | Federation | Tree | Menu" into mTitle
-   put "Global | Federation | Line | Menu" into mLineTitle
-   --
-   display_Data modifiedSites, pSincePeriod, "Federation", pDisplayView, pPalette
-   put the result into pDisplayView
-   display_SetIndexMenus pDisplayView, mTitle, mLineTitle, mDoubleUp
-   --
-   return pDisplayView
-end display_RecentSites
 
 command display_RecentAtopiaSites pSincePeriod, pIndexView
    local mDoubleUp

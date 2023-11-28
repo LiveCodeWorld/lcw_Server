@@ -119,6 +119,14 @@ end resizeControl
 
 command LayoutControl pRect
    if pRect is empty then put the rect of me into pRect
+   get the menubar of the defaultstack
+   if it is not empty then
+      put the menu_Group of me into mGroup
+      if exists(mGroup) then
+         put the height of mGroup into sHeight
+         subtract sHeight from item 2 of pRect
+      end if
+   end if
    set the rect of me to pRect
 end LayoutControl
 

@@ -35,7 +35,7 @@ end author_FetchPageArray
 command author_StorePageArray pageArray
    put pageArray ["title"] into authorName
    put fedwiki_ConstructSlug (authorName) into pageSlug
-   pageArray_Store "author.fedwiki.org", pageSlug, pageArray
+   pageArray_Set "author.fedwiki.org", pageSlug, pageArray
    return the result
 end author_StorePageArray
 
@@ -168,7 +168,7 @@ command author_StorePageArray authorName, pageArray, pSitesBit
    put "author.fedwiki.org" into wikiDomain
    put atopia_ConstructAuthorSiteSlug (authorName, pSitesBit) into pageSlug
    --
-   pageArray_Store wikiDomain, pageSlug, pageArray
+   pageArray_Set wikiDomain, pageSlug, pageArray
    --
    return pageSlug
 end author_StorePageArray
@@ -307,7 +307,7 @@ command atopia_CreatePodActivityPage podName, authorNames, wikiDomain, ownership
    put atopia_FetchPodActivity (podName, authorNames, authorNameData, pSincePeriod, pForkDomains) into pageArray
    --
    put fedwiki_ConstructSlug (podName && "Activity") into pageSlug
-   pageArray_Store wikiDomain, pageSlug, pageArray
+   pageArray_Set wikiDomain, pageSlug, pageArray
    --
    put the result into shellResult
    return shellResult

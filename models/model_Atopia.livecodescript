@@ -120,7 +120,7 @@ command roster_Store wikiDomain, pageSlug, rosterText, pItemID
    end if
    put rosterText into pageArray ["story"][itemNum]["text"]
    --
-   pageArray_Store wikiDomain, pageSlug, pageArray
+   pageArray_Set wikiDomain, pageSlug, pageArray
    return pageArray
 end roster_Store
 

@@ -162,7 +162,7 @@ command author_Create authorName, authorDomains, pSincePeriod
    put author_CurlyData (authorName, authorDomains, pSincePeriod) into curlyData
    curly_MergePageArray pageArray, curlyData
    --
-   pageArray_Store wikiDomain, pageSlug, pageArray
+   pageArray_Set wikiDomain, pageSlug, pageArray
    put the result into shellResult
    if shellResult is empty then
       return pageArray
@@ -235,7 +235,7 @@ command atopia_CreateAuthorSitesPage authorName, authorDomains, pSitesBit
    author_SetSitesPageArray pageArray, authorName, authorDomains
    curly_ReplacePageArray pageArray, "AuthorName", authorName
    --
-   pageArray_Store authorWikiDomain, sitesPageSlug, pageArray
+   pageArray_Set authorWikiDomain, sitesPageSlug, pageArray
    --
    return pageArray
 end atopia_CreateAuthorSitesPage
@@ -291,6 +291,6 @@ end atopia_FetchAuthorPageArray
 
 command atopia_StoreAuthorPageArray authorName, pageArray, pSitesBit
    put atopia_ConstructAuthorSiteSlug (authorName, pSitesBit) into sitesPageSlug
-   pageArray_Store "author.fedwiki.org", sitesPageSlug, pageArray
+   pageArray_Set "author.fedwiki.org", sitesPageSlug, pageArray
    return the result
 end atopia_StoreAuthorPageArray

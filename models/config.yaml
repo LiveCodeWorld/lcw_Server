@@ -1,0 +1,69 @@
+astral:
+  type: http
+  region: eu
+  reserved_domain: 'astralship.wiki'
+  to: localhost:3000
+  plugins:
+     response_header:
+      - Connection:keep-alive
+      - Keep-Alive:timeout=5
+
+subastral:
+  type: http
+  region: eu
+  reserved_domain: '*.astralship.wiki'
+  to: localhost:3000
+  plugins:
+    response_header:
+      - Connection:keep-alive
+      - Keep-Alive:timeout=5
+  
+earth:
+  type: http
+  region: eu
+  reserved_domain: '*.platform.earth'
+  to: localhost:3000
+  plugins:
+     response_header:
+      - Connection:keep-alive
+      - Keep-Alive:timeout=5
+
+thought:
+  type: http
+  region: eu
+  reserved_domain: 'thought.garden'
+  to: localhost:3000
+  plugins:
+     response_header:
+      - Connection:keep-alive
+      - Keep-Alive:timeout=5
+
+subthought:
+  type: http
+  region: eu
+  reserved_domain: '*.thought.garden'
+  to: localhost:3000
+  plugins:
+    response_header:
+      - Connection:keep-alive
+      - Keep-Alive:timeout=5
+ 
+outlandish:
+  type: http
+  region: eu
+  reserved_domain: 'outlandish.academy'
+  to: localhost:3000
+  plugins:
+     response_header:
+      - Connection:keep-alive
+      - Keep-Alive:timeout=5
+
+suboutlandish:
+  type: http
+  region: eu
+  reserved_domain: '*.outlandish.academy'
+  to: localhost:3000
+  plugins:
+    response_header:
+      - Connection:keep-alive
+      - Keep-Alive:timeout=5
