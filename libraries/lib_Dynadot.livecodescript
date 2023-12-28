@@ -11,6 +11,15 @@ A library for interfacing with DNS services like DigitalOcean and Dynadot
 */
 
 
+--> Move
+-
+function domain_GetTld sDomain
+   set the itemdelimiter to "."
+   put item -2 to -1 of sDomain into tldDomain
+   return tldDomain
+end domain_GetTld
+
+
 --> Working on
 -
 command dynadot_AddSubdomain domainName, subDomainName, subTunnel
@@ -66,6 +75,26 @@ command dynadot_ReAddSubdomains @paramArray, subDomainArray
    end repeat
    return lastSubNum
 end dynadot_ReAddSubdomains
+
+function dynadot_MainDomainCname tldDomain
+   put dynadot_GetMainDomainArray (tldDomain) into mainDomainArray
+   repeat with indexNum = 1 to item 2 of the extents of mainDomainArray
+      put mainDomainArray [indexNum]["recordType"] into recordType
+      if recordType = "cname" then
+         put mainDomainArray [indexNum]["value"] into cNameValue
+         return cNameValue
+      end if
+   end repeat
+   return empty
+end dynadot_MainDomainCname
+
+function dynadot_GetMainDomainArray domainName
+   put dynadot_GetDns (domainName) into dnsArray
+   --
+   put dnsArray ["GetDnsResponse"]["GetDns"]["NameServerSettings"] into nsSettingsArray
+   put nsSettingsArray ["MainDomains"] into mainDomainArray
+   return mainDomainArray
+end dynadot_GetMainDomainArray
 
 command dynadot_SetMainDomain domainName, mainTunnel
    local paramArray

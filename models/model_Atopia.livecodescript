@@ -19,6 +19,24 @@ AtopiaFedray has the same data structure as fedray
 
 --> Working on
 -
+function atopia_ListEmptySites
+   put atopia_FetchFilteredFolderLsArray() into folderArray
+   delete variable folderArray ["fedwiki_owners"]
+   -- put atopia_ListWelcomeFolders() into treeInfoFolders
+   put federation_ListDomains () into treeInfoFolders
+   split treeInfoFolders by CR as set
+   --
+   difference folderArray with treeInfoFolders
+   --
+   put the keys of folderArray into emptyFolders
+   url_SortDomainIndex emptyFolders
+   return emptyFolders
+end atopia_ListEmptySites
+
+
+
+--> Atopia | List
+-
 function atopia_ListNewStoredCatFolders pListStored
    put atopia_FetchCatModel() into atopiaCatModel
    --
@@ -162,19 +180,6 @@ function atopia_ListNewFolders pSincePeriod
    url_SortDomainIndex newRemoteDomains
    return newRemoteDomains
 end atopia_ListNewFolders
-
-function atopia_ListEmptySites
-   put atopia_FetchFilteredFolderLsArray() into folderArray
-   delete variable folderArray ["fedwiki_owners"]
-   put atopia_ListWelcomeFolders() into treeInfoFolders
-   split treeInfoFolders by CR as set
-   --
-   difference folderArray with treeInfoFolders
-   --
-   put the keys of folderArray into emptyFolders
-   url_SortDomainIndex emptyFolders
-   return emptyFolders
-end atopia_ListEmptySites
 
 
 --> Atopia | Model | List | Recent

@@ -12,10 +12,20 @@ version: 0.1
 
 --> Working on
 -
+function afds
+   put "~/.nvm/nvm.sh"
+end afds
 
 
 --> Nvm
 -
+function npm_List nodeModuleName
+   -- put npm_List ("wiki-server")
+   put "source ~/.nvm/nvm.sh; npm list -gp" && nodeModuleName into tCommand
+   put shell (tCommand) into tResult
+   return tResult
+end npm_List
+
 function nvm_GetNodeVersion
    return shell ("source ~/.zshrc; nvm current")
 end nvm_GetNodeVersion
@@ -54,7 +64,3 @@ command nvm_Help xtermView
       launch url "https://tecadmin.net/install-nvm-macos-with-homebrew/"
    end if
 end nvm_Help
-
-
---> Deps
--

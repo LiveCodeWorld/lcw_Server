@@ -26,11 +26,39 @@ getprop menu_CheckTarget [mTarget]
    return exists (mTarget)
 end menu_CheckTarget
 
+getprop disabled_CreateLocalWiki [dView]
+   put the selected_Line of dView into wikiDomain
+   --
+   put wiki_GetFolder (wikiDomain) into wikiFolder
+   return wikiFolder is not empty
+end disabled_CreateLocalWiki
+
 
 --> Global | Dynadot | Tree | Line | Menu
 -
-on menu_DisplayDomainInfo indexView
-   put the selected_Line of indexView into domainName
+on menu_DisplayWiki dView
+   put the selected_Line of dView into wikiDomain
+   --
+   put wiki_Browser() into browserView
+   display_Wiki wikiDomain, browserView
+end menu_DisplayWiki
+
+on menu_CreateLocalWiki  dView
+   put the selected_Line of dView into wikiDomain
+   --
+   put wiki_ConstructFolder (wikiDomain) into wikiFolder
+   put system_GetAdminPassword() into systemPassword
+   hosts_Add wikiDomain, systemPassword
+   --
+   put wiki_Browser() into browserView
+   display_Wiki wikiDomain, browserView
+end menu_CreateLocalWiki
+
+private on _
+end _
+
+on menu_DisplayDomainInfo dView
+   put the selected_Line of dView into domainName
    --
    display_DynadotDomainInfo domainName
 end menu_DisplayDomainInfo
@@ -43,52 +71,6 @@ on menu_DisplayDns indexView
    display_Data dnsData, "dynadot_GetDns()", domainName
 end menu_DisplayDns
 
-on menu_SetAstralSubdomain indexView
-   put the selected_Line of indexView into domainName
-   --
-   put lcw_Ask ("What sudomain would you liek to set?", "www") into subDomainName
-   put "a2v0pgisrrpogjv.cname.eu.loclx.io" into cNameValue
-   dynadot_SetDns domainName, subDomainName, cNameValue
-   put the result into dnsData
-   --
-   display_Data dnsData, "dynadot_GetDns()", domainName
-end menu_SetAstralSubdomain
-
-private on _
-end _
-
-on menu_XposeDomain displayView
-   put the selected_Line of displayView into domainName
-   ---
-   put astral_FetchPeopleSubDomainList() into aSubDomains
-   --
-   put dynadot_GetDns (domainName) into dnsData
-   --
-   tunnel_ReserveLocalDomain domainName, "eu"
-   put the result into cNameValue
-   put "jfwwfydq93tktzy.cname.eu.loclx.io"  into cNameValue
-   --
-   -- dynadot_SetDns domainName, aSubDomains, cNameValue
-   repeat for each item subDomainName in aSubDomains
-      set the cursor to busy
-      dynadot_AddSubdomain domainName, subDomainName, cNameValue
-   end repeat
-   --
-   display_DynadotDomain domainName
-end menu_XposeDomain
-
-on menu_SymLinkAndRegister displayView
-   put the selected_Line of displayView into domainName
-   put lcw_Ask ("Create Dynadot CNAME?", domainName, "Dynadot", displayView) into dynSubDomain
-   --
-   dynadot_AddSubdomain domainName, dynSubDomainName, "yhdhcbundskxzwc.eu.loclx.io"
-   --
-   gitwiki_CreateSymLink gitWikiDomain, dynSubDomain
-   --
-   display_EarthWikis
-   diplay_GitWikiFolders pDisplayView, pWikiFilter
-end menu_SymLinkAndRegister
-
 on submenu_Dev
-   return "Dev | Menu"
+   return menu_DevTitle ("Global | Dynadot | Tree | Line | Menu")
 end submenu_Dev

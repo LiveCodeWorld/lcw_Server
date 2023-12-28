@@ -7,7 +7,9 @@ name: lib_Xterm
 type: library
 version: 0.1
 
-/*Some help*/
+/*
+A library to display an Xterm browser in Livecode.
+*/
 
 --> Variables
 -
@@ -16,34 +18,8 @@ local LocalArray
 
 --> Working on
 -
-command display_Xterm pXtermBrowser, pStackStyle, pStackRect
-   put "View|Xterm" into viewName
-   put "Xterm Browser" into pStackLabel
-   put xterm_URL() into someURL
-   --
-   switch
-      case pXtermBrowser is true
-         display_ViewTemplate viewName
-         put the result into xtermBrowser
-         set the browser_Url of xtermBrowser to someURL
-         break
-      case exists (pXtermBrowser)
-         put pXtermBrowser into xtermBrowser
-         if pStackLabel is not empty then set the stack_Label of xtermBrowser to pStackLabel
-         set the browser_Url of xtermBrowser to someURL
-         break
-      default
-         if pStackStyle is empty then put "toplevel" into pStackStyle
-         --
-         display_View viewName, someURL, pStackLabel, pStackRect, "browser_URL", pStackStyle
-         put the result into xtermBrowser
-         display_SetMenu xtermBrowser, "Xterm", "title_Menu"
-   end switch
-   return xtermBrowser
-end display_Xterm
 
-
---> Working on
+--> Props
 -
 getprop xterm_Result [jsScript]
    put the browser_View of the target into browserWidget
@@ -57,6 +33,39 @@ getprop xterm_Result [jsScript]
    return isVisible
 end xterm_Result
 
+
+--> Display | Xterm
+-
+command display_Xterm pXtermBrowser, pShellCommand, pHow, pStackStyle
+   if pStackStyle is empty then put "toplevel" into pStackStyle
+   put "Xterm Browser" into pStackLabel
+   put xterm_URL() into someURL
+   
+   # Start if not running
+   if xterm_IsRunning() is false then
+      xterm_Start
+      wait 60 ticks
+   end if
+   
+   # Display
+   display_ModuleInstance "View|Xterm", someURL, pStackLabel, pXtermBrowser, "browser_URL", pStackStyle
+   put the result into xTermBrowser
+   
+   # Set menus
+   display_SetMenu xTermBrowser, "Xterm"
+   
+   if pShellCommand is not empty then
+      wait 60 ticks
+      if pHow is "execute" then
+         ttyd_Execute pShellCommand, xTermBrowser
+      else
+         ttyd_Paste pShellCommand, xTermBrowser
+      end if
+   end if
+   
+   return xTermBrowser
+end display_Xterm
+
 on xterm_GetJavascriptResult sResult
    put sResult into LocalArray ["sResult"]
    return sResult
@@ -66,6 +75,11 @@ end xterm_GetJavascriptResult
 --> Ttyd
 -
 command ttyd_Execute someShell, browserView
+   if exists (browserView) is false then
+      breakpoint
+      return empty
+   end if
+   
    put ttypd_PasteJS (someShell) into jsTemplate
    put CR & "document.querySelector('textarea.xterm-helper-textarea').dispatchEvent(new KeyboardEvent('keypress', {charCode: 13}))" after jsTemplate
    put merge (jsTemplate) into someJS

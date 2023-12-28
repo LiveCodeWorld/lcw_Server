@@ -25,6 +25,35 @@ end mDoubleUp_DynadotDomain
 
 --> Working on
 -
+command display_AstralDynadotWikis pDisplayView
+   put dynadot_ListAstralDomains() into astralDomains
+   url_SortDomainIndex astralDomains
+   --
+   display_WikiFolders astralDomains, "Wiki | Dynadot", pDisplayView, "", "Astral", "Dynadot Wikis"
+   put the result into dView
+   return dView
+end display_AstralDynadotWikis
+
+command display_DynadotWikis domainName, pDisplayView, pFilter
+   if exists (pDisplayView) is false then
+      put display_FindIndexView ("Dynadot", "Earth Wikis") into pDisplayView
+   end if
+   --
+   put dynadot_ListAllSubDomain (domainName) into wikiDomains
+   --
+   if pFilter is not empty then
+      filter wikiDomains with pFilter
+   end if
+   --
+   display_Data wikiDomains, domainName, "Dynadot", pDisplayView
+   put the result into dView
+   display_SetToolMenus "Wiki | Earth", dView, "lcw_Wiki"
+   return dView
+end display_DynadotWikis
+
+
+--> Display | Dynadot
+-
 command display_DynadotDomain domainName
    put dynadot_ListAllSubDomain (domainName) into domainNames
    -- 
@@ -34,15 +63,22 @@ command display_DynadotDomain domainName
    return domainName
 end display_DynadotDomain
 
-command display_Dynadot pIndexView
+command display_Dynadot pIndexView, pFilter
    put dynadot_ListDomainNames() into domainNames
+   --
+   if pFilter is not empty then
+      filter domainNames with pFilter
+      put pFilter into sTitle
+   else
+      put "Dynadot Domains" into sTitle
+   end if
    --   
-   _DisplayDynadot domainNames, "Dynadot Domains", pIndexView
+   _DisplayDynadot domainNames, sTitle, pIndexView
    return the result
 end display_Dynadot
 
 
---> Dynadot | Display
+--> Display | Dynadot | Ocean
 -
 command display_DynadotOcean pIndexView
    put dynadot_ListOceanDomainNames() into domainNames

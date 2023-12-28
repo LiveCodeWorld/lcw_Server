@@ -12,6 +12,19 @@ See atopia_FetchDomains
 
 --> Working on
 -
+function federation_ListDomains pWikiDomain
+   -- slower than fedray_FetchDomains() (but thorough)
+   put fedray_FetchUnion() into fedray
+   put keys (fedray) into fedrayDomains
+   url_SortDomainIndex fedrayDomains
+   --
+   if pWikiDomain is not empty then
+      filter fedrayDomains with ("*." & pWikiDomain)
+      put pWikiDomain & CR before fedrayDomains
+   end if
+   return fedrayDomains
+end federation_ListDomains
+
 
 --> Federation | Ward
 -
@@ -52,19 +65,6 @@ end fedray_FetchRecentSites
 
 --> Fedray | Model | Union
 -
-function federation_ListDomains pWikiDomain
-   -- slower than fedray_FetchDomains() (but thorough)
-   put fedray_FetchUnion() into fedray
-   put keys (fedray) into fedrayDomains
-   url_SortDomainIndex fedrayDomains
-   --
-   if pWikiDomain is not empty then
-      filter fedrayDomains with ("*." & pWikiDomain)
-      put pWikiDomain & CR before fedrayDomains
-   end if
-   return fedrayDomains
-end federation_ListDomains
-
 function federation_ListWeekDomains
    -- all domains of the last week
    put federation_FetchWeekDomainArray() into weekDomainArray

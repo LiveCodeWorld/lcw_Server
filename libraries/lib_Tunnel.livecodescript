@@ -19,11 +19,19 @@ local LocalArray
 
 --> Working on
 -
-command display_TunnelConfig
-   put tunnel_GetYamlFile() into yamlFile
-   put text_EditorApplicationPath() into applicationPath
-   launch yamlFile with applicationPath
-end display_TunnelConfig
+on mDoubleUp_TunnelReserved dView, tunnelDomain
+   if the optionKey is "Down" then breakpoint
+   put tunnel_GetRegisteredCName (tunnelDomain)
+end mDoubleUp_TunnelReserved
+
+command display_ReservedTunnels pDisplayView
+   put tunnel_ListDomains() into tunnelDomains
+   --
+   display_Data tunnelDomains, "Reserved Domains", "Tunnel", pDisplayView
+   put the result into dView
+   display_SetMouseAndMenu dView, "Tunnel | Reserved", "lib_Tunnel"
+   return dView
+end display_ReservedTunnels
 
 function tunnel_GetRegisteredCName tunnelDomain
    put tunnel_FetchDomainArray() into domainArray

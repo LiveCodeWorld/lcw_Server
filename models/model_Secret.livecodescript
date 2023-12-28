@@ -48,9 +48,29 @@ end secret_Get
 command secret_Set secretName, secretValue, pArrayKey
    put _ConstructShortArrayFile (pArrayKey) into shortFile
    user_SetValue secretName, shortFile, secretValue
-   put the result into modelDataFile
-   return modelDataFile
+   put the result into modelFile
+   return modelFile
 end secret_Set
+
+command secret_GetArray pArrayKey
+   put _ConstructShortArrayFile (pArrayKey) into shortArrayFile
+   put user_GetArray (shortArrayFile) into userArray
+   return userArray
+end secret_GetArray
+
+command secret_AddArray newArray, pArrayKey
+   put _ConstructShortArrayFile (pArrayKey) into shortArrayFile
+   user_AddArray shortArrayFile, newArray
+   put the result into modelFile
+   return modelFile
+end secret_AddArray
+
+command secret_SetArray userArray, pArrayKey
+   put _ConstructShortArrayFile (pArrayKey) into shortArrayFile
+   user_SetArray shortArrayFile, userArray
+   put the result into modelFile
+   return modelFile
+end secret_SetArray
 
 
 --> Local

@@ -10,7 +10,7 @@ local LocalArray
 
 --> Props
 -
-setprop display_Page [remoteDomain] pageSlug
+setprop page_Title [remoteDomain] pageSlug
    if remoteDomain is empty then
       put wiki_InternalLinkJavascript (pageSlug) into someJavascript
    else
@@ -19,7 +19,7 @@ setprop display_Page [remoteDomain] pageSlug
    set the browser_Javascript of me to someJavascript
    put the result into doResult
    return doResult
-end display_Page
+end page_Title
 
 setprop ghost_PageArray pageArray
    put json_FromArray (pageArray) into pageJSON
@@ -27,10 +27,10 @@ setprop ghost_PageArray pageArray
    return the result
 end ghost_PageArray
 
-setprop ghost_Page pageJSON
+setprop ghost_PageJson pageJSON
    set the browser_Javascript of me to _ConstructJavascript (pageJSON)
    return the result
-end ghost_Page
+end ghost_PageJson
 
 getprop wiki_Domain
    put the browser_URL of me into someURL
@@ -58,7 +58,7 @@ setprop footer_Visible someBoolean
    unlock screen
 end footer_Visible
 
-setprop displayed_Domain domainOrURL
+setprop wiki_Domain domainOrURL
    put _BrowserWidget() into browserWidget
    set the itemdelimiter to slash
    switch
@@ -71,7 +71,7 @@ setprop displayed_Domain domainOrURL
          put "http://" & domainOrURL into someURL
    end switch
    set the browser_URL of browserWidget to someURL
-end displayed_Domain
+end wiki_Domain
 
 getprop displayed_Data
    put the browser_URL of me into someURL

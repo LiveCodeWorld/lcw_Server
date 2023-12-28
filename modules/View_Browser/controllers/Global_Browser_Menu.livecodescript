@@ -189,10 +189,6 @@ on menu_TestCssHide browserView
    set the browser_Javascript of browserView to someJS
 end menu_TestCssHide
 
-on menu_Snapshot browserView
-   put the browser_Snapshot of browserView into somePNG
-end menu_Snapshot
-
 private on __
 end __
 

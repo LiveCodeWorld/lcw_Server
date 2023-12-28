@@ -339,7 +339,7 @@ end atopia_ListTopFolders
 -
 function atopia_FetchWikiPageFileArray wikiDomain
    -- fetch a list of files in the pages folder of an individual wiki domain folder
-   put fedwiki_LocalPagesFolder (wikiDomain) into serverPath
+   put wiki_PagesFolder (wikiDomain) into serverPath
    put atopia_FetchLsArray (serverPath) into infoArray
    put infoArray ["file"] into fileArray
    return fileArray

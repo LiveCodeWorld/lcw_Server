@@ -41,9 +41,20 @@ end disabled_DynadotOceanDomains
 
 --> Global | Dynadot | Menu
 -
+on menu_Filter displayView
+   put the wiki_Filter of displayView into wikiFilter
+   put lcw_Ask ("Filter domains...", wikiFilter, "Wiki Filter", displayView) into wikiFilter
+   set the wiki_Filter of displayView to wikiFilter
+   --
+   display_Dynadot displayView, wikiFilter
+end menu_Filter
+
 on menu_DynadotDomains indexView
    display_Dynadot indexView
 end menu_DynadotDomains
+
+private on _
+end _
 
 on menu_DynadotManagedDomains indexView
    display_DynadotManaged indexView
@@ -57,8 +68,8 @@ on menu_DynadotParkedDomains indexView
    display_DynadotParked indexView
 end menu_DynadotParkedDomains
 
-on _
-end _
+private on __
+end __
 
 on menu_Documentation indexView, whichDocs
    switch whichDocs
@@ -75,30 +86,5 @@ on menu_Documentation indexView, whichDocs
 end menu_Documentation
 
 on submenu_Dev
-   return "Dev | Menu"
+   return menu_DevTitle ("Global | Dynadot | Menu")
 end submenu_Dev
-
-
---> Dev | Menu
--
-on menu_UpdateCachedDynadotData
-   dynadot_UpdateCachedIndexDomainArray
-   put the result into dynadotData
-   --
-   display_Data dynadotData, "Dynadot Data", "Cached"
-end menu_UpdateCachedDynadotData
-
-on menu_FetchDynadotData
-   put dynadot_FetchIndexedDomainArray() into dynadotData
-   --
-   display_Data dynadotData, "Dynadot Data", "Fetched"
-end menu_FetchDynadotData
-
-on _
-end _
-
-on menu_UpdateOceanInfoArray
-   digitalocean_UpdateDomainInfoArray
-   put the result into oceanInfoArray
-   display_Array oceanInfoArray, "Ocean Info Array,digitalocean_FetchDomainInfoArray()"
-end menu_UpdateOceanInfoArray

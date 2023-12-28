@@ -12,22 +12,9 @@ This behavior is designed to extend, the basic Livecode Server Daemon, to serve 
 This behavior inherits the Livecode Daemon behavior script.
 */
 
-private command _SetPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
-   -- stores the pageArray as local json and updates the local site map
-   put json_FromArray (pageArray) into pageJSON  
-   fedwiki_SetLocalPageJson pageSlug, pageJSON, pFedwikiDomain, pLocalWikiFolder
-   fedwiki_UpdateLocalSiteMap pageArray, pFedwikiDomain, pCreateMilliSeconds
-   return pageJSON
-end _SetPageArray
-
-function fedwiki_GetWelcomeJSON wikiDomain
-   breakpoint
-   put pageJson_Get (wikiDomain, "welcome-visitors") into someJSON
-   if someJSON is empty then put daemon_GetRouteData ("welcome-visitors.json") into someJSON -- get the default
-   return someJSON
-end fedwiki_GetWelcomeJSON
-
-function fedwiki_GetLocalOrDefaultPageJson pageSlug, wikiDomain
+--> Working on
+-
+private function _GetLocalOrDefaultPageJson pageSlug, wikiDomain
    breakpoint
    -- there are a few json files that have defaults for new sites, so here we add the defaults
    put pageJson_Get (wikiDomain, pageSlug) into someJSON
@@ -36,7 +23,47 @@ function fedwiki_GetLocalOrDefaultPageJson pageSlug, wikiDomain
       put daemon_GetRouteData (shortJsonFile) into someJSON -- get the default
    end if
    return someJSON
-end fedwiki_GetLocalOrDefaultPageJson
+end _GetLocalOrDefaultPageJson
+
+command block_SendWelcome socketID
+   -- http://localhost:3000/view/welcome-visitors/view/local-site
+   -- put the block_WelcomeHtml of me into someHtml
+   put block_GetWelcomeJSON() into someJSON
+   daemon_SendText socketID, someJSON
+   return the result
+end block_SendWelcome
+
+getprop block_WelcomeHtml
+   put block_GetWelcomeHtml() into welcomeHtml
+   return welcomeHtml
+end block_WelcomeHtml
+
+function block_GetWelcomeHtml
+   put "file:" & fedwiki_GetWelcomeFile () into someUrl
+   put url someUrl into welcomeHtml
+   return welcomeHtml
+end block_GetWelcomeHtml
+
+function block_GetWelcomeJSON wikiDomain
+   breakpoint
+   put pageJson_Get (wikiDomain, "welcome-visitors") into someJSON
+   if someJSON is empty then put daemon_GetRouteData ("welcome-visitors.json") into someJSON -- get the default
+   return someJSON
+end block_GetWelcomeJSON
+
+private command _SetPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
+   -- stores the pageArray as local json and updates the local site map
+   put json_FromArray (pageArray) into pageJSON  
+   fedwiki_SetLocalPageJson pageSlug, pageJSON, pFedwikiDomain, pLocalWikiFolder
+   fedwiki_UpdateLocalSiteMap pageArray, pFedwikiDomain, pCreateMilliSeconds
+   return pageJSON
+end _SetPageArray
+
+private function _FetchLocalOrDefaultArray pageSlug
+   put _GetLocalOrDefaultPageJson (pageSlug) into pageJSON
+   put json_ToArray (pageJSON) into pageArray
+   return pageArray
+end _FetchLocalOrDefaultArray
 
 
 --> Objects and Files
@@ -49,38 +76,80 @@ In this case the server and router are the same control (usually a stack).
 Set the behavior of a stack to this script-only-stack and we are good to go. 
 */
 
---> FedWiki | Page | Action
+--> Block | Send
 -
-command fedwiki_DoAction actionArray, pageSlug
+command block_SendHTML  shortFile, socketID
+   put server_GetTextFile (shortFile) into someText
+   daemon_SendText socketID, someText
+   return "Sent HTML. Socket still open."
+end block_SendHTML
+
+command block_SendSiteMap socketID
+   put the fedwiki_SiteMap of me into someJSON
+   daemon_SendJSON socketID, someJSON
+   return "Sent JSON. Socket still open."
+end block_SendSiteMap
+
+
+--> Fedwiki | Not Needed As Custom Props?
+-
+command block_SendPNG shortFile, socketID, someETag
+   put server_GetBinaryFile (shortFile) into someData
+   daemon_SendPNG socketID, someData, someETag
+   return "Sent PNG. Socket still open."
+end block_SendPNG
+
+command block_SendOriginFavicon socketID
+   put the fedwiki_Favicon of me into fedwikiFavicon
+   daemon_SendPNG socketID, fedwikiFavicon
+   return "Sent Favicon. Socket still open."
+end block_SendOriginFavicon
+
+command block_SendCSS shortFile, socketID
+   put server_GetBinaryFile (shortFile) into someJSON
+   daemon_SendCSS socketID, someJSON
+   return "Sent JSON. Socket still open."
+end block_SendCSS
+
+command fedwiki_SendJS shortFile, socketID
+   put server_GetTextFile (shortFile) into someJSON
+   daemon_SendJSON socketID, someJSON
+   return "Sent JSON. Socket still open."
+end fedwiki_SendJS
+
+
+--> Block | Page | Action
+-
+command block_DoAction actionArray, pageSlug
    put actionArray ["type"] into actionType
    switch actionType
       case "edit"
-         fedwiki_ActionEdit pageSlug, actionArray
+         block_ActionEdit pageSlug, actionArray
          break
       case "create"
-         fedwiki_ActionCreate pageSlug, actionArray
+         block_ActionCreate pageSlug, actionArray
          break
       case "add"
-         fedwiki_ActionAdd pageSlug, actionArray
+         block_ActionAdd pageSlug, actionArray
          break
       case "move"
-         fedwiki_ActionMove pageSlug, actionArray
+         block_ActionMove pageSlug, actionArray
          break
       case "remove"
-         fedwiki_ActionRemove pageSlug, actionArray
+         block_ActionRemove pageSlug, actionArray
          break
       case "fork"
-         fedwiki_ActionFork pageSlug, actionArray
+         block_ActionFork pageSlug, actionArray
          break
       default
          display_Array actionArray, ("New action" && actionType && pageSlug)
    end switch
    -- display_Array actionArray, actionType
-end fedwiki_DoAction
+end block_DoAction
 
-command fedwiki_ActionRemove pageSlug, actionArray
+command block_ActionRemove pageSlug, actionArray
    put actionArray ["id"] into itemID
-   put fedwiki_FetchLocalOrDefaultArray (pageSlug) into pageArray
+   put _FetchLocalOrDefaultArray (pageSlug) into pageArray
    put pageArray ["story"] into storyArray
    put fedwiki_FindStoryItemID (pageArray, itemID) into storyItemNum
    
@@ -100,10 +169,10 @@ command fedwiki_ActionRemove pageSlug, actionArray
    -- save to disk
    put json_FromArray (pageArray) into pageJSON  
    fedwiki_SetLocalPageJson pageSlug, pageJSON, pFedwikiDomain, pLocalWikiFolder
-end fedwiki_ActionRemove
+end block_ActionRemove
 
-command fedwiki_ActionMove pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
-   put fedwiki_FetchLocalOrDefaultArray (pageSlug) into pageArray
+command block_ActionMove pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
+   put _FetchLocalOrDefaultArray (pageSlug) into pageArray
    put pageArray ["story"] into storyArray
    
    put actionArray ["order"] into orderArray
@@ -122,12 +191,12 @@ command fedwiki_ActionMove pageSlug, actionArray, pFedwikiDomain, pLocalWikiFold
    put actionArray ["date"] into pCreateMilliSeconds
    _SetPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
    return the result
-end fedwiki_ActionMove
+end block_ActionMove
 
-command fedwiki_ActionAdd pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
+command block_ActionAdd pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
    local pageArray
    
-   put fedwiki_FetchLocalOrDefaultArray (pageSlug) into pageArray
+   put _FetchLocalOrDefaultArray (pageSlug) into pageArray
    
    put actionArray ["id"] into itemID
    put actionArray ["after"] into afterID
@@ -145,10 +214,10 @@ command fedwiki_ActionAdd pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolde
    put json_FromArray (pageArray) into pageJSON  
    fedwiki_SetLocalPageJson pageSlug, pageJSON, pFedwikiDomain, pLocalWikiFolder
    return pageArray
-end fedwiki_ActionAdd
+end block_ActionAdd
 
-command fedwiki_ActionEdit pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
-   put fedwiki_GetLocalOrDefaultPageJson (pageSlug) into pageJSON
+command block_ActionEdit pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
+   put _GetLocalOrDefaultPageJson (pageSlug) into pageJSON
    put json_ToArray (pageJSON) into pageArray
    
    --this does any type of edit specified by actionArray?
@@ -161,9 +230,9 @@ command fedwiki_ActionEdit pageSlug, actionArray, pFedwikiDomain, pLocalWikiFold
    
    -- and maybe the site map
    return pageArray
-end fedwiki_ActionEdit
+end block_ActionEdit
 
-command fedwiki_ActionCreate pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
+command block_ActionCreate pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
    -- create a blank new page
    put actionArray ["date"] into pCreateMilliSeconds
    put actionArray ["item"]["title"] into pageTitle
@@ -174,9 +243,9 @@ command fedwiki_ActionCreate pageSlug, actionArray, pFedwikiDomain, pLocalWikiFo
    
    _SetPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
    return pageArray
-end fedwiki_ActionCreate
+end block_ActionCreate
 
-command fedwiki_ActionFork pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
+command block_ActionFork pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
    -- create a blank new page
    put actionArray ["date"] into pCreateMilliSeconds
    put actionArray ["item"] into forkPageArray
@@ -186,21 +255,14 @@ command fedwiki_ActionFork pageSlug, actionArray, pFedwikiDomain, pLocalWikiFold
    _SetPageArray pageSlug, forkPageArray, pFedwikiDomain, pLocalWikiFolder, pCreateMilliSeconds
    put the result into pageJSON
    return pageJSON
-end fedwiki_ActionFork
+end block_ActionFork
 
 
 --> Fedwiki | Route
 -
-command fedwiki_SendWelcome socketID
-   -- http://localhost:3000/view/welcome-visitors/view/local-site
-   put fedwiki_GetWelcomeJSON() into someJSON
-   daemon_SendText socketID, someJSON
-   return the result
-end fedwiki_SendWelcome
-
-command fedwiki_SendPageJSON pageSlug, socketID  
+command block_SendPageJSON pageSlug, socketID  
    -- all the smarts are in the custom property handler
-   put fedwiki_GetLocalOrDefaultPageJson (pageSlug) into someJSON
+   put _GetLocalOrDefaultPageJson (pageSlug) into someJSON
    if someJSON is empty then
       daemon_SendNotFound socketID
       return "Returned 404 page not found."
@@ -209,18 +271,13 @@ command fedwiki_SendPageJSON pageSlug, socketID
       daemon_SendJSON socketID, someJSON
       return "Sent JSON. Socket still open."
    end if
-end fedwiki_SendPageJSON
+end block_SendPageJSON
 
 
 --> Fedwiki | Route | Props
 -
-getprop fedwiki_WelcomeHtml
-   put server_GetWelcomeHtml() into welcomeHtml
-   return welcomeHtml
-end fedwiki_WelcomeHtml
-
 getprop fedwiki_ListSlugs [pFedwikiDomain]
-   put fedwiki_LocalPageSlugs (pFedwikiDomain) into pageSlugs
+   put wiki_ListPages (pFedwikiDomain) into pageSlugs
    return pageSlugs
 end fedwiki_ListSlugs
 
@@ -242,7 +299,8 @@ setprop fedwiki_SiteMap sitemapJSON
 end fedwiki_SiteMap
 
 getprop fedwiki_Favicon
-   put fedwiki_GetLocalFavicon() into someFavicon
+   breakpoint
+   put wiki_GetFavicon() into someFavicon
    return someFavicon
 end fedwiki_Favicon
 
@@ -253,7 +311,7 @@ setprop fedwiki_Favicon sitemapJSON
 end fedwiki_Favicon
 
 getprop fedwiki_PageJson [pageSlug]
-   return fedwiki_GetLocalOrDefaultPageJson (pageSlug)
+   return _GetLocalOrDefaultPageJson (pageSlug)
 end fedwiki_PageJson
 
 setprop fedwiki_PageJson [pageSlug] pageJSON
@@ -264,62 +322,8 @@ setprop fedwiki_PageJson [pageSlug] pageJSON
 end fedwiki_PageJson
 
 
---> Fedwiki | Files
--
-command fedwiki_SendSiteMap socketID
-   put the fedwiki_SiteMap of me into someJSON
-   daemon_SendJSON socketID, someJSON
-   return "Sent JSON. Socket still open."
-end fedwiki_SendSiteMap
-
-command fedwiki_SendWelcome socketID
-   put the fedwiki_WelcomeHtml of me into someHtml
-   daemon_SendText socketID, someHtml
-   return "Returned welcome-visitors.html"
-end fedwiki_SendWelcome
-
-command fedwiki_SendHTML  shortFile, socketID
-   put server_GetTextFile (shortFile) into someText
-   daemon_SendText socketID, someText
-   return "Sent HTML. Socket still open."
-end fedwiki_SendHTML
-
-
---> Fedwiki | Not Needed As Custom Props?
--
-command fedwiki_SendPNG shortFile, socketID, someETag
-   put server_GetBinaryFile (shortFile) into someData
-   daemon_SendPNG socketID, someData, someETag
-   return "Sent PNG. Socket still open."
-end fedwiki_SendPNG
-
-command fedwiki_SendOriginFavicon socketID
-   put the fedwiki_Favicon of me into fedwikiFavicon
-   daemon_SendPNG socketID, fedwikiFavicon
-   return "Sent Favicon. Socket still open."
-end fedwiki_SendOriginFavicon
-
-command fedwiki_SendCSS shortFile, socketID
-   put server_GetBinaryFile (shortFile) into someJSON
-   daemon_SendCSS socketID, someJSON
-   return "Sent JSON. Socket still open."
-end fedwiki_SendCSS
-
-command fedwiki_SendJS shortFile, socketID
-   put server_GetTextFile (shortFile) into someJSON
-   daemon_SendJSON socketID, someJSON
-   return "Sent JSON. Socket still open."
-end fedwiki_SendJS
-
-
 --> Deps | Fedwiki
 -
-function fedwiki_FetchLocalOrDefaultArray pageSlug
-   put fedwiki_GetLocalOrDefaultPageJson (pageSlug) into pageJSON
-   put json_ToArray (pageJSON) into pageArray
-   return pageArray
-end fedwiki_FetchLocalOrDefaultArray
-
 command fedwiki_PageArrayEdit @pageArray, actionArray
    put actionArray ["id"] into itemID
    put fedwiki_FindStoryItemID (pageArray, itemID) into storyItemNum
