@@ -18,6 +18,45 @@ These property handlers are here utility handlers to do basic stuff and let you 
 They are not required for a functioning app.
 They are crafted so that cProps of the target are set with the same name, and the app should keep working
 even if the lib_Log library is not present or linked / used.
+
+--> Daemon | Log | Display
+-
+command daemon_DisplayLogArray
+   put daemon_FetchLogArray() into logArray
+   display_Array logArray, "daemon_DisplayLogArray"
+   display_SetInteractions the result, "Daemon | Log"
+end daemon_DisplayLogArray
+
+command daemon_AddRequestToLogArray requestArray
+   put daemon_FetchLogArray() into dataArray
+   put item 2 of the extents of dataArray + 1 into indexNum
+   put requestArray into dataArray [indexNum]
+   daemon_StoreLogArray dataArray
+end daemon_AddRequestToLogArray
+
+function daemon_FetchLogArray
+   put daemon_LogArrayFile() into someFile
+   put array_Fetch (someFile) into dataArray
+   return dataArray
+end daemon_FetchLogArray
+
+command daemon_StoreLogArray dataArray
+   put daemon_LogArrayFile() into someFile
+   array_Save someFile, dataArray
+   return someFile
+end daemon_StoreLogArray
+
+command daemon_DeleteLogArray
+   put daemon_LogArrayFile() into someFile
+   delete file someFile
+   return someFile
+end daemon_DeleteLogArray
+
+function daemon_LogArrayFile
+   put the stack_Folder of me into sFolder
+   put sFolder & "log.array" into someFile
+   return someFile
+end daemon_LogArrayFile
 */
 
 getprop log_View

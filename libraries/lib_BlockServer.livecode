@@ -55,7 +55,7 @@ private command _SetPageArray pageSlug, pageArray, pFedwikiDomain, pLocalWikiFol
    -- stores the pageArray as local json and updates the local site map
    put json_FromArray (pageArray) into pageJSON  
    fedwiki_SetLocalPageJson pageSlug, pageJSON, pFedwikiDomain, pLocalWikiFolder
-   fedwiki_UpdateLocalSiteMap pageArray, pFedwikiDomain, pCreateMilliSeconds
+   wikiSiteMap_UpdateFile pageArray, pFedwikiDomain, pCreateMilliSeconds
    return pageJSON
 end _SetPageArray
 
@@ -86,6 +86,7 @@ end block_SendHTML
 
 command block_SendSiteMap socketID
    put the fedwiki_SiteMap of me into someJSON
+   -- put fedwiki_LocalSiteMapJson() into sitemapJSON
    daemon_SendJSON socketID, someJSON
    return "Sent JSON. Socket still open."
 end block_SendSiteMap
@@ -151,7 +152,7 @@ command block_ActionRemove pageSlug, actionArray
    put actionArray ["id"] into itemID
    put _FetchLocalOrDefaultArray (pageSlug) into pageArray
    put pageArray ["story"] into storyArray
-   put fedwiki_FindStoryItemID (pageArray, itemID) into storyItemNum
+   put pageArray_FindItemID (itemID, pageArray) into storyItemNum
    
    -- let's delete the item and renumber
    put item 2 of the extents of storyArray into maxNum
@@ -178,7 +179,7 @@ command block_ActionMove pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
    put actionArray ["order"] into orderArray
    repeat for each key orderNum in orderArray
       put orderArray [orderNum] into itemID
-      put fedwiki_FindStoryItemID (pageArray, itemID) into oldStoryItemNum
+      put pageArray_FindItemID (itemID, pageArray) into oldStoryItemNum
       put storyArray [oldStoryItemNum] into newPageArray [orderNum]
    end repeat
    put newPageArray into pageArray ["story"]
@@ -204,8 +205,8 @@ command block_ActionAdd pageSlug, actionArray, pFedwikiDomain, pLocalWikiFolder
    
    switch itemType
       case "factory"
-         put pageArray_ConstructFactory (itemID) into itemArray
-         pageArray_AddItemArray itemArray, pageArray
+         put itemArray_ConstructFactory (itemID) into itemArray
+         itemArray_Add itemArray, pageArray
          break
       default
          display_Array actionArray, ("Add undefined" && itemType)
@@ -274,6 +275,134 @@ command block_SendPageJSON pageSlug, socketID
 end block_SendPageJSON
 
 
+--> Daemon | RouteMetaArray | Model
+-
+/*
+Stores metadata, and raw data in a custom property.
+Altering the custom proerty handler can stor the data externally.
+
+All the data can be copied from Firefox pull down items in the webdeveloper tools
+Control-click on the network menu tab item for the relevant request and copy the url or curl command. 
+*/
+
+-- function daemon_GetCurlCommand someRoute  
+put "/curl" after someRoute
+put daemon_GetRouteValue (curlRoute) into someShell
+return someShell
+end daemon_GetCurlCommand
+
+-- command daemon_SetCurlCommand someRoute, someShell
+put "/curl" after someRoute
+daemon_SetRouteValue someRoute, someShell
+return the result
+end daemon_SetCurlCommand
+
+function daemon_GetExampleUrl someRoute
+   put "/example url" after someRoute
+   put daemon_GetRouteValue (someRoute) into routeData
+   return routeData
+end daemon_GetExampleUrl
+
+command daemon_SetExampleUrl someRoute, someUrl
+   put "/example url" after someRoute
+   daemon_SetRouteValue someRoute, someUrl
+   return the result
+end daemon_SetExampleUrl
+
+function daemon_GetRouteData someRoute
+   put "/data" after someRoute
+   put daemon_GetRouteValue (someRoute) into routeData
+   return routeData
+end daemon_GetRouteData
+
+command daemon_SetRouteData someRoute, routeData
+   put "/data" after someRoute
+   daemon_SetRouteValue someRoute, routeData
+   return the result
+end daemon_SetRouteData
+
+function daemon_GetRouteContentType someRoute
+   put daemon_GetRouteHeaderArray (someRoute) into headerArray
+   put headerArray ["Content-Type"] into contentType
+   return contentType
+end daemon_GetRouteContentType
+
+command daemon_SetRouteContentType someRoute, contentType
+   put daemon_GetRouteHeaderArray (someRoute) into headerArray
+   put contentType into headerArray ["Content-Type"] 
+   daemon_SetRouteHeaderArray someRoute, headerArray
+   return the result
+end daemon_SetRouteContentType
+
+function daemon_GetRouteHeaderArray someRoute
+   put "/headers" after someRoute
+   put daemon_GetRouteValue (someRoute) into headerArray
+   return headerArray
+end daemon_GetRouteHeaderArray
+
+command daemon_SetRouteHeaderArray someRoute, headerArray
+   put "/headers" after someRoute
+   daemon_SetRouteValue someRoute, headerArray
+   return the result
+end daemon_SetRouteHeaderArray
+
+command daemon_RouteMetadata someRoute, @someData, @headerArray
+   put daemon_GetRouteValue (someRoute) into routeData
+   put routeData ["data"] into someData
+   put routeData ["headers"] into headerArray
+end daemon_RouteMetadata
+
+function daemon_GetRouteValue someRoute
+   -- can be an array or an end value depending on the route
+   put the daemon_RouteMetaArray of me into routeMetaArray
+   put daemon_ConstructArrayKey (someRoute) into routeArrayKey
+   put routeMetaArray [routeArrayKey] into someValue
+   return someValue
+end daemon_GetRouteValue
+
+command daemon_SetRouteValue someRoute, someValue
+   -- can be an array or an end value depending on the route
+   put the daemon_RouteMetaArray of me into routeMetaArray
+   put daemon_ConstructArrayKey (someRoute) into routeArrayKey
+   put someValue into routeMetaArray [routeArrayKey]
+   set the daemon_RouteMetaArray of me to routeMetaArray
+   return routeMetaArray
+end daemon_SetRouteValue
+
+command daemon_DeleteRouteArray someRoute
+   -- can be an array or an end value depending on the route
+   put the daemon_RouteMetaArray of me into routeMetaArray
+   put daemon_ConstructArrayKey (someRoute) into routeArrayKey
+   delete variable routeMetaArray [routeArrayKey]
+   set the daemon_RouteMetaArray of me to routeMetaArray
+   return routeMetaArray
+end daemon_DeleteRouteArray
+
+function daemon_ConstructArrayKey someRoute
+   put someRoute into routeArrayKey
+   if char 1 of someRoute = "/" then delete char 1 of routeArrayKey
+   split routeArrayKey with "/"
+   return routeArrayKey
+end daemon_ConstructArrayKey
+
+function daemon_GuessContentType someRoute
+   set the itemdelimiter to "."
+   put item - 1 of someRoute into someFileExtension
+   switch
+      case someFileExtension = "png"
+         return "image/png"
+      case someFileExtension is among the items of "js.json"
+         return "application/json; charset=utf-8"
+      case someFileExtension = "css"
+         return "text/css; charset=UTF-8"
+      case someFileExtension is among the items of "txt.html.htm"
+         return "text/html"
+      default
+         return empty
+   end switch
+end daemon_GuessContentType
+
+
 --> Fedwiki | Route | Props
 -
 getprop fedwiki_ListSlugs [pFedwikiDomain]
@@ -283,7 +412,7 @@ end fedwiki_ListSlugs
 
 getprop fedwiki_ListPages [pFedwikiDomain]
    put fedwiki_LocalSiteMapJson (pFedwikiDomain) into someJSON
-   put fedwiki_SitemapIndex (someJSON) into pageTitles
+   put wikiSiteMap_ListPageTitles (someJSON) into pageTitles
    return pageTitles
 end fedwiki_ListPages
 
@@ -294,7 +423,7 @@ end fedwiki_SiteMap
 
 setprop fedwiki_SiteMap sitemapJSON
    breakpoint
-   fedwiki_SetLocalSiteMapJson sitemapJSON
+   wikiJson_SetJson sitemapJSON
    return the result
 end fedwiki_SiteMap
 
@@ -306,7 +435,7 @@ end fedwiki_Favicon
 
 setprop fedwiki_Favicon sitemapJSON
    breakpoint
-   fedwiki_SetLocalSiteMapJson sitemapJSON
+   wikiJson_SetJson sitemapJSON
    return the result
 end fedwiki_Favicon
 
@@ -324,13 +453,19 @@ end fedwiki_PageJson
 
 --> Deps | Fedwiki
 -
+command wikiJson_SetJson sitemapJSON, pWikiDomain
+   put wikiJson_ConstructSiteMapFile (pWikiDomain) into siteMapFile
+   json_Set siteMapFile, sitemapJSON
+   return siteMapFile
+end wikiJson_SetJson
+
 command fedwiki_PageArrayEdit @pageArray, actionArray
    put actionArray ["id"] into itemID
-   put fedwiki_FindStoryItemID (pageArray, itemID) into storyItemNum
+   put pageArray_FindItemID (itemID, pageArray) into storyItemNum
    if storyItemNum < 1 then
       -- should not be able to edit an item that deos not exist
       -- but a newly created page with a factory may not have an id?
-      put fedwiki_FindStoryItemID (pageArray, itemID) into storyItemNum
+      put pageArray_FindItemID (itemID, pageArray) into storyItemNum
       put "Error: editing item" && itemID && "of page" && pageSlug & ". It does not exist" into someError
       dispatch "daemon_Log" with someError
       return someError
@@ -350,17 +485,6 @@ command fedwiki_PageArrayEdit @pageArray, actionArray
    
    return empty -- everything is OK
 end fedwiki_PageArrayEdit
-
-function fedwiki_FindStoryItemID pageArray, itemID
-   put pageArray [ "story"] into storyArray
-   repeat for each key storyNum in storyArray
-      put storyArray [storyNum]["id"] into storyItemID
-      if storyItemID = itemID then
-         return storyNum
-      end if
-   end repeat
-   return empty
-end fedwiki_FindStoryItemID
 
 
 --> Deps

@@ -61,6 +61,11 @@ end federation_RecentStripped
 -
 function fedwiki_FetchModifiedPageArray wikiDomain, pSincePeriod
    put fedwiki_FetchSitemapArray (wikiDomain) into sitemapArray
+   put fedwiki_FilteredSitePageArray (sitemapArray, pSincePeriod) into sitePageArray
+   return sitePageArray
+end fedwiki_FetchModifiedPageArray
+
+function fedwiki_FilteredSitePageArray sitemapArray, pSincePeriod
    switch
       case pSincePeriod is empty
          put fedwiki_ConstructSitePageArray (sitemapArray) into mPageArray
@@ -77,7 +82,7 @@ function fedwiki_FetchModifiedPageArray wikiDomain, pSincePeriod
          break
    end switch
    return mPageArray
-end fedwiki_FetchModifiedPageArray
+end fedwiki_FilteredSitePageArray
 
 function fedwiki_ConstructSitePageArray sitemapArray
    repeat for each key indexNum in sitemapArray

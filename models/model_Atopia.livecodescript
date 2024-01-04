@@ -115,33 +115,6 @@ command atopia_StoreRoster rosterText
    return pageArray
 end atopia_StoreRoster
 
-function roster_Fetch wikiDomain, pageSlug, pItemID
-   -- find in first roster on page
-   put pageArray_Fetch (wikiDomain, pageSlug) into pageArray
-   if pItemID is empty then
-      put pageArray_FindItemType ("roster", pageArray) into itemNum
-      put pageArray ["story"][itemNum]["text"] into rosterDomainText
-   else
-      put pageArray_GetItemText (pageArray, pItemID) into rosterDomainText
-   end if
-   return rosterDomainText
-end roster_Fetch
-
-command roster_Store wikiDomain, pageSlug, rosterText, pItemID
-   -- store in first roster on page
-   put pageArray_Fetch (wikiDomain, pageSlug) into pageArray
-   --
-   if pItemID is empty then
-      put pageArray_FindItemType ("roster", pageArray) into itemNum
-   else
-      put pageArray_FindItemID (pItemID, pageArray) into itemNum
-   end if
-   put rosterText into pageArray ["story"][itemNum]["text"]
-   --
-   pageArray_Set wikiDomain, pageSlug, pageArray
-   return pageArray
-end roster_Store
-
 
 --> Atopia | Model | List | New
 -
