@@ -1,7 +1,7 @@
 ﻿script "Global | Federation | Display | Menu"
 --> MetaData
 -
-copyright: Anonymous
+copyright: David Bovill
 license: GPLv3
 name: Global | Federation | Display | Menu
 type: controller

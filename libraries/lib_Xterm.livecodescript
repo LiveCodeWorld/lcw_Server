@@ -36,11 +36,7 @@ end xterm_Result
 
 --> Display | Xterm
 -
-command display_Xterm pXtermBrowser, pShellCommand, pHow, pStackStyle
-   if pStackStyle is empty then put "toplevel" into pStackStyle
-   put "Xterm Browser" into pStackLabel
-   put xterm_URL() into someURL
-   
+command display_Xterm pXtermBrowser, pShellCommand, pHow, pStackStyle 
    # Start if not running
    if xterm_IsRunning() is false then
       xterm_Start
@@ -48,11 +44,20 @@ command display_Xterm pXtermBrowser, pShellCommand, pHow, pStackStyle
    end if
    
    # Display
-   display_ModuleInstance "View|Xterm", someURL, pStackLabel, pXtermBrowser, "browser_URL", pStackStyle
-   put the result into xTermBrowser
-   
-   # Set menus
-   display_SetMenu xTermBrowser, "Xterm"
+   put xterm_URL() into someURL
+   --
+   if exists (pXtermBrowser) then
+      set the browser_URL of pXtermBrowser to someURL
+      put pXtermBrowser into xTermBrowser
+   else
+      if pStackStyle is empty then put "toplevel" into pStackStyle
+      put "Xterm Browser" into pStackLabel
+      display_ModuleInstance "View|Xterm", someURL, pStackLabel, pXtermBrowser, "browser_URL", pStackStyle
+      put the result into xTermBrowser
+      
+      # Set menus
+      display_SetMenu xTermBrowser, "Xterm"
+   end if
    
    if pShellCommand is not empty then
       wait 60 ticks
@@ -62,7 +67,6 @@ command display_Xterm pXtermBrowser, pShellCommand, pHow, pStackStyle
          ttyd_Paste pShellCommand, xTermBrowser
       end if
    end if
-   
    return xTermBrowser
 end display_Xterm
 

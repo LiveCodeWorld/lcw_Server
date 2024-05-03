@@ -43,12 +43,11 @@ on menu_DisplayWiki dView
    display_Wiki wikiDomain, browserView
 end menu_DisplayWiki
 
-on menu_CreateLocalWiki  dView
+on menu_CreateLocalWiki dView
    put the selected_Line of dView into wikiDomain
    --
-   put wiki_ConstructFolder (wikiDomain) into wikiFolder
-   put system_GetAdminPassword() into systemPassword
-   hosts_Add wikiDomain, systemPassword
+   wikiServer_Create wikiDomain
+   display_LocalWikis
    --
    put wiki_Browser() into browserView
    display_Wiki wikiDomain, browserView

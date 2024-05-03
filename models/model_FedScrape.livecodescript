@@ -86,17 +86,6 @@ function ward_ListNewSites pSincePeriod
    return newSites
 end ward_ListNewSites
 
-function ward_ListRecentDomains pDayName, pCheckWikiExists
-   put ward_FetchRecentDomainArray (pDayName) into wardsFedray
-   put the keys of wardsFedray into domainNames
-   --
-   url_SortDomainIndex domainNames
-   if pCheckWikiExists then
-      federation_CheckDomainExists domainNames
-   end if
-   return domainNames
-end ward_ListRecentDomains
-
 
 --> Fedray | Scrape | Domains
 -
@@ -119,6 +108,17 @@ function ward_ListAllDomains pDayName, pCheckDomains
    url_SortDomainIndex domainNames
    return domainNames
 end ward_ListAllDomains
+
+function ward_ListRecentDomains pDayName, pCheckWikiExists
+   put ward_FetchRecentDomainArray (pDayName) into wardsFedray
+   put the keys of wardsFedray into domainNames
+   --
+   url_SortDomainIndex domainNames
+   if pCheckWikiExists then
+      federation_CheckDomainExists domainNames
+   end if
+   return domainNames
+end ward_ListRecentDomains
 
 
 --> Ward | Scrape | Model

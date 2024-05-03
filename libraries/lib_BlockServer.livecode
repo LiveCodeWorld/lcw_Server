@@ -454,7 +454,7 @@ end fedwiki_PageJson
 --> Deps | Fedwiki
 -
 command wikiJson_SetJson sitemapJSON, pWikiDomain
-   put wikiJson_ConstructSiteMapFile (pWikiDomain) into siteMapFile
+   put wikiFile_ConstructSiteMap (pWikiDomain) into siteMapFile
    json_Set siteMapFile, sitemapJSON
    return siteMapFile
 end wikiJson_SetJson

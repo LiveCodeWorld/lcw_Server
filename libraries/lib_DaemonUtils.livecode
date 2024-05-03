@@ -16,7 +16,29 @@ It is placed at the very back of the behavior chain (behind lib_Log),
 or it could go before non-daemon libs like lib_Log
 */
 
---> Fedwiki | Routes
+--> Variables
+-
+local LocalArray
+
+
+--> Working on
+-
+function daemon_GetSocketID
+   return LocalArray ["socketID"]
+end daemon_GetSocketID
+
+command daemon_SetSocketID socketID
+   put socketID into LocalArray ["socketID"]
+end daemon_SetSocketID
+
+function daemon_GetServer
+   return LocalArray ["serverView"]
+end daemon_GetServer
+
+command daemon_SetServer serverView
+   put serverView into LocalArray ["serverView"]
+end daemon_SetServer
+
 -
 /*
 These handlers are now mainly superceded by array based standardised daemon routing?
@@ -129,7 +151,7 @@ end fedwiki_GetFile
 getprop fedwiki_Files
    -- put myPath & "Welcome Visitors.html" into indexFile
    put fedwiki_GetWelcomeFolder() into indexFileFolder
-   put folder_ShortFiles (indexFileFolder) into shortFiles
+   put file_ListShort (indexFileFolder) into shortFiles
    return shortFiles
 end fedwiki_Files
 

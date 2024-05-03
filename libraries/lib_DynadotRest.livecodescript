@@ -64,7 +64,6 @@ function dynadot_FetchArrayFromXml
    _CheckApiError responseArray, errorText
    --
    if the result is false then
-      put errorText
       lcw_AnswerWarning "There was an api error fetching Dynadot IndexDomainArray..."
    end if
    return responseArray

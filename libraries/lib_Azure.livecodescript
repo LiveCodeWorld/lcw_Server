@@ -541,24 +541,6 @@ command fedwiki_DeconstructSitemapArray itemArray, @pageTitle, @firstPara, @page
    put itemArray ["date"] into mDate
 end fedwiki_DeconstructSitemapArray
 
-function pageArray_FetchText wikiDomain, pSlug
-   put pageArray_Fetch (wikiDomain, pSlug) into pageArray
-   put pageArray_ConstructText (pageArray) into pageText
-   return pageText
-end pageArray_FetchText
-
-function pageArray_ConstructText pageArray
-   put pageArray ["story"] into storyArray
-   put item 2 of the extents of storyArray into maxItem
-   repeat with itemNum = 1 to maxItem
-      put storyArray [itemNum]["text"] into itemText
-      pageArray_CleanText itemText
-      put itemText & CR after pageText
-   end repeat
-   --
-   return pageText
-end pageArray_ConstructText
-
 command pageArray_CleanText @itemText
    replace "[[" with empty in itemText
    replace "]]" with empty in itemText

@@ -514,7 +514,7 @@ function url_ConstructBaseUrl baseUrl
          if word 1 to 2 of wikiTitle is "card id" then
             put the short name of this stack into wikiTitle
          end if
-         put wiki_GetFolder(wikiTitle) into baseFolder
+         put wikiFolder_Get (wikiTitle) into baseFolder
          put "file:" & baseFolder into baseUrl
          return baseUrl
       default -- leave as is

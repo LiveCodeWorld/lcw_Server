@@ -51,7 +51,7 @@ command federation_CreateModelPage modelTitle
    put empty into forkDomains
    --
    put pageArray_FetchTemplate (FedModelDomain, "Model Template", modelTitle, forkDomains) into pageArray
-   pageArray_Store FedModelDomain, pageSlug, pageArray
+   pageArray_Set FedModelDomain, pageSlug, pageArray
    --
    return pageArray
 end federation_CreateModelPage
