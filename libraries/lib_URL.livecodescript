@@ -7,59 +7,21 @@ name: lib_URL
 type: library
 version: 0.3
 
-/*
-function url_Construct someProtocol, urlDomain, urlPath, shortName, fileExtension, userName, pissWord
-   put someProtocol & "://" into someUrl
-   if userName is not empty then
-      put userName & ":" & pissWord & "@" after someUrl
-   end if
-   put urlDomain after someUrl
-   if urlPath is not empty then
-      folder_Format someUrl
-      if char 1 of urlPath is "/" then delete char 1 of urlPath
-      put urlPath after someUrl
-   end if
-   if shortName is empty then
-      -- put "/" after someUrl -- not always a directory can be a web application path / wiki
-   else
-      folder_Format someUrl
-      put shortName after someUrl
-      
-      if fileExtension is not empty then
-         put "." & fileExtension after someUrl
-      end if
-   end if
-   return someUrl
-end url_Construct
-
-function url_Construct someProtocol, urlDomain, urlPath, shortName, fileExtension, userName, pissWord
-   put someProtocol & "://" into someUrl
-   if userName is not empty then
-      put userName & ":" & pissWord & "@" after someUrl
-   end if
-   put urlDomain after someUrl
-   if urlPath is not empty then
-      folder_Format someUrl
-      if char 1 of urlPath is "/" then delete char 1 of urlPath
-      put urlPath after someUrl
-   end if
-   if shortName is empty then
-      -- put "/" after someUrl -- not always a directory can be a web application path / wiki
-   else
-      folder_Format someUrl
-      put shortName after someUrl
-      
-      if fileExtension is not empty then
-         put "." & fileExtension after someUrl
-      end if
-   end if
-   return someUrl
-end url_Construct
-*/
-
 
 --> Working on
 -
+function url_GetDomain someURL
+   -- url_Deconstruct wikiURL, someProtocol, wikiDomain, urlPath, shortName, fileExtension, uName, pWord
+   set the itemdelimiter to slash
+   get item 3 of someURL
+      
+   # Might be no slash and ?
+   set the itemdelimiter to "?"
+   put item 1 of it into urlDomain
+   
+   return urlDomain
+end url_GetDomain
+
 function url_Construct sDomain, pPort, pProtocol
    if pProtocol is empty then put "http" into pProtocol
    --
@@ -257,17 +219,6 @@ end url_FilterDomainIndex
 
 --> From HTML5
 -
---> Working on
--
-function url_GetDomain someURL
-   -- url_Deconstruct wikiURL, someProtocol, wikiDomain, urlPath, shortName, fileExtension, uName, pWord
-   set the itemdelimiter to "?"
-   get item 1 of someURL
-   set the itemdelimiter to slash
-   put item 3 of someURL into urlDomain
-   return urlDomain
-end url_GetDomain
-
 function url_FileEnding droppedURL
    set the itemdelimiter to "?"
    get item 1 of droppedURL
