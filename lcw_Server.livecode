@@ -16,9 +16,9 @@ end project_Deps
 
 --> Custom
 -
-command project_CustomInit
+command project_PostInit
    -- go to stack "View|Browser"
-end project_CustomInit
+end project_PostInit
 
 
 --> Events

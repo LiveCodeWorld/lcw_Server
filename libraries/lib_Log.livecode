@@ -36,13 +36,13 @@ end daemon_AddRequestToLogArray
 
 function daemon_FetchLogArray
    put daemon_LogArrayFile() into someFile
-   put array_Fetch (someFile) into dataArray
+   put array_Get (someFile) into dataArray
    return dataArray
 end daemon_FetchLogArray
 
 command daemon_StoreLogArray dataArray
    put daemon_LogArrayFile() into someFile
-   array_Save someFile, dataArray
+   array_Set someFile, dataArray
    return someFile
 end daemon_StoreLogArray
 
@@ -156,13 +156,13 @@ end logArray_AddRequest
 
 function logArray_Fetch
    put logArray_File() into someFile
-   put array_Fetch (someFile) into dataArray
+   put array_Get (someFile) into dataArray
    return dataArray
 end logArray_Fetch
 
 command logArray_Store dataArray
    put logArray_File() into someFile
-   array_Save someFile, dataArray
+   array_Set someFile, dataArray
    return someFile
 end logArray_Store
 
