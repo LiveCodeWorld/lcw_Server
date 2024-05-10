@@ -181,7 +181,7 @@ function atopia_ExtractDomainOwners ownershipArray
 end atopia_ExtractDomainOwners
 
 function atopia_FindFarmEmail wikiDomain
-   put url_GetTopDomain (wikiDomain) into topDomainName
+   put url_GetTLD (wikiDomain) into topDomainName
    put atopia_GetFarmArray() into farmArray
    put farmArray ["author farm"][topDomainName] into maybeLineNum
    if maybeLineNum is empty then

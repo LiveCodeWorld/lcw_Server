@@ -10,88 +10,67 @@ version: 0.3
 
 --> Working on
 -
-function url_GetDomain someURL
-   -- url_Deconstruct wikiURL, someProtocol, wikiDomain, urlPath, shortName, fileExtension, uName, pWord
-   set the itemdelimiter to slash
-   get item 3 of someURL
-      
-   # Might be no slash and ?
-   set the itemdelimiter to "?"
-   put item 1 of it into urlDomain
-   
-   return urlDomain
-end url_GetDomain
-
-function url_Construct sDomain, pPort, pProtocol
-   if pProtocol is empty then put "http" into pProtocol
-   --
-   put pProtocol & "://" & sDomain into sURL
-   switch pPort
-      case emty
-      case 80
-         break
-      default
-         put ":" & pPort after sURL
-   end switch
-   return sURL
-end url_Construct
-
-function url_AddPath someURL, pPath, pShortFile
-   text_AddTrailing someURL, "/"
-   if pPath is empty then return someURL -- could add index
-   
-   text_TopAndTail pPath, "/"
-   put pPath after someURL
-   if pShortFile is empty then return someURL
-   
-   put pShortFile after someURL
-   return someURL
-end url_AddPath
+function url_FilterByItem testItem, sDomains
+   set the itemdelimiter to "."
+   repeat for each line sDomain in sDomains
+      if testItem is among the items of sDomain then
+         put sDomain & CR after fDomains
+      end if
+   end repeat
+   delete char -1 of fDomains
+   return fDomains
+end url_FilterByItem
 
 
---> URL
+
+--> URL | TLD
 -
 function url_GetTLD someDomain
-   set the itemdelimiter to "."
-   put item -2 to -1 of someDomain into topLevelDomain
-   return topLevelDomain
+   -- was "url_GetTopDomain"
+   url_DeconstructTopDomain someDomain, topDomainName, subDomainBit
+   return topDomainName
 end url_GetTLD
 
-function url_DecodePath routeIndex
-   set the itemdelimiter to "/"
-   repeat with itemNum = 1 to the number of items of routeIndex
-      put item itemNum of routeIndex into someRoute
-      put urldecode (someRoute) into item itemNum of somePath
-   end repeat
-   return somePath
-end url_DecodePath
+command url_MakeTLD @someDomain
+   put url_GetTLD (someDomain) into someDomain
+end url_MakeTLD
 
-function url_EncodePath somePath
-   replace space with "%20" in somePath
-   return somePath
+function url_ListTopLevelDomains someDomains
+   put url_ConstructTldArray (someDomains) into tldArray
+   put keys (tldArray) into toplevelDomains
+   url_SortDomainIndex toplevelDomains
+   return toplevelDomains
+end url_ListTopLevelDomains
+
+function url_ConstructTlDArray someDomains
+   repeat for each line someDomain in someDomains
+      put url_GetTLD (someDomain) into tldDomain
+      put empty into tldArray [tldDomain][wikiDomain]
+   end repeat
+   return tldArray
+end url_ConstructTlDArray
+
+command url_DeconstructTopDomain domainString, @topDomainName, @subDomainBit
+   -- a quick hack
+   set the itemdelimiter to ":"
+   put item 1 of domainString into domainName
+   -- put item 2 of domainString into somePort
    
-   set the itemdelimiter to "/"
-   repeat with itemNum = 1 to the number of items of somePath
-      put  item itemNum of somePath into pathItem
-      put urlencode (pathItem) into item itemNum of somePath
-   end repeat
-   return somePath
-end url_EncodePath
-
-function url_ListTopDomains domainNames
-   put url_ConstructTopLevelDomainArray (domainNames) into domainNameArray
-   put keys (domainNameArray) into topDomainNames
-   url_SortDomainIndex topDomainNames
-   return topDomainNames
-end url_ListTopDomains
-
-function url_FileEnding droppedURL
-   set the itemdelimiter to "?"
-   get item 1 of droppedURL
    set the itemdelimiter to "."
-   put item -1 of it into qEnd
-   return qEnd
-end url_FileEnding
+   switch
+      case item -2 to -1 of domainName = "co.uk"
+         put item -3 to -1 of domainName into topDomainName
+         put item 1 to -4 of domainName into subDomainBit
+         break
+      case the number of items of domainName = 2
+         put domainName into topDomainName
+         put empty into subDomainBit
+         break
+      default
+         put item -2 to -1 of domainName into topDomainName
+         put item 1 to -3 of domainName into subDomainBit
+   end switch
+end url_DeconstructTopDomain
 
 function url_ConstructTopLevelDomainArray domainNames
    /*
@@ -132,29 +111,85 @@ function url_ConstructTopLevelDomainArray domainNames
    return domainNameArray
 end url_ConstructTopLevelDomainArray
 
-command url_DeconstructTopDomain domainString, @topDomainName, @subDomainBit
-   -- a quick hack
-   -- could check it is a url first
+
+--> URL
+-
+function url_GetDomain someURL
+   -- url_Deconstruct wikiURL, someProtocol, wikiDomain, urlPath, shortName, fileExtension, uName, pWord
+   set the itemdelimiter to slash
+   get item 3 of someURL
    
-   set the itemdelimiter to ":"
-   put item 1 of domainString into domainName
-   -- put item 2 of domainString into somePort
+   # Might be no slash and ?
+   set the itemdelimiter to "?"
+   put item 1 of it into urlDomain
    
-   set the itemdelimiter to "."
-   switch
-      case item -2 to -1 of domainName = "co.uk"
-         put item -3 to -1 of domainName into topDomainName
-         put item 1 to -4 of domainName into subDomainBit
-         break
-      case the number of items of domainName = 2
-         put domainName into topDomainName
-         put empty into subDomainBit
+   return urlDomain
+end url_GetDomain
+
+function url_Construct sDomain, pPort, pProtocol
+   if pProtocol is empty then put "http" into pProtocol
+   --
+   put pProtocol & "://" & sDomain into sURL
+   switch pPort
+      case emty
+      case 80
          break
       default
-         put item -2 to -1 of domainName into topDomainName
-         put item 1 to -3 of domainName into subDomainBit
+         put ":" & pPort after sURL
    end switch
-end url_DeconstructTopDomain
+   return sURL
+end url_Construct
+
+function url_AddPath someURL, pPath, pShortFile
+   text_AddTrailing someURL, "/"
+   if pPath is empty then return someURL -- could add index
+   
+   text_TopAndTail pPath, "/"
+   put pPath after someURL
+   if pShortFile is empty then return someURL
+   
+   put pShortFile after someURL
+   return someURL
+end url_AddPath
+
+
+--> URL
+-
+function url_DecodePath routeIndex
+   set the itemdelimiter to "/"
+   repeat with itemNum = 1 to the number of items of routeIndex
+      put item itemNum of routeIndex into someRoute
+      put urldecode (someRoute) into item itemNum of somePath
+   end repeat
+   return somePath
+end url_DecodePath
+
+function url_EncodePath somePath
+   replace space with "%20" in somePath
+   return somePath
+   
+   set the itemdelimiter to "/"
+   repeat with itemNum = 1 to the number of items of somePath
+      put  item itemNum of somePath into pathItem
+      put urlencode (pathItem) into item itemNum of somePath
+   end repeat
+   return somePath
+end url_EncodePath
+
+function url_ListTopDomains domainNames
+   put url_ConstructTopLevelDomainArray (domainNames) into domainNameArray
+   put keys (domainNameArray) into topDomainNames
+   url_SortDomainIndex topDomainNames
+   return topDomainNames
+end url_ListTopDomains
+
+function url_FileEnding droppedURL
+   set the itemdelimiter to "?"
+   get item 1 of droppedURL
+   set the itemdelimiter to "."
+   put item -1 of it into qEnd
+   return qEnd
+end url_FileEnding
 
 command url_CheckDomainIndex @domainNames
    -- could have option to test actual domains
@@ -264,11 +299,6 @@ function url_ExtractDomainNames urlIndex
    delete char -1 of domainNames
    return domainNames
 end url_ExtractDomainNames
-
-function url_GetTopDomain domainName
-   url_DeconstructTopDomain domainName, topDomainName, subDomainBit
-   return topDomainName
-end url_GetTopDomain
 
 function url_ListTopDomains domainNames
    put url_ConstructTopLevelDomainArray (domainNames) into domainNameArray
@@ -402,10 +432,6 @@ function is_Url testUrl
       return false
    end if
 end is_Url
-
-command url_MakeTLD @someDomain
-   put url_GetTLD (someDomain) into someDomain
-end url_MakeTLD
 
 function url_GetTLD someDomain
    set the itemdelimiter to "."
