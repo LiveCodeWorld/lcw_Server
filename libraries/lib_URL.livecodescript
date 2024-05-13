@@ -10,6 +10,37 @@ version: 0.3
 
 --> Working on
 -
+command url_FilterDomains @shortWikiFolders, pFilterDomain, pSimple
+   if pFilterDomain is not empty then
+      put pFilterDomain is among the lines of shortWikiFolders into addTLD
+      
+      if pSimple is true then
+         filter shortWikiFolders with pFilterDomain
+      else
+         put "*." & pFilterDomain into sFilter
+         filter shortWikiFolders with sFilter
+      end if
+      
+      # Add Root
+      set the wholeMatches to true
+      if addTLD then
+         put pFilterDomain & CR before shortWikiFolders
+      end if
+   end if
+end url_FilterDomains
+
+command url_FilterDomainIndex @domainIndex, topDomain
+   if topDomain is empty then return empty
+   put "*." & topDomain into someFilter
+   set the wholematches to true
+   put topDomain is among the lines of domainIndex into topThere
+   filter domainIndex with someFilter
+   if topThere then
+      put topDomain & CR before domainIndex
+   end if
+   return someFilter
+end url_FilterDomainIndex
+
 function url_FilterByItem testItem, sDomains
    set the itemdelimiter to "."
    repeat for each line sDomain in sDomains
@@ -21,6 +52,20 @@ function url_FilterByItem testItem, sDomains
    return fDomains
 end url_FilterByItem
 
+
+--> URL
+-
+function is_Url testUrl
+   -- quick hack
+   set the itemdelimiter to ":"
+   put item 1 of testUrl into urlProtocol
+   set the itemdelimiter to ","
+   if urlProtocol is among the items of "file,http,https,ftp" then
+      return true
+   else
+      return false
+   end if
+end is_Url
 
 
 --> URL | TLD
@@ -392,18 +437,6 @@ command url_SortDomainIndex @domainNames
    return domainNames
 end url_SortDomainIndex
 
-command url_FilterDomainIndex @domainIndex, topDomain
-   if topDomain is empty then return empty
-   put "*." & topDomain into someFilter
-   set the wholematches to true
-   put topDomain is among the lines of domainIndex into topThere
-   filter domainIndex with someFilter
-   if topThere then
-      put topDomain & CR before domainIndex
-   end if
-   return someFilter
-end url_FilterDomainIndex
-
 function url_ListSubdomains domainName, domainNameIndex
    put url_ConstructTopLevelDomainArray (domainNameIndex) into domainNameArray
    put url_GetSubdomainArray (domainName, domainNameArray) into subDomainArray
@@ -417,21 +450,6 @@ function url_GetSubdomainArray domainName, domainNameArray
    delete variable subDomainArray ["domain name"]
    return subDomainArray
 end url_GetSubdomainArray
-
-
---> URL
--
-function is_Url testUrl
-   -- quick hack
-   set the itemdelimiter to ":"
-   put item 1 of testUrl into urlProtocol
-   set the itemdelimiter to ","
-   if urlProtocol is among the items of "file,http,https,ftp" then
-      return true
-   else
-      return false
-   end if
-end is_Url
 
 function url_GetTLD someDomain
    set the itemdelimiter to "."
@@ -473,31 +491,6 @@ function url_StripProtocol someUrl
    delete item 1 of someUrl
    return someUrl
 end url_StripProtocol
-
-function url_ConstructBaseUrl baseUrl
-   -- was "object_BaseUrlGuess"
-   -- create a folder if it does not exist!
-   switch baseUrl
-      case "local"
-         put folder_Above(the filename of this stack) into baseFolder
-         put "wiki/" after baseFolder
-         if there is not a folder baseFolder then
-            folder_CreateNested baseFolder
-         end if
-         put "file:" & baseFolder into baseUrl
-         return baseUrl
-      case empty
-         put the short name of this card into wikiTitle
-         if word 1 to 2 of wikiTitle is "card id" then
-            put the short name of this stack into wikiTitle
-         end if
-         put wikiFolder_Get (wikiTitle) into baseFolder
-         put "file:" & baseFolder into baseUrl
-         return baseUrl
-      default -- leave as is
-         return baseUrl
-   end switch
-end url_ConstructBaseUrl
 
 function url_EncodeUrlPaths someURL
    put "https://vector.im/beta room/#/room/#fedwiki:matrix.org" into someURL
