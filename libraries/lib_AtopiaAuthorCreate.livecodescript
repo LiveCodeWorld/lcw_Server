@@ -194,7 +194,7 @@ function atopia_FetchPodActivity rosterName, authorNames, authorNameData, pSince
    if pForkDomains is empty then put "fedwiki.org,server.fedwiki.org,author.fedwiki.org" into pForkDomains
    put rosterName && "Activity" into newName
    
-   put pageArray_FetchTemplate ("author.fedwiki.org", "Pod Activity Template", newName, pForkDomains) into pageArray
+   put pageArray_GetTemplate ("author.fedwiki.org", "Pod Activity Template", newName, pForkDomains) into pageArray
    put atopia_FetchPodDomains (authorNames, authorNameData, pSincePeriod) into wikiDomains
    --
    replace comma with CR in authorNames

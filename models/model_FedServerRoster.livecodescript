@@ -50,7 +50,7 @@ command federation_CreateModelPage modelTitle
    put fedwiki_ConstructSlug (modelTitle) into pageSlug
    put empty into forkDomains
    --
-   put pageArray_FetchTemplate (FedModelDomain, "Model Template", modelTitle, forkDomains) into pageArray
+   put pageArray_GetTemplate (FedModelDomain, "Model Template", modelTitle, forkDomains) into pageArray
    pageArray_Set FedModelDomain, pageSlug, pageArray
    --
    return pageArray

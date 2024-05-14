@@ -30,7 +30,7 @@ command atopia_UploadRecording mFilePath, pTitle, pDescription, pVlogDomain
       return empty
    else
       put empty into forkDomains
-      put pageArray_FetchTemplate (pVlogDomain, "Recording Template", pTitle, forkDomains) into pageArray
+      put pageArray_GetTemplate (pVlogDomain, "Recording Template", pTitle, forkDomains) into pageArray
       --
       if pDescription is not empty then
          put pDescription into pageArray ["story"][1]["text"]
