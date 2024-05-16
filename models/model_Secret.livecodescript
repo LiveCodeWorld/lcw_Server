@@ -33,6 +33,21 @@ end secret_Get
 */
 
 
+--> System
+-
+function system_GetAdminPassword
+   return secret_Get ("systemPassword")
+end system_GetAdminPassword
+
+command system_SetAdminPassword sPassword
+   secret_Set "systemPassword", sPassword
+end system_SetAdminPassword
+
+command system_DeleteAdminPassword
+   secret_Delete "systemPassword"
+end system_DeleteAdminPassword
+
+
 --> Secret
 -
 function secret_Get secretName, pArrayKey
@@ -52,6 +67,13 @@ command secret_Set secretName, secretValue, pArrayKey
    return modelFile
 end secret_Set
 
+command secret_Delete secretName, pArrayKey
+   put _ConstructShortArrayFile (pArrayKey) into shortFile
+   user_DeleteValue secretName, shortFile
+   put the result into modelFile
+   return modelFile
+end secret_Delete
+   
 command secret_GetArray pArrayKey
    put _ConstructShortArrayFile (pArrayKey) into shortArrayFile
    put user_GetArray (shortArrayFile) into userArray

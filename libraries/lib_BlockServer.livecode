@@ -421,33 +421,8 @@ getprop fedwiki_SiteMap
    return sitemapJSON
 end fedwiki_SiteMap
 
-setprop fedwiki_SiteMap sitemapJSON
-   breakpoint
-   wikiJson_SetJson sitemapJSON
-   return the result
-end fedwiki_SiteMap
-
-getprop fedwiki_Favicon
-   breakpoint
-   put wiki_GetFavicon() into someFavicon
-   return someFavicon
-end fedwiki_Favicon
-
-setprop fedwiki_Favicon sitemapJSON
-   breakpoint
-   wikiJson_SetJson sitemapJSON
-   return the result
-end fedwiki_Favicon
-
 getprop fedwiki_PageJson [pageSlug]
    return _GetLocalOrDefaultPageJson (pageSlug)
-end fedwiki_PageJson
-
-setprop fedwiki_PageJson [pageSlug] pageJSON
-   breakpoint
-   put empty into fedwikiDomain
-   fedwiki_SetLocalPageJson pageSlug, fedwikiDomain, pageJSON
-   return the result
 end fedwiki_PageJson
 
 
@@ -455,9 +430,24 @@ end fedwiki_PageJson
 -
 command wikiJson_SetJson sitemapJSON, pWikiDomain
    put wikiFile_ConstructSiteMap (pWikiDomain) into siteMapFile
-   json_Set siteMapFile, sitemapJSON
+   _SetJson siteMapFile, sitemapJSON
    return siteMapFile
 end wikiJson_SetJson
+
+private command _SetJson sFile, sJSON, pCreateFolder
+   if pCreateFolder is true then
+      put sFile into sFolder
+      set the itemdelimiter to slash
+      put empty into item -1 of sFolder
+      folder_CreateNested sFolder
+   end if
+   --
+   put word 1 to -1 of sJSON into sJSON
+   put textEncode (sJSON, "UTF-8") into binaryJSON
+   put binaryJSON into url ("binfile:" & sFile)
+   put the result into writeResult
+   return writeResult
+end _SetJson
 
 command fedwiki_PageArrayEdit @pageArray, actionArray
    put actionArray ["id"] into itemID
