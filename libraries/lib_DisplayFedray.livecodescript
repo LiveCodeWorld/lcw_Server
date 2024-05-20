@@ -24,21 +24,6 @@ end display_RecentSites
 
 --> Display
 -
-command display_WikiDomain wikiDomain, pDisplayView, pPalette
-   set the cursor to watch
-   -- atopia_DeleteWikiSitemap wikiDomain
-   --
-   put fedwiki_FetchSitemapArray (wikiDomain) into sitemapArray
-   put fedwiki_ConstructSitePageArray (sitemapArray) into sitePageArray
-   --
-   display_Data sitePageArray, wikiDomain, "Wiki", pDisplayView, pPalette
-   put the result into displayView
-   --
-   display_SetInteractions displayView, "Wiki | Pages", "mDoubleUp_DisplayPage"
-   --
-   return displayView
-end display_WikiDomain
-
 command display_RecentWikiPages wikiDomains, pSincePeriod, pDisplayView, pPalette
    local mDoubleUp
    
