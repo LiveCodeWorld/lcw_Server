@@ -10,6 +10,22 @@ version: 0.3
 
 --> Working on
 -
+
+
+--> URL
+-
+function is_Url testUrl
+   -- quick hack
+   set the itemdelimiter to ":"
+   put item 1 of testUrl into urlProtocol
+   set the itemdelimiter to ","
+   if urlProtocol is among the items of "file,http,https,ftp" then
+      return true
+   else
+      return false
+   end if
+end is_Url
+
 command url_FilterDomains @shortWikiFolders, pFilterDomain, pSimple
    if pFilterDomain is not empty then
       put pFilterDomain is among the lines of shortWikiFolders into addTLD
@@ -51,21 +67,6 @@ function url_FilterByItem testItem, sDomains
    delete char -1 of fDomains
    return fDomains
 end url_FilterByItem
-
-
---> URL
--
-function is_Url testUrl
-   -- quick hack
-   set the itemdelimiter to ":"
-   put item 1 of testUrl into urlProtocol
-   set the itemdelimiter to ","
-   if urlProtocol is among the items of "file,http,https,ftp" then
-      return true
-   else
-      return false
-   end if
-end is_Url
 
 
 --> URL | TLD
