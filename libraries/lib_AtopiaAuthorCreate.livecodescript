@@ -32,7 +32,7 @@ function author_FetchUpdatedPageArray authorName, pSincePeriod, pAuthorTemplate
    put pageArray_FindItemType ("reference", pageArray) into itemNum
    if itemNum > 0 then
       put author_ConstructQuickPara (authorName, authorDomains, fedray) into statParagraph
-      put storyArray_ConstructReference (pageSlug, "author.fedwiki.org", statParagraph, authorName, "988ad6e34d9ba4c8") into refItemArray
+      put itemArray_ConstructReference (pageSlug, "author.fedwiki.org", statParagraph, authorName, "988ad6e34d9ba4c8") into refItemArray
       put refItemArray into pageArray ["story"][itemNum]
    end if
    --
