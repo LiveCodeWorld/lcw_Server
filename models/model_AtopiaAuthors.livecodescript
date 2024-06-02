@@ -99,7 +99,7 @@ command author_SetSitesPageArray @pageArray, rosterTitle, authorDomains
    -- could search for a header rather than use fixed itemID
    put pageArray_FindItemID ("94aeb407a09d831b", pageArray) into listItemNum
    if listItemNum > 0 then
-      put fedwiki_MarkdownIndex (authorDomains) into markDownList
+      put markdown_LinkedBullets (authorDomains) into markDownList
       put "# List of sites" & CR&CR & markDownList into pageArray ["story"][listItemNum]["text"]
    end if
 end author_SetSitesPageArray

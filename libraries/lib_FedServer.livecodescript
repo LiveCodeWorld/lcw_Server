@@ -64,8 +64,8 @@ private function _ConstructServerCurlyData serverName, serverModel, summaryText
    put serverName into curlyData ["all"]["serverName"]
    put _ServerMeta (domainNum, serverPageNum, ipAddress, createdDate) into curlyData ["id"]["da8cf69872f38050"] -- meta
    put rosterText into curlyData ["id"]["741a0fcdd3ff76b2"] -- roster
-   put fedwiki_MarkdownIndex (serverDomains) into curlyData ["id"]["0458144c09a51968"] -- index
-   put fedwiki_MarkdownIndex (authorNames) into curlyData ["id"]["3b90e7841cc695fa"] -- authors
+   put markdown_LinkedBullets (serverDomains) into curlyData ["id"]["0458144c09a51968"] -- index
+   put markdown_LinkedBullets (authorNames) into curlyData ["id"]["3b90e7841cc695fa"] -- authors
    --
    return curlyData
 end _ConstructServerCurlyData
