@@ -73,10 +73,7 @@ function jsonrpc_GET restURL, pOAuthToken, pExtraHeaders, pVersionNum
    return someJson
 end jsonrpc_GET
 
-
---> REST
--
-command rest_SetJsonHeaders pOAuthToken, pVersionNum, pExtraHeaders
+function jsonrpc_Headers pOAuthToken, pVersionNum, pExtraHeaders
    put "Content-type: application/json; charset=utf-8" into someHeader
    put CR & "Accept: application/json" after someHeader
    -- put CR & "Accept-Charset: utf-8" after someHeader -- https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Charset
@@ -91,7 +88,14 @@ command rest_SetJsonHeaders pOAuthToken, pVersionNum, pExtraHeaders
    if pOAuthToken is not empty then
       put CR & "Authorization: Bearer" && pOAuthToken after someHeader
    end if
-   --
+   return someHeader
+end jsonrpc_Headers
+
+
+--> REST
+-
+command rest_SetJsonHeaders pOAuthToken, pVersionNum, pExtraHeaders
+   put jsonrpc_Headers (pOAuthToken, pVersionNum, pExtraHeaders) into someHeader
    set the httpHeaders to someHeader
    return someHeader
 end rest_SetJsonHeaders

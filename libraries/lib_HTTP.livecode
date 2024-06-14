@@ -276,7 +276,7 @@ on socket_ClosePending
     end repeat
 end socket_ClosePending
 
-on socket_CloseOpen
+command socket_CloseOpen
     repeat for each line someSocket in the opensockets
         close socket someSocket
     end repeat

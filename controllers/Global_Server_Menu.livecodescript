@@ -28,6 +28,21 @@ end checked_PresentationServer
 
 --> Global | Server | Menu
 -
+on menu_DisplayCaddyAdmin
+   display_Browser "http://localhost:2019/config/"
+end menu_DisplayCaddyAdmin
+
+on menu_CaddyApiHelp
+   display_Browser "https://caddyserver.com/docs/api"
+end menu_CaddyApiHelp
+
+on menu_DisplayCaddyTools
+   display_CaddyTools
+end menu_DisplayCaddyTools
+
+private on _
+end _
+
 on menu_CreateNgrokDomain
    put lcw_Ask("Choose a domain to add:", "wiki.thought.garden", "Ngrok Doamin") into sDomain
    --
