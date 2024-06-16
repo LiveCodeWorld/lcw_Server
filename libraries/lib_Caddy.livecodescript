@@ -207,6 +207,17 @@ command caddy_Run
    return sResult
 end caddy_Run
 
+command caddy_ConstructCaddyFileAndResart
+   caddy_Stop
+   put the result into pIDs
+   --
+   put caddyFile_Construct() into cText
+   caddyAsset_Set "Caddyfile", cText
+   lcw_Notify "Exported new CaddyFile based on local wiki folders."
+   --
+   caddy_Start
+end caddy_ConstructCaddyFileAndResart
+
 command caddy_Start pLog
    if caddy_IsRunning() is true then
       put "Error, Caaddy is already runing!" into sWarning
@@ -260,6 +271,7 @@ command caddy_CloseServerProcesses pIDs
    put "Closed caddy server!" && pIDs into sComment
    --
    lcw_Notify sComment, "Caddy Server"
+   return pIDs
 end caddy_CloseServerProcesses
 
 function caddy_DoShell someShell
@@ -272,6 +284,46 @@ function caddy_DoShell someShell
    set the defaultFolder to oFolder
    return sResult
 end caddy_DoShell
+
+function caddyFile_Construct pTopDomains, pToLocalHostPort
+   if pTopDomains is empty then
+      put wikiFolder_ListTopLevel() into pTopDomains
+   end if
+   --
+   put "{" into caddyFileText
+   put CR&Tab & "auto_https off" after caddyFileText
+   put CR & "}" after caddyFileText
+   put CR after caddyFileText
+   --
+   put CR & "# Handle rest.livecode.world" after caddyFileText   
+   put caddFile_ConstructToProxy (9090) into toProxy
+   put CR & caddyFile_ConstructProxyLine ("rest.livecode.world", toProxy) after caddyFileText
+   --
+   put CR after caddyFileText
+   put CR & "# Catch-all for wikis and their subdomains" after caddyFileText
+   --
+   put caddFile_ConstructToProxy (pToLocalHostPort) into toProxy
+   repeat for each line wikiDomain in pTopDomains
+      put CR & caddyFile_ConstructProxyLine (wikiDomain, toProxy) after caddyFileText
+      -- put CR after caddyFileText
+   end repeat
+   --
+   return caddyFileText
+end caddyFile_Construct
+
+function caddFile_ConstructToProxy pToLocalHostPort
+   if pToLocalHostPort is empty then put wikiServer_GetNodePort() into pToLocalHostPort
+   put "http://localhost:" & pToLocalHostPort into toProxy
+   return toProxy
+end caddFile_ConstructToProxy
+
+function caddyFile_ConstructProxyLine wikiDomain, toProxy
+   put "http://*.[[wikiDomain]], http://[[wikiDomain]]" into proxyLines
+   put space & "{" after proxyLines
+   put CR&Tab & "reverse_proxy [[toProxy]]" after proxyLines
+   put CR & "}" after proxyLines
+   return merge (proxyLines)
+end caddyFile_ConstructProxyLine
 
 function caddyAsset_Get pShortFile
    put caddyAsset_ConstructFile (pShortFile) into caddyAssetFile

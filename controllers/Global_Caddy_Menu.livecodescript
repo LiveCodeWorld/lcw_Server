@@ -48,11 +48,24 @@ end menu_StopAllCaddyServers
 private on _
 end _
 
+on menu_ExportCaddyFile
+   caddy_Stop
+   put the result into pIDs
+   --
+   put caddyFile_Construct() into cText
+   caddyAsset_Set "Caddyfile", cText
+   lcw_Notify "Exported new CaddyFile based on local wiki folders."
+   --
+   caddy_Start
+end menu_ExportCaddyFile
+
 on menu_SaveJson
    put caddyAsset_Get ("caddy.json")
 end menu_SaveJson
 
 on menu_SaveCaddyFile
+   breakpoint
+   --
    put ":2015" into cText
    put CR after cText
    put CR & "respond 'Hello, world!" after cText
