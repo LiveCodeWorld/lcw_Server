@@ -27,6 +27,66 @@ version: 0.1
 
 --> Working on
 -
+command caddy_Start pLog
+   if caddy_IsRunning() is true then
+      put "Error, Caaddy is already runing!" into sWarning
+      lcw_Notify sWarning
+      return sWarning
+   end if
+   
+   put "caddy start" into someShell
+   --
+   shell_WrapNohup someShell, pLog
+   shell_AddSource someShell
+   
+   # Start in wiki assets folder to use local Caddyfile
+   put caddy_DoShell (someShell) into sResult
+   put word 2 of sResult into pID
+   --
+   lcw_Notify "Started Caddy reverse-proxy using local wiki Caddyfile!"
+   return pID
+end caddy_Start
+
+command caddy_Stop
+   caddy_CloseServerProcesses
+   return the result
+   
+   # Gets stuck sometimes - put in background?
+   put caddy_ListProcessIds() into pIDs
+   switch the number of items of pIDs
+      case 0
+         return empty
+      case 1
+         put caddy_DoShell ("caddy stop") into sResult -- hangs sometimes
+         if sResult is not empty then
+            breakpoint
+         end if
+         break
+      default
+         caddy_CloseServerProcesses pIDs
+   end switch
+   return pIDs
+end caddy_Stop
+
+command caddy_CloseServerProcesses pIDs
+   if pIDs is not a number then
+      put caddy_ListProcessIds() into pIDs
+      if pIDs is empty then
+         lcw_Notify "No open Caddy servers..."
+         return empty
+      end if
+   end if
+   --
+   repeat for each item pID in pIDs
+      kill process pID -- bug: does not kill?
+   end repeat
+   
+   # Notify
+   put "Closed caddy server using sockets" && pIDs & "!" into sComment
+   --
+   lcw_Notify sComment, "Caddy Server"
+   return pIDs
+end caddy_CloseServerProcesses
 
 
 --> Display
@@ -46,7 +106,7 @@ end display_CaddyTools
 
 --> Working on
 -
-command caddy_ToggleProxy
+command toggleServer_Caddy
    if caddy_IsRunning() then
       caddy_Stop
       put the result into pIDs
@@ -60,7 +120,7 @@ command caddy_ToggleProxy
       lcw_Notify ("Started Caddy server on process" && pID)
       return pID
    end if
-end caddy_ToggleProxy
+end toggleServer_Caddy
 
 
 --> Caddy | Rest
@@ -217,62 +277,6 @@ command caddy_ConstructCaddyFileAndResart
    --
    caddy_Start
 end caddy_ConstructCaddyFileAndResart
-
-command caddy_Start pLog
-   if caddy_IsRunning() is true then
-      put "Error, Caaddy is already runing!" into sWarning
-      lcw_Notify sWarning
-      return sWarning
-   end if
-   
-   put "caddy start" into someShell
-   --
-   shell_WrapNohup someShell, pLog
-   shell_AddSource someShell
-   
-   # Start in wiki assets folder to use local Caddyfile
-   put caddy_DoShell (someShell) into sResult
-   put word 2 of sResult into pID
-   --
-   lcw_Notify "Started Caddy reverse-proxy using local wiki Caddyfile!"
-   return pID
-end caddy_Start
-
-command caddy_Stop
-   caddy_CloseServerProcesses
-   return empty
-   
-   put caddy_ListProcessIds() into pIDs
-   switch the number of items of pIDs
-      case 0
-         return empty
-      case 1
-         put caddy_DoShell ("caddy stop") into sResult -- hangs sometimes
-         if sResult is not empty then
-            breakpoint
-         end if
-         break
-      default
-         caddy_CloseServerProcesses pIDs
-   end switch
-   return pIDs
-end caddy_Stop
-
-command caddy_CloseServerProcesses pIDs
-   if pIDs is not a number then
-      put caddy_ListProcessIds() into pIDs
-   end if
-   --
-   repeat for each item pID in pIDs
-      kill process pID -- bug: does not kill?
-   end repeat
-   
-   # Notify
-   put "Closed caddy server!" && pIDs into sComment
-   --
-   lcw_Notify sComment, "Caddy Server"
-   return pIDs
-end caddy_CloseServerProcesses
 
 function caddy_DoShell someShell
    put caddyAsset_Folder() into cAssetFolder
