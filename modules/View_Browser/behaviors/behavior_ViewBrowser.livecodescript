@@ -10,6 +10,7 @@ local LocalArray
 
 --> Props
 -
+/*
 setprop page_Title [remoteDomain] pageSlug
    if remoteDomain is empty then
       put wiki_InternalLinkJavascript (pageSlug) into someJavascript
@@ -59,7 +60,6 @@ setprop footer_Visible someBoolean
 end footer_Visible
 
 setprop wiki_Domain domainOrURL
-   put _BrowserWidget() into browserWidget
    set the itemdelimiter to slash
    switch
       case item 1 of domainOrURL = "https:"
@@ -70,33 +70,36 @@ setprop wiki_Domain domainOrURL
       default
          put "http://" & domainOrURL into someURL
    end switch
-   set the browser_URL of browserWidget to someURL
+   set the browser_URL of me to someURL
 end wiki_Domain
-
-getprop displayed_Data
-   put the browser_URL of me into someURL
-   if someURL is empty then
-      return the browser_HtmlText of me
-   else
-      return someURL
-   end if
-end displayed_Data
-
-setprop displayed_Data urlOrHtml
-   set the itemdelimiter to ":"
-   put item 1 of urlOrHtml is among the items of "http:https" into isUrl
-   --
-   if isUrl then
-      set the browser_URL of me to urlOrHtml
-   else
-      set the browser_HtmlText of me to urlOrHtml
-   end if
-   return isUrl
-end displayed_Data
-
+*/
 
 --> Events
 -
+command view_Init
+   put the view_BehaviorStackNames of me into sNames
+   set the behavior_StackNames of me to sNames
+   LayoutControl
+   --
+   lcw_Notify the behavior_StackNames of me
+end view_Init
+
+on preOpenControl
+   view_Init
+   pass preOpenControl
+end preOpenControl
+
+getprop view_BehaviorStackNames
+   put the uOPN ["view_BehaviorStackNames"] of me into sNames
+   return sNames
+end view_BehaviorStackNames
+
+setprop view_BehaviorStackNames sNames
+   set the uOPN ["view_BehaviorStackNames"] of me to sNames
+   --
+   view_Init
+end view_BehaviorStackNames
+
 on mouseUp
    local tActionName
    put the mouseAction of me into tActionName
@@ -119,8 +122,8 @@ end resizeControl
 
 command LayoutControl pRect
    if pRect is empty then put the rect of me into pRect
-   get the menubar of the defaultstack
-   if it is not empty then
+
+   if the menubar of the defaultstack is not empty then
       put the menu_Group of me into mGroup
       if exists(mGroup) then
          put the height of mGroup into sHeight
@@ -129,6 +132,30 @@ command LayoutControl pRect
    end if
    set the rect of me to pRect
 end LayoutControl
+
+
+--> Props
+-
+getprop displayed_Data
+   put the browser_URL of me into someURL
+   if someURL is empty then
+      return the browser_HtmlText of me
+   else
+      return someURL
+   end if
+end displayed_Data
+
+setprop displayed_Data urlOrHtml
+   set the itemdelimiter to ":"
+   put item 1 of urlOrHtml is among the items of "http:https" into isUrl
+   --
+   if isUrl then
+      set the browser_URL of me to urlOrHtml
+   else
+      set the browser_HtmlText of me to urlOrHtml
+   end if
+   return isUrl
+end displayed_Data
 
 
 --> Browser | Props
@@ -141,12 +168,11 @@ on browser_InitResult elementHtml
    -- put "svg" into elementHtml
    --
    delete variable LocalArray ["elementHtml"]
-   put _BrowserWidget() into browserWidget
-   set the javascriptHandlers of browserWidget to "browser_JavascriptResult"
+   set the javascriptHandlers of me to "browser_JavascriptResult"
    --
    put merge ("var r=document.getElementById('[[elementHtml]]').outerHTML;liveCode.browser_JavascriptResult(r)") into sJavascript
    replace "'" with quote in sJavascript
-   do sJavascript in browserWidget
+   do sJavascript in me
 end browser_InitResult
 
 on browser_JavascriptResult elementHtml
@@ -160,29 +186,44 @@ end browser_Element
 
 setprop browser_Javascript someJavascript
    -- put "wiki.doInternalLink('Federateed Wiki')" into someJavascript
-   put _BrowserWidget() into browserWidget
-   do someJavascript in browserWidget
+   
+   do someJavascript in me
    put the result into doResult
    return doResult
 end browser_Javascript
 
 getprop browser_Snapshot
-   export snapshot from _BrowserWidget() to pictVariable as PNG
+   export snapshot from me to pictVariable as PNG
    return pictVariable
 end browser_Snapshot
 
 getprop browser_JavascriptHandlers
-   put the javascriptHandlers of _BrowserWidget() into handlerList
+   put the javascriptHandlers of me into handlerList
    return handlerList
 end browser_JavascriptHandlers
 
 setprop browser_JavascriptHandlers handlerList
-   put _BrowserWidget() into browserWidget
-   set the javascriptHandlers of browserWidget to handlerList
+   set the javascriptHandlers of me to handlerList
    return the result
 end browser_JavascriptHandlers
 
-getprop browser_URL
+getprop browser_File
+   put the url of me into someURL
+   if char 1 to 7 of someURL = "file://" then
+      put char 8 to -1 of someURL into someFile
+      return someFile
+   else
+      return empty
+   end if
+end browser_File
+
+setprop browser_File sFile
+   put "file://" & sFile into sURL
+   set the url of me to sURL
+   return sURL
+end browser_File
+
+getprop browser_URL  
    put the url of me into someURL
    return someURL
 end browser_URL
@@ -205,10 +246,6 @@ end browser_HtmlText
 
 --> Objects
 -
-private function _BrowserWidget
-   return the long id of me
-end _BrowserWidget
-
 getprop view_Object
    return the long id of me
 end view_Object
