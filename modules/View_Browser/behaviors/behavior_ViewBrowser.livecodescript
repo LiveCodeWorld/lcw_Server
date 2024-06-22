@@ -81,7 +81,7 @@ command view_Init
    set the behavior_StackNames of me to sNames
    LayoutControl
    --
-   lcw_Notify the behavior_StackNames of me
+   lcw_Notify the behavior_StackNames of me, "Behaviors"
 end view_Init
 
 on preOpenControl

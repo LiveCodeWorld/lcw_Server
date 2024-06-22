@@ -9,40 +9,8 @@ version: 0.1
 
 /*Some help*/
 
---> Variables
--
-
 --> Working on
 -
-command nohup_DoShell someShell, pLog
-   put nohup_Add (someShell) into noHupShell
-   --
-   put shell (noHupShell) into shellResult
-   -- [1]+  3122 Running                 /usr/bin/nohup /Users/david/.nvm/versions/node/v21.0.0/bin/wiki --security_legacy > /dev/null 2>&1 &
-   put word 2 of shellResult into pID
-   return pID
-end nohup_DoShell
-
-function nohup_Add someShell
-   put "nohup" && someShell into noHupShell
-   
-   # Add redirect output bit (log if needed)
-   put space & bash_RedirectBit (pLog) after noHupShell
-   put space & "jobs -l" after noHupShell
-   --
-   return noHupShell
-end nohup_Add
-
-function bash_RedirectBit pLog
-   -- put "> /dev/null 2>&1 < /dev/null" into reDirectOutput
-   if pLog is true then
-      put "> nohup.out 2> error.log &" after reDirectOutput
-   else
-      put "> /dev/null 2>&1 &" after reDirectOutput
-   end if
-   return reDirectOutput
-end bash_RedirectBit
-
 
 --> Ngrok
 -
