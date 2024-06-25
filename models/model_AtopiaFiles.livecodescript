@@ -389,11 +389,3 @@ function http_CheckIP dropletIP
    end repeat
    return true
 end http_CheckIP
-
---> Deps
--
-command text_AddTrailing @someText, someChar
-   if char -1 of someText is not someChar then
-      put someChar after someText
-   end if
-end text_AddTrailing

@@ -22,11 +22,13 @@ The library is so small is should probably be combined with a general lib_REST l
 At the moment we avoid adding this library as a dependency for transporters by adding the following handler as a dependency handler:
 
 '''
-function secret_Get secretName
-   -- for server use only
-   if the environment is not "server" then pass "secret_Get"
-   --
-   put rigFetchConfigItem (secretName) into someSecret
+function secret_Get secretName, pArrayKey
+   if the environment = "server" then
+      put rigFetchConfigItem (secretName) into someSecret
+   else
+      put _ConstructShortArrayFile (pArrayKey) into shortArrayFile
+      put user_GetValue (secretName, shortArrayFile) into someSecret
+   end if
    return someSecret
 end secret_Get
 '''
@@ -51,12 +53,10 @@ end system_DeleteAdminPassword
 --> Secret
 -
 function secret_Get secretName, pArrayKey
-   if the environment = "server" then
-      put rigFetchConfigItem (secretName) into someSecret
-   else
-      put _ConstructShortArrayFile (pArrayKey) into shortArrayFile
-      put user_GetValue (secretName, shortArrayFile) into someSecret
-   end if
+   -- put _ConstructShortArrayFile (pArrayKey) into shortFile
+   if pArrayKey is empty then put "secret" into pArrayKey
+   put tolower(pArrayKey) & "_Authentication.array" into shortFile
+   put user_GetValue (secretName, shortFile) into someSecret
    return someSecret
 end secret_Get
 
