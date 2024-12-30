@@ -25,6 +25,11 @@ constant ServerName = "Zerconf Server"
 
 --> Working on
 -
+function my_LocalHostName
+   get shell ("scutil --get LocalHostName")
+   return it
+end my_LocalHostName
+
 function zero_IsRunning
    get LocalArray ["bPointer"]
    return it is not empty

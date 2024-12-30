@@ -49,6 +49,9 @@ private on _
 end _
 
 on menu_ExportCaddyFile
+   lcw_Answer "Create Caddy file from folders..."
+   breakpoint
+   
    caddy_Stop
    put the result into pIDs
    --
@@ -97,9 +100,16 @@ end menu_TestSet
 private on ___
 end ___
 
-on menu_PostAdapt
-   
-end menu_PostAdapt
+on menu_ListCaddyWikiDomains dView
+   -- put the caddy_ConfigData of dView into caddyConfigData
+   put caddy_FetchConfig() into caddyConfigData
+   set the caddy_ConfigData of dView to caddyConfigData
+   --
+   put caddyRouteArray_Get (caddyConfigData) into routeArray
+   put caddyRouteArray_ListWikiHosts (routeArray) into wikiDomians
+   --
+   set the displayed_Index ["Wiki Routes"] of dView to wikiDomians
+end menu_ListCaddyWikiDomains
 
 on menu_DisplayCaddyAdmin
    display_CaddyTools

@@ -33,7 +33,7 @@ constant AtopiaDomain = "fedwiki.org"
 command atopia_DoRemoteShell remoteShell
    -- used by lib_Atopia to do folder moving and deleting
    
-   ssh_DoRemoteShell AtopiaSshUser, AtopiaDomain, remoteShell
+   ssh_DoRemoteShell AtopiaDomain, remoteShell, AtopiaSshUser
    put the result into shellResult
    return shellResult
 end atopia_DoRemoteShell
@@ -62,7 +62,7 @@ function atopia_GetRemoteBash someShell
    
    put "ssh -tt root@fedwiki.org 'bash -i -c" && kwote (someShell) & "'" into remoteShell
    --
-   ssh_DoRemoteShell AtopiaSshUser, AtopiaDomain, remoteShell
+   ssh_DoRemoteShell AtopiaDomain, remoteShell, AtopiaSshUser
    put the result into shellResult
    return shellResult
 end atopia_GetRemoteBash
@@ -208,7 +208,7 @@ function atopia_FetchData somePath
 end atopia_FetchData
 
 function atopia_FetchLsArray serverPath
-   put server_FetchFileList ("fedwiki.org", serverPath, true, AtopiaSshUser) into lsResult
+   put server_ListShortFiles ("fedwiki.org", serverPath, true, AtopiaSshUser) into lsResult
    if char 1 of lsResult = "@" then return lsResult
    put shell_ConstructLSArray (lsResult, true) into infoArray
    return infoArray

@@ -53,30 +53,10 @@ private command ssh_DeleteFile sshUser, remoteDomain, somePath
    shell_BashParamEscape somePath
    --
    put "rm" && somePath into remoteCommand
-   ssh_DoRemoteShell sshUser, remoteDomain, remoteCommand
+   ssh_DoRemoteShell remoteDomain, remoteCommand, sshUser
    put the result into shellResult
    return shellResult
 end ssh_DeleteFile
-
-private command ssh_DoRemoteShell sshUserName, serverAddress, remoteShell, pWhichKey
-   -- requires public ssh key to be installed on server
-   put "ssh" into someShell
-   if pWhichKey is not empty then
-      breakpoint -- not tested
-      put the defaultfolder into oFolder
-      set the defaultfolder to "~/.ssh"
-      put space & "-i" && pWhichKey after someShell
-   end if
-   --
-   put space & sshUserName & "@" & serverAddress && remoteShell after someShell
-   --
-   put word 1 to -1 of shell (someShell) into shellResult
-   --
-   if pWhichKey is not empty then
-      set the defaultfolder to oFolder
-   end if
-   return shellResult
-end ssh_DoRemoteShell
 
 private command server_StoreFile localFile, pathToStore, serverAddress, sshUser, pSshKeyPath
    -- uses "scp" and private keys for security
@@ -89,42 +69,10 @@ private command server_StoreFile localFile, pathToStore, serverAddress, sshUser,
    else
       put "~/" & pathToStore into fullPath
    end if
-   shell_StoreFile sshUser, serverAddress, fullPath, localFile, pSshKeyPath
+   scp_StoreFile serverAddress, fullPath, localFile, sshUser, pSshKeyPath
    put the result into shellResult
    return shellResult
 end server_StoreFile
-
-private command shell_StoreFile sshUser, remoteDomain, remotePath, localFile, pSshKeyPath
-   /*
-   scp –P 40050 Desktop/url.txt yatri@192.168.1.50:~/Desktop/url.txt
-   scp hierarchical.png root@178.62.43.72:~/.wiki/actual.world/pages/hierarchical.png
-   
-   -- https://superuser.com/questions/1022976/scp-copy-has-error-ambiguous-target
-   If you have white space in a path, you have to escape the characters by using double backslashes \\ and enclosing the entire path in quotes:
-         scp myfile.txt user@192.168.1.100:"/file\\ path\\ with\\ spaces/myfile.txt"
-   
-   */
-   
-   put kwote (word 1 to -1 of localFile) into localFile
-   
-   -- The outside set of quotes are for the local shell, and the inside quotes are for the remote shell.
-   -- scp "my local file.txt" user@192.168.1.100:"'/folder/my spacey folder name/'"
-   put word 1 to -1 of remotePath into remotePath
-   put "'" before remotePath
-   put "'" after remotePath
-   put kwote (remotePath) into remotePath
-   
-   put sshUser & "@" & remoteDomain & ":" & remotePath into scpDestination
-   put "scp"  into someShell
-   if pSshKeyPath is not empty then
-      shell_BashParamEscape pSshKeyPath
-      put space & "-i " && pSshKeyPath after someShell
-   end if
-   put space & localFile && scpDestination after someShell
-   
-   put shell (someShell) into shellResult
-   return shellResult
-end shell_StoreFile
 
 private command shell_BashParamEscape @someParam
    put word 1 to -1 of someParam into someParam

@@ -18,10 +18,7 @@ local LocalArray
 
 --> Working on
 -
-
---> Props
--
-getprop xterm_Result [jsScript]
+-- getprop xterm_Result [jsScript]
    put the browser_View of the target into browserWidget
    set the javascriptHandlers of browserWidget to "xterm_GetJavascriptResult"
    --
@@ -36,6 +33,19 @@ end xterm_Result
 
 --> Display | Xterm
 -
+command display_XtermAtFolder pFolder, pXtermView
+   if pFolder is empty then
+      put empty into sShell
+   else
+      # Execute cd views to assets folder
+      put "cd" && kwote (pFolder) into sShell
+   end if
+   --
+   display_Xterm pXtermView, sShell, "execute"
+   put the result into xView
+   return xView
+end display_XtermAtFolder
+
 command display_Xterm pXtermBrowser, pShellCommand, pHow, pStackStyle 
    # Start if not running
    if xterm_IsRunning() is false then

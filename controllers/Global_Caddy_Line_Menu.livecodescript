@@ -27,58 +27,52 @@ getprop menu_CheckTarget [dView]
 end menu_CheckTarget
 
 private function _GetCaddyHost dView
-   put the top_Data [6] of dView into routeArray
-   put caddyRouteArray_Hosts (routeArray) into caddyHosts
+   put the caddy_ConfigData of dView into caddyConfigData
+   put caddyRouteArray_Get(caddyConfigData) into indexArray
+   put caddyRouteArray_FindHostArray (routeArray) into caddyHosts
    return caddyHosts
 end _GetCaddyHost
+
+function caddyRouteArray_Hosts sArray
+   put sArray ["match"][1][host] into hostArray
+   --
+   repeat for each element sLine in hostArray
+      if char 1 to 2 of sLine = "*." then next repeat
+      --
+      put sLine & CR after sDomains
+   end repeat
+   delete char -1 of sDomains
+   return sDomains
+end caddyRouteArray_Hosts
+
+on mDoubleUp_Caddy dView, caddyDomain
+   _DisplayHostArray dView, caddyDomain
+end mDoubleUp_Caddy
+
+command _DisplayHostArray dView, pWikiDomain
+   if pWikiDomain is empty then
+      put the selected_Line of dView into pWikiDomain
+   end if
+   
+   put the caddy_ConfigData of dView into caddyConfigData
+   put caddyRouteArray_Get(caddyConfigData) into routeIndexArray
+   --
+   put caddyRouteArray_FindItemArray(pWikiDomain, routeIndexArray) into routeItemArray
+   -- put caddyRouteArray_FindHostArray (pWikiDomain, routeIndexArray) into hostArray
+   --
+   display_Data routeItemArray, pWikiDomain, "Caddy Route Array"
+   return the result
+end _DisplayHostArray
 
 
 --> Global | Caddy | Line | Menu
 -
 on menu_DisplayRoute dView
-   put _GetCaddyHost(dView) into wikiDomain
-   --
-   put caddyRouteArray_Construct (wikiDomain, toDomainPort) into routeArray
-   display_Data routeArray, "caddyRouteArray_Construct()", "Caddy Route Array"
+   _DisplayHostArray dView
 end menu_DisplayRoute
-
-getprop disabled_DisplayRoute [dView]
-   put the selected_Path of dView into sPath
-   put the number of items of sPath into pNum
-   --
-   put (item 5 of sPath = "routes") AND (pNum > 5) into hasRoute
-   return hasRoute is false
-end disabled_DisplayRoute
-
-on menu_ConstructRouteArray dView
-   put the top_Data [6] of dView into routeArray
-   put caddyRouteArray_Hosts (routeArray) into wikiDomain
-   put "localhost:3000" into toDomainPort
-   --
-   put caddyRouteArray_Construct (wikiDomain, toDomainPort) into cRouteArray
-   --
-   if routeArray = cRouteArray then
-      put the shiftKey is "Down" into makePretty
-      put json_FromArray (cRouteArray, false, makePretty) into sJSON
-      put sJSON
-   else
-      display_Data cRouteArray, "caddyRouteArray_Construct()"
-      breakpoint
-   end if
-end menu_ConstructRouteArray
 
 private on _
 end _
-
-on menu_Behavior dView
-   put the behavior of dView into bObject
-   edit the script of bObject
-end menu_Behavior
-
-on menu_ModuleTools dView
-   put the view_Name of dView into viewName
-   display_ModuleTools viewName
-end menu_ModuleTools
 
 private on __
 end __
