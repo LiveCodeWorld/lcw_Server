@@ -24,7 +24,6 @@ Remove this loca vairable stuff and utilise functions that access sotred arrays 
 
 --> Variables
 -
-constant LCW_ServerURL = "rest.livecode.world"
 local LocalArray
 
 
@@ -86,7 +85,7 @@ end server_SetURL
 
 function server_GetURL
    put LocalArray ["serverURL"] into serverURL
-   if serverURL is empty then put LCW_ServerURL into serverURL
+   if serverURL is empty then put platform_RestDomain() into serverURL
    return serverURL
 end server_GetURL
 

@@ -5,7 +5,7 @@ copyright: David Bovill
 license: GPLv3
 name: Global | Caddy | Line | Menu
 type: controller
-version: 0.4
+version: 0.5
 
 /*Here you can describe this menu.
 Full help text should be provided on the linked wiki.*/

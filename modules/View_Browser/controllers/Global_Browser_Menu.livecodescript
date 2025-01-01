@@ -128,7 +128,6 @@ on menu_DisplayUrl pBrowserView, which
          break
       case "cyto cats"
          put "https://js.cytoscape.org/demos/images-breadthfirst-layout/" into someURL
-         -- put "http://livecode.world/assets/graph/graph.html" into someURL
          _BrowserScrollbars false, browserView
          break
       case "cose-bilkent"

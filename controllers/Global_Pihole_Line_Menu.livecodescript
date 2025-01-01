@@ -32,11 +32,14 @@ getprop menu_CheckTarget [dView]
 end menu_CheckTarget
 
 on mDoubleUp_Pihole dView, wikiDomain
-   display_Wiki wikiDomain
+   display_WikiPiShortFolders "pi4.local", wikiDomain
+   display_WikiPiShortFolders "pi5.local", wikiDomain
    --
-   display_WikiAndSubdomains wikiDomain
+   display_LocalWikiDomains wikiDomain
    --
    display_PiholeSubdomains wikiDomain
+   --
+   display_Wiki wikiDomain
 end mDoubleUp_Pihole
 
 private command _SetParams dView, @domainName, @ipAddress

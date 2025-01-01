@@ -35,7 +35,9 @@ end menu_CheckTarget
 --> Global | Pihole | Subdomains | Menu
 -
 on menu_PiholeSubdomains dView
-   put the params
+   put the title_Text of dView into tldDomain
+   --
+   display_PiholeSubdomains tldDomain, dView
 end menu_PiholeSubdomains
 
 private on _
