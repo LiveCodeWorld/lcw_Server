@@ -45,7 +45,7 @@ function tunnel_AccountStatus
 end tunnel_AccountStatus
 
 command tunnel_Login pXtermBrowser
-   display_Xterm pXtermBrowser
+   display_Xterm empty, pXtermBrowser
    put the result into xtermView
    object_GoTo xtermView, true
    --

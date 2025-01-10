@@ -37,7 +37,7 @@ on menu_StartXterm browserView
       xterm_Start
       put the result into pID
       --
-      display_Xterm browserView
+      display_Xterm empty, browserView
    end if
 end menu_StartXterm
 

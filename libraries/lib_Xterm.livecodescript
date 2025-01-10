@@ -41,12 +41,12 @@ command display_XtermAtFolder pFolder, pXtermView
       put "cd" && kwote (pFolder) into sShell
    end if
    --
-   display_Xterm pXtermView, sShell, "execute"
+   display_Xterm sShell, pXtermView, "execute"
    put the result into xView
    return xView
 end display_XtermAtFolder
 
-command display_Xterm pXtermBrowser, pShellCommand, pHow, pStackStyle 
+command display_Xterm pShellCommand, pXtermBrowser, pHow, pStackStyle 
    # Start if not running
    if xterm_IsRunning() is false then
       xterm_Start
@@ -54,19 +54,19 @@ command display_Xterm pXtermBrowser, pShellCommand, pHow, pStackStyle
    end if
    
    # Display
-   put xterm_URL() into someURL
    --
    if exists (pXtermBrowser) then
-      set the browser_URL of pXtermBrowser to someURL
+      put xterm_URL() into xTermURL
+      get the kind of pXtermBrowser
+      if it = "com.livecode.widget.browser" then
+         set the url of pXtermBrowser to xTermURL
+      else
+         set the browser_URL of pXtermBrowser to xTermURL
+      end if
       put pXtermBrowser into xTermBrowser
    else
-      if pStackStyle is empty then put "toplevel" into pStackStyle
-      put "Xterm Browser" into pStackLabel
-      display_ModuleInstance "View|Xterm", someURL, pStackLabel, pXtermBrowser, "browser_URL", pStackStyle
+      display_XtermView pStackLabel, pXtermBrowser, pStackStyle
       put the result into xTermBrowser
-      
-      # Set menus
-      display_SetMenu xTermBrowser, "Xterm"
    end if
    
    if pShellCommand is not empty then
@@ -79,6 +79,21 @@ command display_Xterm pXtermBrowser, pShellCommand, pHow, pStackStyle
    end if
    return xTermBrowser
 end display_Xterm
+
+command display_XtermView pStackLabel, pXtermBrowser, pStackStyle
+   if pStackStyle is empty then put "toplevel" into pStackStyle
+   put "Xterm Browser" into pStackLabel
+   put xterm_URL() into someURL
+   -- put "browser_URL" into urlProp
+   put "url" into urlProp
+   --
+   display_ModuleInstance "View|Xterm", someURL, pStackLabel, pXtermBrowser, urlProp, pStackStyle
+   put the result into xTermBrowser
+   
+   # Set menus
+   display_SetMenu xTermBrowser, "Xterm"
+   return xTermBrowser
+end display_XtermView
 
 on xterm_GetJavascriptResult sResult
    put sResult into LocalArray ["sResult"]

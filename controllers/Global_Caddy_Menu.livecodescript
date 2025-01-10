@@ -7,8 +7,10 @@ name: Global | Caddy | Menu
 type: controller
 version: 0.1
 
-/*Here you can describe this menu.
-Full help text should be provided on the linked wiki.*/
+/*
+Here you can describe this menu.
+Full help text should be provided on the linked wiki.
+*/
 
 
 --> Variables
@@ -48,6 +50,25 @@ end menu_StopAllCaddyServers
 private on _
 end _
 
+on menu_EditCaddyFile
+   put caddyAsset_ConstructFile () into caddyFile
+   if there is a file caddyFile then
+      code_EditFile caddyFile
+   else
+      breakpoint
+   end if
+end menu_EditCaddyFile
+
+on menu_RevealCaddyFolder
+   put caddyAsset_Folder() into caddyAssetFolder
+   --
+   if there is a folder caddyAssetFolder then
+      finder_Reveal caddyAssetFolder
+   else
+      breakpoint
+   end if
+end menu_RevealCaddyFolder
+
 on menu_ExportCaddyFile
    lcw_Answer "Create Caddy file from folders..."
    breakpoint
@@ -55,16 +76,12 @@ on menu_ExportCaddyFile
    caddy_Stop
    put the result into pIDs
    --
-   put caddyFile_Construct() into cText
+   put caddyFile_ConstructText() into cText
    caddyAsset_Set "Caddyfile", cText
    lcw_Notify "Exported new CaddyFile based on local wiki folders."
    --
    caddy_Start
 end menu_ExportCaddyFile
-
-on menu_SaveJson
-   put caddyAsset_Get ("caddy.json")
-end menu_SaveJson
 
 on menu_SaveCaddyFile
    breakpoint
@@ -90,13 +107,6 @@ on menu_CaddyAdapt
    put the result
 end menu_CaddyAdapt
 
-on menu_TestSet dView
-   put lcw_Ask ("What new text?", "Work smarter, not harder.", dView) into newTest
-   caddy_TestSetBody newTest
-   --
-   display_CaddyTools
-end menu_TestSet
-
 private on ___
 end ___
 
@@ -121,6 +131,17 @@ end menu_DisplayCaddyAdmin
 on menu_CaddyApiHelp
    display_Browser "https://caddyserver.com/docs/api"
 end menu_CaddyApiHelp
+
+private on ____
+end ____
+
+on menu_CaddyInstalled
+   put shell ("brew info caddy")
+end menu_CaddyInstalled
+
+on menu_DisplayXterm
+   display_Xterm "brew info caddy"
+end menu_DisplayXterm
 
 on menu_Refresh
    display_CaddyTools

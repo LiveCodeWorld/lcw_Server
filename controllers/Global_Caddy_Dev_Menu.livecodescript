@@ -29,17 +29,34 @@ getprop menu_CheckTarget [mTarget]
    return exists (mTarget)
 end menu_CheckTarget
 
+command caddy_TestSetBody sBody
+   -- caddy_TestSetBody "Work smarter, not harder."
+   put caddy_ConstructCurl (sBody) into sShell
+   put shell (sShell) into sResult
+   
+   /*
+   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+   Dload  Upload   Total   Spent    Left  Speed
+   
+   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+   100   106  100    79  100    27   5240   1790 --:--:-- --:--:-- --:--:--  7066
+   {"error":"invalid traversal path at: config/apps/http/servers/example/routes"}
+   */
+   put line 1 to 3 of sResult into sHeader
+   delete line 1 to 3 of sResult
+   return sResult
+end caddy_TestSetBody
+
 
 --> Global | Caddy | Dev | Menu
 -
-on menu_Behavior displayView
-   put the behavior of displayView into bObject
-   edit the script of bObject
-end menu_Behavior
+on menu_TestSet dView
+   put lcw_Ask ("What new text?", "Work smarter, not harder.", dView) into newTest
+   caddy_TestSetBody newTest
+   --
+   display_CaddyTools
+end menu_TestSet
 
-private on _
-end _
-
-on menu_MenuEdit displayView
-   menu_Edit "Global | Caddy | Dev | Menu"
-end menu_MenuEdit
+on menu_SaveJson
+   put caddyAsset_Get ("caddy.json")
+end menu_SaveJson
