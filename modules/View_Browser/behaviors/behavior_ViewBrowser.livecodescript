@@ -85,7 +85,7 @@ command view_Init
 end view_Init
 
 on preOpenControl
-   view_Init
+   -- view_Init
    pass preOpenControl
 end preOpenControl
 

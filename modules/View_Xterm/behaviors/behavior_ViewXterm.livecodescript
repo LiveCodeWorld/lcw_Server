@@ -26,8 +26,7 @@ end LayoutControl
 --> Browser | Props
 -
 setprop browser_Javascript someJavascript
-   put _BrowserWidget() into browserWidget
-   do someJavascript in browserWidget
+   do someJavascript in me
    put the result into doResult
    return doResult
 end browser_Javascript

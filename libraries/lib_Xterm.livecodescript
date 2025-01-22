@@ -81,7 +81,7 @@ command display_Xterm pShellCommand, pXtermBrowser, pHow, pStackStyle
 end display_Xterm
 
 command display_XtermView pStackLabel, pXtermBrowser, pStackStyle
-   if pStackStyle is empty then put "toplevel" into pStackStyle
+   if pStackStyle is empty then put "palette" into pStackStyle
    put "Xterm Browser" into pStackLabel
    put xterm_URL() into someURL
    -- put "browser_URL" into urlProp
@@ -120,12 +120,18 @@ end ttyd_Execute
 command ttyd_Paste someShell, browserView
    put ttypd_PasteJS (someShell) into someJS
    set the browser_Javascript of browserView to someJS
+   --
+   put the short id of browserView into wID
+   put the stack_Name of browserView into sName
+   if exists (widget id wID of stack sName) then
+      -- focus on control id wID of stack sName -- # bug
+      -- put the focusedobject
+   end if
    return someJS
 end ttyd_Paste
 
-function ttypd_PasteJS someShell
-   put "term.paste('[[someShell]]');" into jsTemplate
-   put merge (jsTemplate) into someJS
+function ttypd_PasteJS sShell
+   put "term.paste(" & kwote (sShell) & ");" into someJS
    return someJS
 end ttypd_PasteJS
 

@@ -52,6 +52,23 @@ end system_DeleteAdminPassword
 
 --> Secret
 -
+function secret_ListKeyNames pSecretName
+   put secret_Folder() into secretFolder
+   --
+   put files (secretFolder) into shortFiles
+   put "*_Authentication.array" into sFilter
+   filter shortFiles with sFilter
+   sort shortFiles
+   return shortFiles
+end secret_ListKeyNames
+
+function secret_Folder
+   -- weird temporary place
+   put user_GetFolder() into userFolder
+   put model_GetDataFolder ("lcw_User", userFolder) into secretFolder
+   return secretFolder
+end secret_Folder
+
 function secret_Get secretName, pArrayKey
    -- put _ConstructShortArrayFile (pArrayKey) into shortFile
    if pArrayKey is empty then put "secret" into pArrayKey
@@ -74,7 +91,7 @@ command secret_Delete secretName, pArrayKey
    return modelFile
 end secret_Delete
    
-command secret_GetArray pArrayKey
+function secret_GetArray pArrayKey
    put _ConstructShortArrayFile (pArrayKey) into shortArrayFile
    put user_GetArray (shortArrayFile) into userArray
    return userArray

@@ -19,7 +19,16 @@ local LocalArray
 -
 getprop menu_Target [tObject]
    put xterm_ProcessID() into LocalArray ["TtydProcessID"]
-   return the browser_View of tObject
+   --
+   -- put the displayed_Object of tObject into browserView
+   put the view_Object of tObject into browserView
+   if exists (browserView) then
+      put the browser_View of browserView into browserView
+      return browserView
+   else
+      put the stack_Name of the target into sName
+      breakpoint
+   end if
 end menu_Target
 
 getprop checked_StartXterm [browserView]
@@ -44,6 +53,33 @@ end menu_StartXterm
 private on _
 end _
 
+on menu_PrintWorkingDirectory xtermView
+   ttyd_Paste "pwd", xtermView
+end menu_PrintWorkingDirectory
+
+on menu_XtermClear xtermView
+   ttyd_Execute "clear", xtermView
+end menu_XtermClear
+
+on menu_CdRepository xtermView
+   put env_GetRepoFolder() into repoFolder
+   put "cd" && kwote (repoFolder, "'") into  sShell
+   --
+   -- display_Xterm sShell, xtermView
+   ttyd_Paste sShell, xtermView
+end menu_CdRepository
+
+on menu_CloneRepository xtermView, repoName
+   put gh_CloneOrgRepo(repoName) into sShell
+   --
+   -- display_Xterm sShell, xtermView
+   ttyd_Paste sShell, xtermView
+end menu_CloneRepository
+
+getprop cloneRepository_Params
+   return "David"
+end cloneRepository_Params
+
 on menu_CreateTunnels xtermView
    breakpoint
    put "people,project" into subNames
@@ -58,10 +94,6 @@ on menu_CreateTunnels xtermView
    --
    shell_Do someShell, "paste", xtermView
 end menu_CreateTunnels
-
-on menu_XtermClear xtermView
-   ttyd_Execute "clear", xtermView
-end menu_XtermClear
 
 private on __
 end __
@@ -81,6 +113,15 @@ end submenu_InstallWiki
 on submenu_Nvm
    return "Global | NVM | Menu"
 end submenu_Nvm
+
+private on ___
+end ___
+
+on menu_XtermModule
+   put "View|Xterm" into moduleName
+   --
+   display_Module moduleName, true, true
+end menu_XtermModule
 
 on submenu_Dev
    return menu_DevTitle()

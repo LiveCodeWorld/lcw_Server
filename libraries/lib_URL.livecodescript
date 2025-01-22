@@ -12,6 +12,31 @@ version: 0.3
 -
 
 
+--> Browser
+-
+function browser_AppPath
+   -- answer file "Select application"
+   -- put it into appPath
+   --
+   set the itemdelimiter to slash
+   put application_Folder() into appFolder
+   --
+   put appFolder & "Firefox.app" into appPath
+   if there is a folder appPath then
+      return appPath
+   else
+      return empty
+   end if
+end browser_AppPath
+
+function application_Folder
+   set the itemdelimiter to slash
+   put the engine folder into appFolder
+   put empty into item -3 to -1 of appFolder
+   return appFolder
+end application_Folder
+
+
 --> URL
 -
 function is_Url testUrl
@@ -67,6 +92,25 @@ function url_FilterByItem testItem, sDomains
    delete char -1 of fDomains
    return fDomains
 end url_FilterByItem
+
+
+--> URL | Protocol
+-
+function url_GetProtocol someUrl
+   set the itemdelimiter to ":"
+   return item 1 of someUrl
+end url_GetProtocol
+
+command url_SetProtocol @someUrl, sProtocol
+   set the itemdelimiter to ":"
+   put sProtocol into item 1 of someUrl
+end url_SetProtocol
+
+function url_StripProtocol someUrl
+   set the itemdelimiter to ":"
+   delete item 1 of someUrl
+   return someUrl
+end url_StripProtocol
 
 
 --> URL | TLD
@@ -486,12 +530,6 @@ function url_ExtractFileExtension someUrl
    set the itemdelimiter to "."
    return last item of someUrl
 end url_ExtractFileExtension
-
-function url_StripProtocol someUrl
-   set the itemdelimiter to ":"
-   delete item 1 of someUrl
-   return someUrl
-end url_StripProtocol
 
 function url_EncodeUrlPaths someURL
    put "https://vector.im/beta room/#/room/#fedwiki:matrix.org" into someURL

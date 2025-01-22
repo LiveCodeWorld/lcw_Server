@@ -201,9 +201,10 @@ command rest_SetOauthHeaders oauthAccessToken, pExtraHeaders
    return newHeaders
 end rest_SetOauthHeaders
 
+
 --> Deps
 -
-function secret_Get secretName
+-- function secret_Get secretName
    -- for server use only
    if the environment is not "server" then pass "secret_Get"
    --
