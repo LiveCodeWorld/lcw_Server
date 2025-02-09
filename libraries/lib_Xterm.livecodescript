@@ -71,15 +71,21 @@ end ttypd_PasteJS
 --> Display | Xterm
 -
 command display_XtermAtFolder sFolder, pShell, pXtermView
-   set the defaultfolder to sFolder
-   if pShell is empty then
-      # Execute cd views to assets folder
-      put "cd" && kwote (sFolder, "'") into pShell
-   end if
+   # Execute cd views to assets folder
+   put "cd" && kwote (sFolder, "'") into cdShell
    --
-   display_Xterm pShell, pXtermView, "execute"
-   put the result into xView
-   return xView
+   put ";" && pShell after cdShell
+   display_Xterm cdShell, pXtermView, "execute"
+   put the result into xTermBrowser
+   --
+   return xTermBrowser
+   
+   set the defaultfolder to sFolder -- not useful
+   if pShell is not empty then
+      -- wait 30 ticks
+      ttyd_Paste pShell, xTermBrowser
+   end if
+   return xTermBrowser
 end display_XtermAtFolder
 
 command display_Xterm pShellCommand, pXtermBrowser, pHow, pStackStyle 
@@ -101,7 +107,8 @@ command display_Xterm pShellCommand, pXtermBrowser, pHow, pStackStyle
       end if
       put pXtermBrowser into xTermBrowser
    else
-      display_XtermView pStackLabel, pXtermBrowser, pStackStyle
+      put empty into stackLabel
+      display_XtermView stackLabel, pXtermBrowser, pStackStyle
       put the result into xTermBrowser
    end if
    
