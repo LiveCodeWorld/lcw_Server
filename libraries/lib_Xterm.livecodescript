@@ -18,30 +18,66 @@ local LocalArray
 
 --> Working on
 -
--- getprop xterm_Result [jsScript]
-   put the browser_View of the target into browserWidget
-   set the javascriptHandlers of browserWidget to "xterm_GetJavascriptResult"
+command ttyd_Message sShell, pHow
+   put the long id of the target into xTermBrowser
+   if pHow is "execute" then
+      ttyd_Execute sShell, xTermBrowser
+   else
+      ttyd_Paste sShell, xTermBrowser
+   end if
+end ttyd_Message
+
+command ttyd_Execute someShell, pXtermView
+   if exists (pXtermView) is false then
+      breakpoint
+      return empty
+   end if
+   
+   put ttypd_PasteJS (someShell) into jsTemplate
+   put "; " & "document.querySelector('textarea.xterm-helper-textarea').dispatchEvent(new KeyboardEvent('keypress', {charCode: 13}))" after jsTemplate
+   put merge (jsTemplate) into someJS
    --
-   do jsScript in browserWidget
-   put the result into sResult -- sometimes does not work
-   put LocalArray ["sResult"] into sResult
+   set the browser_Javascript of pXtermView to someJS
+   return someJS
+end ttyd_Execute
+
+
+--> Ttyd
+-
+command ttyd_Paste someShell, pXtermView
+   if exists (pXtermView) is false then
+      breakpoint
+      return empty
+   end if
+   
+   put ttypd_PasteJS (someShell) into someJS
+   set the browser_Javascript of pXtermView to someJS
    --
-   put sResult = "visible" into isVisible
-   return isVisible
-end xterm_Result
+   put the short id of pXtermView into wID
+   put the stack_Name of pXtermView into sName
+   if exists (widget id wID of stack sName) then
+      -- focus on control id wID of stack sName -- # bug
+      -- put the focusedobject
+   end if
+   return someJS
+end ttyd_Paste
+
+function ttypd_PasteJS sShell
+   put "term.paste(" & kwote (sShell) & ");" into someJS
+   return someJS
+end ttypd_PasteJS
 
 
 --> Display | Xterm
 -
-command display_XtermAtFolder pFolder, pXtermView
-   if pFolder is empty then
-      put empty into sShell
-   else
+command display_XtermAtFolder sFolder, pShell, pXtermView
+   set the defaultfolder to sFolder
+   if pShell is empty then
       # Execute cd views to assets folder
-      put "cd" && kwote (pFolder) into sShell
+      put "cd" && kwote (sFolder, "'") into pShell
    end if
    --
-   display_Xterm sShell, pXtermView, "execute"
+   display_Xterm pShell, pXtermView, "execute"
    put the result into xView
    return xView
 end display_XtermAtFolder
@@ -70,21 +106,15 @@ command display_Xterm pShellCommand, pXtermBrowser, pHow, pStackStyle
    end if
    
    if pShellCommand is not empty then
-      wait 60 ticks
-      if pHow is "execute" then
-         ttyd_Execute pShellCommand, xTermBrowser
-      else
-         ttyd_Paste pShellCommand, xTermBrowser
-      end if
+      send "ttyd_Message pShellCommand,pHow" to xTermBrowser in 60 ticks
    end if
    return xTermBrowser
 end display_Xterm
 
 command display_XtermView pStackLabel, pXtermBrowser, pStackStyle
-   if pStackStyle is empty then put "palette" into pStackStyle
+   if pStackStyle is empty then put "toplevel" into pStackStyle
    put "Xterm Browser" into pStackLabel
    put xterm_URL() into someURL
-   -- put "browser_URL" into urlProp
    put "url" into urlProp
    --
    display_ModuleInstance "View|Xterm", someURL, pStackLabel, pXtermBrowser, urlProp, pStackStyle
@@ -99,41 +129,6 @@ on xterm_GetJavascriptResult sResult
    put sResult into LocalArray ["sResult"]
    return sResult
 end xterm_GetJavascriptResult
-
-
---> Ttyd
--
-command ttyd_Execute someShell, browserView
-   if exists (browserView) is false then
-      breakpoint
-      return empty
-   end if
-   
-   put ttypd_PasteJS (someShell) into jsTemplate
-   put CR & "document.querySelector('textarea.xterm-helper-textarea').dispatchEvent(new KeyboardEvent('keypress', {charCode: 13}))" after jsTemplate
-   put merge (jsTemplate) into someJS
-   --
-   set the browser_Javascript of browserView to someJS
-   return someJS
-end ttyd_Execute
-
-command ttyd_Paste someShell, browserView
-   put ttypd_PasteJS (someShell) into someJS
-   set the browser_Javascript of browserView to someJS
-   --
-   put the short id of browserView into wID
-   put the stack_Name of browserView into sName
-   if exists (widget id wID of stack sName) then
-      -- focus on control id wID of stack sName -- # bug
-      -- put the focusedobject
-   end if
-   return someJS
-end ttyd_Paste
-
-function ttypd_PasteJS sShell
-   put "term.paste(" & kwote (sShell) & ");" into someJS
-   return someJS
-end ttypd_PasteJS
 
 
 --> Xterm

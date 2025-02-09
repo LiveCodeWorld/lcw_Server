@@ -25,18 +25,44 @@ end menu_Target
 
 --> Global | Xterm | Dev | Menu
 -
-on menu_HtmlText browserView
-   get the browser_HtmlText of browserView
-end menu_HtmlText
-
-on menu_Refresh browserView
+on menu_RefreshBrowser browserView
    -- put "http://localhost:8080" into xtermURL
    put the browser_URL of browserView into xtermURL
    set the browser_URL of browserView to xtermURL
-end menu_Refresh
+end menu_RefreshBrowser
+
+on menu_RefreshBehavior xTermView
+   view_RefreshBehavior xTermView
+   --
+   put the template_Object of xTermView into mView
+   view_RefreshBehavior mView
+end menu_RefreshBehavior
 
 private on _
 end _
+
+on menu_PreviousJavascript xTermView
+   put the browser_Javascript of xTermView
+end menu_PreviousJavascript
+
+on menu_ViewProperties tWidget
+   display_ObjectProperties tWidget
+end menu_ViewProperties
+
+on menu_ModuleProperties dWidget
+   put the view_Name of dWidget into viewName
+   display_Template viewName
+   --
+   put the result into moduleObject
+   display_ObjectProperties moduleObject
+end menu_ModuleProperties
+
+on menu_DisplayModuleTools tWidget
+   -- put the menu_Name of me into mName
+   put the view_Name of tWidget into moduleName
+   --
+   display_ModuleTools moduleName
+end menu_DisplayModuleTools
 
 on menu_EditBehavior browserView
    put the behavior of browserView into bObject

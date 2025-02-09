@@ -51,7 +51,7 @@ private on _
 end _
 
 on menu_EditCaddyFile
-   put caddyAsset_ConstructFile () into caddyFile
+   put caddyFile_Construct() into caddyFile
    if there is a file caddyFile then
       code_EditFile caddyFile
    else
@@ -59,15 +59,10 @@ on menu_EditCaddyFile
    end if
 end menu_EditCaddyFile
 
-on menu_RevealCaddyFolder
-   put caddyAsset_Folder() into caddyAssetFolder
-   --
-   if there is a folder caddyAssetFolder then
-      finder_Reveal caddyAssetFolder
-   else
-      breakpoint
-   end if
-end menu_RevealCaddyFolder
+on menu_CaddyBinFolder
+   put caddy_GetBinFolder() into caddyBinFolder
+   finder_Reveal caddyBinFolder
+end menu_CaddyBinFolder
 
 on menu_ExportCaddyFile
    lcw_Answer "Create Caddy file from folders..."
@@ -77,7 +72,7 @@ on menu_ExportCaddyFile
    put the result into pIDs
    --
    put caddyFile_ConstructText() into cText
-   caddyAsset_Set "Caddyfile", cText
+   caddyFile_Set cText
    lcw_Notify "Exported new CaddyFile based on local wiki folders."
    --
    caddy_Start
@@ -91,7 +86,7 @@ on menu_SaveCaddyFile
    put CR & "respond 'Hello, world!" after cText
    replace "'" with quote in cText
    --
-   caddyAsset_Set "Caddyfile", cText
+   caddyFile_Set cText
 end menu_SaveCaddyFile
 
 private on __

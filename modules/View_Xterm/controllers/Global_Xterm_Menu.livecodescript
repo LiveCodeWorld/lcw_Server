@@ -117,12 +117,6 @@ end submenu_Nvm
 private on ___
 end ___
 
-on menu_XtermModule
-   put "View|Xterm" into moduleName
-   --
-   display_Module moduleName, true, true
-end menu_XtermModule
-
 on submenu_Dev
    return menu_DevTitle()
 end submenu_Dev

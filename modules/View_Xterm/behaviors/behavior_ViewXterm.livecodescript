@@ -25,10 +25,18 @@ end LayoutControl
 
 --> Browser | Props
 -
-setprop browser_Javascript someJavascript
-   do someJavascript in me
+getprop browser_Javascript
+   -- previously executed javascript
+   put the uOPN ["browser_Javascript"] of me into sJavascript
+   return sJavascript
+end browser_Javascript
+
+setprop browser_Javascript sJavascript
+   do sJavascript in me
    put the result into doResult
-   return doResult
+   --
+   set the uOPN ["browser_Javascript"] of me to sJavascript
+   return doResult -- not useful (yet?)
 end browser_Javascript
 
 getprop browser_JavascriptHandlers
