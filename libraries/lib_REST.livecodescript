@@ -9,7 +9,7 @@ version: 0.5
 
 --> Working on
 -
-function json_FromArray pArray, pForceRootType, pPretty
+-- function json_FromArray pArray, pForceRootType, pPretty
    -- put jsonExport (pArray) into someJSON -- not the same
    
    repeat for each key tKey in pArray
@@ -20,7 +20,7 @@ function json_FromArray pArray, pForceRootType, pPretty
    return (mergJSONEncode("pArray",pForceRootType,pPretty))
 end json_FromArray
 
-function json_ToArray pJSON
+-- function json_ToArray pJSON
    local tArray,tKeys
    if pJSON is empty then return false
    -- put jsonImport (pJSON) into tArray -- not the same

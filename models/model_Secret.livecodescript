@@ -35,6 +35,17 @@ end secret_Get
 */
 
 
+--> Secrets | Specific
+-
+function openAI_GetApiKey
+   return secret_Get ("openAIApiKey")
+end openAI_GetApiKey
+
+command openAI_SetApiKey apiKey
+   secret_Set "openAIApiKey", apiKey
+end openAI_SetApiKey
+
+
 --> System
 -
 function system_GetAdminPassword
