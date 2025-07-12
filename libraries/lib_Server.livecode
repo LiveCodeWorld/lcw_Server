@@ -13,8 +13,46 @@ Scripts specific to revIgnter can be found in lib_RevIgniter.livecode
 */
 
 
---> Atopia | Rsync
+--> Server
 -
+function server_GetRemoteMethod
+   -- REQUEST_METHOD POST
+   put $_SERVER ["REQUEST_METHOD"] into remoteMethod
+   return remoteMethod
+end server_GetRemoteMethod
+
+function server_GetRemoteIP
+   -- REMOTE_ADDR 92.237.8.154
+   put $_SERVER ["REMOTE_ADDR"] into remoteIP
+   return remoteIP
+end server_GetRemoteIP
+
+function server_GetRemotePort
+   -- REMOTE_PORT 50713
+   put $_SERVER ["REMOTE_PORT"] into remotePort
+   return remotePort
+end server_GetRemotePort
+
+function server_GetRequestMethod
+   -- REQUEST_METHOD POST
+   put $_SERVER ["REQUEST_METHOD"] into requestMethod
+   return requestMethod
+end server_GetRequestMethod
+
+function server_GetDocumentRoot
+   put $_SERVER ["DOCUMENT_ROOT"] into docROOT
+   return docROOT
+end server_GetDocumentRoot
+
+function server_GetCgiPath shortFile
+   put $_SERVER ["PATH_TRANSLATED"] into pathTranslated
+   --
+   set the itemdelimiter to slash
+   put pathTranslated into textPath
+   put shortFile into item -1 of textPath
+   --
+   return textPath
+end server_GetCgiPath
 
 
 --> Server | Arrays

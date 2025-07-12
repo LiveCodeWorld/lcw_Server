@@ -39,6 +39,10 @@ end application_Folder
 
 --> URL
 -
+function url_AddCorsProxy sURL
+   return "https://corsproxy.io/?" & sURL
+end url_AddCorsProxy
+
 function is_Url testUrl
    -- quick hack
    set the itemdelimiter to ":"

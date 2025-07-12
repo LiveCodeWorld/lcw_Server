@@ -28,20 +28,20 @@ end author_ListFedrayDomains
 
 function author_FetchPageArray authorName
    put fedwiki_ConstructSlug (authorName) into pageSlug
-   put pageArray_Fetch ("author.fedwiki.org", pageSlug) into pageArray
+   put pageArray_Fetch ("author.fedwiki.club", pageSlug) into pageArray
    return pageArray
 end author_FetchPageArray
 
 command author_StorePageArray pageArray
    put pageArray ["title"] into authorName
    put fedwiki_ConstructSlug (authorName) into pageSlug
-   pageArray_Set "author.fedwiki.org", pageSlug, pageArray
+   pageArray_Set "author.fedwiki.club", pageSlug, pageArray
    return the result
 end author_StorePageArray
 
 function atopia_AuthorPageExists authorName
    put fedwiki_ConstructSlug (authorName) into pageSlug
-   put fedwiki_PageExists ("author.fedwiki.org", pageSlug) into someBoolean
+   put fedwiki_PageExists ("author.fedwiki.club", pageSlug) into someBoolean
    return someBoolean
 end atopia_AuthorPageExists
 
@@ -109,7 +109,7 @@ end author_SetSitesPageArray
 -
 command author_Launch authorName, pSitesBit
    put atopia_ConstructAuthorSiteTitle (authorName, pSitesBit) into authorPageTitle
-   fedwiki_Launch "author.fedwiki.org", authorPageTitle
+   fedwiki_Launch "author.fedwiki.club", authorPageTitle
 end author_Launch
 
 
@@ -146,13 +146,13 @@ function author_ConstructRecentPageArray authorName, authorDomains, pSitesBit
    --
    author_SetSitesPageArray pageArray, authorName, authorDomains
    pageArray_StripJournal pageArray
-   pageArray_AddFork pageArray, "fedwiki.org,roster.fedwiki.org,sites.fedwiki.org"
+   pageArray_AddFork pageArray, "fedwiki.club,roster.fedwiki.club,sites.fedwiki.club"
    --
    return pageArray
 end author_ConstructRecentPageArray
 
 function author_FetchPageArray authorName, pSitesBit
-   put "author.fedwiki.org" into wikiDomain
+   put "author.fedwiki.club" into wikiDomain
    put atopia_ConstructAuthorSiteSlug (authorName, pSitesBit) into pageSlug
    --
    put pageArray_Fetch (wikiDomain, pageSlug) into pageArray
@@ -160,12 +160,12 @@ function author_FetchPageArray authorName, pSitesBit
 end author_FetchPageArray
 
 function author_FetchAuthorTemplate
-   put pageArray_Fetch ("author.fedwiki.org", "author-template") into pageArray
+   put pageArray_Fetch ("author.fedwiki.club", "author-template") into pageArray
    return pageArray
 end author_FetchAuthorTemplate
 
 command author_StorePageArray authorName, pageArray, pSitesBit
-   put "author.fedwiki.org" into wikiDomain
+   put "author.fedwiki.club" into wikiDomain
    put atopia_ConstructAuthorSiteSlug (authorName, pSitesBit) into pageSlug
    --
    pageArray_Set wikiDomain, pageSlug, pageArray
@@ -225,7 +225,7 @@ end author_StoreDictionaryArray
 function author_FetchModelData
    put "author-model" into modelName -- should move to "federation-author-model"
    --
-   put fedwiki_FetchPluginData (modelName, "roster.fedwiki.org") into authorData
+   put fedwiki_FetchPluginData (modelName, "roster.fedwiki.club") into authorData
    return authorData
 end author_FetchModelData
 
@@ -234,7 +234,7 @@ command author_StoreModelData authorData
    put atopia_GetJsonSecret() into apiKey
    --
    put json_FromArray (authorData) into someJSON
-   fedwiki_PutPluginJSON someJSON, modelName, "roster.fedwiki.org", apiKey
+   fedwiki_PutPluginJSON someJSON, modelName, "roster.fedwiki.club", apiKey
    put the result into putError -- error 401 Unauthorized
    return putError
 end author_StoreModelData
@@ -261,14 +261,14 @@ command author_StoreRosterSites authorName, authorDomains, pSitesBit
 end author_StoreRosterSites
 
 function author_FetchRoster authorName, pSitesBit
-   put "author.fedwiki.org" into wikiDomain
+   put "author.fedwiki.club" into wikiDomain
    put atopia_ConstructAuthorSiteSlug (authorName, pSitesBit) into pageSlug
    put roster_Fetch (wikiDomain, pageSlug) into rosterText
    return rosterText
 end author_FetchRoster
 
 command author_StoreRoster authorName, rosterText, pSitesBit
-   put "author.fedwiki.org" into wikiDomain
+   put "author.fedwiki.club" into wikiDomain
    put atopia_ConstructAuthorSiteSlug (authorName, pSitesBit) into pageSlug
    roster_Store wikiDomain, pageSlug, rosterText
    put the result into pageArray
@@ -340,7 +340,7 @@ end atopia_FetchAuthorDomains
 function atopia_FetchAuthorNameData
    put "atopia-author-model" into modelName
    --
-   put fedwiki_FetchPluginData (modelName, "roster.fedwiki.org") into atopiaAuthorNameData
+   put fedwiki_FetchPluginData (modelName, "roster.fedwiki.club") into atopiaAuthorNameData
    return atopiaAuthorNameData
 end atopia_FetchAuthorNameData
 
@@ -349,7 +349,7 @@ command atopia_StoreAuthorNameData atopiaAuthorNameData
    put atopia_GetJsonSecret() into apiKey
    --
    put json_FromArray (atopiaAuthorNameData) into someJSON
-   fedwiki_PutPluginJSON someJSON, modelName, "roster.fedwiki.org", apiKey
+   fedwiki_PutPluginJSON someJSON, modelName, "roster.fedwiki.club", apiKey
    put the result into putError -- error 401 Unauthorized
    return putError
 end atopia_StoreAuthorNameData
@@ -383,13 +383,13 @@ command atopia_StoreAuthorArray authorName, someArray
 end atopia_StoreAuthorArray
 
 function atopia_FetchAuthorJSON pageSlug
-   put fedwiki_FetchPluginJSON (pageSlug, "author.fedwiki.org") into someJSON
+   put fedwiki_FetchPluginJSON (pageSlug, "author.fedwiki.club") into someJSON
    return someJSON
 end atopia_FetchAuthorJSON
 
 command atopia_StoreAuthorJSON pageSlug, someJSON
    put atopia_GetJsonSecret() into apiKey
-   fedwiki_PutPluginJSON someJSON, pageSlug, "author.fedwiki.org", apiKey
+   fedwiki_PutPluginJSON someJSON, pageSlug, "author.fedwiki.club", apiKey
    put the result into putError
    switch putError
       case "error Previous request not completed"

@@ -8,7 +8,7 @@ type: model
 version: 0.1
 
 /*
-Federation server models are stored on pages named "ServerName Model" on the wiki "server.fedwiki.org"
+Federation server models are stored on pages named "ServerName Model" on the wiki "server.fedwiki.club"
 
 Each server model has the following structure:
 
@@ -24,10 +24,10 @@ of which "fedray" is the most important
 --> Variables
 -
 /*
-Roster models are wiki pages on "roster.fedwiki.org" named "ModelName Model"
+Roster models are wiki pages on "roster.fedwiki.club" named "ModelName Model"
 The wiki pages contain a json plugin which stored the model 
 */
-constant FedModelDomain = "roster.fedwiki.org"
+constant FedModelDomain = "roster.fedwiki.club"
 
 
 --> Working on
@@ -79,7 +79,7 @@ function federation_ListModels
 end federation_ListModels
 
 function federation_ListDocumentedServerNames
-   put fedwiki_ListSitemapPages ("server.fedwiki.org") into wikiPages
+   put fedwiki_ListSitemapPages ("server.fedwiki.club") into wikiPages
    filter wikiPages with "* Server"
    return wikiPages
 end federation_ListDocumentedServerNames
@@ -110,7 +110,7 @@ end fedserver_StoreFedray
 function fedserver_FetchModel serverName
    put _ConstructServerPageSlug (serverName) into pSlug
    --
-   put fedwiki_FetchPluginJSON (pSlug, "server.fedwiki.org") into someJSON
+   put fedwiki_FetchPluginJSON (pSlug, "server.fedwiki.club") into someJSON
    put json_ToArray (someJSON) into fedserverModel
    if fedserverModel is false then return empty
    return fedserverModel
@@ -121,7 +121,7 @@ command fedserver_StoreModel serverName, fedserverModel
    --
    put json_FromArray (fedserverModel) into someJSON
    put atopia_GetJsonSecret() into apiKey
-   fedwiki_PutPluginJSON someJSON, pSlug, "server.fedwiki.org", apiKey
+   fedwiki_PutPluginJSON someJSON, pSlug, "server.fedwiki.club", apiKey
    put the result into putError
    return putError
 end fedserver_StoreModel
@@ -132,13 +132,13 @@ end fedserver_StoreModel
 function federation_FetchRoster serverName
    -- see also fedray_FetchDomains()
    put _ConstructServerPageSlug (serverName) into pSlug 
-   put roster_Fetch ("server.fedwiki.org", pSlug, "741a0fcdd3ff76b2") into rosterText
+   put roster_Fetch ("server.fedwiki.club", pSlug, "741a0fcdd3ff76b2") into rosterText
    return word 1 to -1 of rosterText
 end federation_FetchRoster
 
 command federation_StoreRoster rosterText
    put _ConstructServerPageSlug (serverName) into pSlug 
-   roster_Store "server.fedwiki.org", pSlug, rosterText, "741a0fcdd3ff76b2"
+   roster_Store "server.fedwiki.club", pSlug, rosterText, "741a0fcdd3ff76b2"
    put the result into pageArray
    return pageArray
 end federation_StoreRoster

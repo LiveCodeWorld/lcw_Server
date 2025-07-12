@@ -9,7 +9,7 @@ version: 0.4
 
 /*
 Fedserver models contain metadata about a fedwiki server.
-They are stored as json files on the "server.fedwiki.org" wiki.
+They are stored as json files on the "server.fedwiki.club" wiki.
 Fedserver models can be contructed from fedrays using "federation_ServerModelFromFedray" (which you can find in "lib_Fedserver")
 
 The federationServerModel is one big model constructed out of all the Fedserver models

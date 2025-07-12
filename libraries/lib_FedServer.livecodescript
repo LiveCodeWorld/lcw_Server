@@ -1,7 +1,7 @@
 ﻿script "lib_FedServer"
 --> MetaData
 -
-copyright: Anonymous
+copyright: David Bovill
 license: GPLv3
 name: lib_FedServer
 type: library
@@ -28,9 +28,9 @@ command federation_UpdateServerPage serverName, federationServerModel
    put the result into summaryText
    --
    put _ConstructServerCurlyData (serverName, federationServerModel, summaryText) into curlyData
-   put "sites.fedwiki.org,roster.fedwiki.org,author.fedwiki.org" into forkDomains
+   put "sites.fedwiki.club,roster.fedwiki.club,author.fedwiki.club" into forkDomains
    put serverName && "Server" into pageTitle
-   federation_UpdateTemplate pageTitle, "server.fedwiki.org", curlyData, forkDomains
+   federation_UpdateTemplate pageTitle, "server.fedwiki.club", curlyData, forkDomains
    put the result into pageArray
    --
    put federationServerModel [serverName] into fedserverModel

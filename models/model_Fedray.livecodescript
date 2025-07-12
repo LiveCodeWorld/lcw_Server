@@ -1,6 +1,7 @@
 ﻿script "model_Fedray"
 --> MetaData
 -
+copyright: David Bovill
 license: GPLv3
 name: model_Fedray
 type: model
@@ -11,7 +12,7 @@ This library concerns itself with "federation arrays" or fedray. See also "lib_F
 There is one big fedray for the federation. But individual servers can also have small fedrays - such as the atopia fedray
 
 # Federation Fedray
-The federation fedray is stored as json on the wiki page "federation-model" of the domain "roster.fedwiki.org"
+The federation fedray is stored as json on the wiki page "federation-model" of the domain "roster.fedwiki.club"
 You can access the federation fedray model using: "fedray_FetchModel" and "fedray_StoreModel"
 
 # Federation | Server | Roster | Model
@@ -26,7 +27,7 @@ The Atopia Fedray Model for instance is stored
 -
 function old_FetchDomainArray
    -- also "fedserver_FetchFedray" of model_FedServer
-   put fedwiki_FetchPluginJSON ("atopia-domain-index", "server.fedwiki.org") into someJSON
+   put fedwiki_FetchPluginJSON ("atopia-domain-index", "server.fedwiki.club") into someJSON
    put json_ToArray (someJSON) into atopiaFedray
    if atopiaFedray is false then return empty
    return atopiaFedray
@@ -37,7 +38,7 @@ command old_StoreDomainArray atopiaFedray
    --
    put json_FromArray (atopiaFedray) into someJSON
    put secret_Get ("AtopiaJsonApiKey", "jsonApiKey") into apiKey
-   fedwiki_PutPluginJSON someJSON, "atopia-domain-index", "server.fedwiki.org", apiKey
+   fedwiki_PutPluginJSON someJSON, "atopia-domain-index", "server.fedwiki.club", apiKey
    --
    put the result into writeError
    return writeError

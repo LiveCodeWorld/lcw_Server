@@ -4,7 +4,7 @@
 license: GPLv3
 name: behavior_ViewBrowser
 type: behavior
-version: 0.1
+version: 0.2
 
 local LocalArray
 
@@ -74,20 +74,32 @@ setprop wiki_Domain domainOrURL
 end wiki_Domain
 */
 
---> Events
+--> Events | Init
 -
-command view_Init
-   put the view_BehaviorStackNames of me into sNames
-   set the behavior_StackNames of me to sNames
-   LayoutControl
-   --
-   lcw_Notify the behavior_StackNames of me, "Behaviors"
-end view_Init
-
-on preOpenControl
-   -- view_Init
+-- on preOpenControl
+   init_Module
    pass preOpenControl
 end preOpenControl
+
+-- on preOpenControl
+-- not reliably sent?
+view_Init
+pass preOpenControl
+end preOpenControl
+
+getprop view_BehaviorStackNames
+   put the uOPN ["view_BehaviorStackNames"] of me into mBehaviorStackNames
+   replace comma with CR in mBehaviorStackNames
+   return mBehaviorStackNames
+end view_BehaviorStackNames
+
+setprop view_BehaviorStackNames mBehaviorStackNames
+   replace comma with CR in mBehaviorStackNames
+   set the uOPN ["view_BehaviorStackNames"] of me to mBehaviorStackNames
+   
+   # Send-in-time to prevent behavior setting behavior
+   send "init_Module" to me in 2 ticks -- for safety place "init_Module" on card script
+end view_BehaviorStackNames
 
 getprop view_BehaviorStackNames
    put the uOPN ["view_BehaviorStackNames"] of me into sNames
@@ -100,6 +112,9 @@ setprop view_BehaviorStackNames sNames
    view_Init
 end view_BehaviorStackNames
 
+
+--> Events
+-
 on mouseUp
    local tActionName
    put the mouseAction of me into tActionName

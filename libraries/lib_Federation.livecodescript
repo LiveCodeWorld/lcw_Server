@@ -111,7 +111,7 @@ end fedwiki_GetModifiedArray
 function federation_ConstructServerURL serverName
    put serverName && "Server" into pageTitle
    put fedwiki_ConstructSlug (pageTitle) into pageSlug
-   put merge ("http://server.fedwiki.org/view/welcome-visitors/view/[[pageSlug]]") into serverURL
+   put merge ("http://server.fedwiki.club/view/welcome-visitors/view/[[pageSlug]]") into serverURL
    return serverURL
 end federation_ConstructServerURL
 

@@ -1,6 +1,7 @@
 ﻿script "model_AtopiaFiles"
 --> MetaData
 -
+copyright: David Bovill
 license: GPLv3
 name: model_AtopiaFiles
 type: model
@@ -25,7 +26,7 @@ local AtopiaDropletIP = "46.101.23.193"
 
 # For ssh_DoRemoteShell
 constant AtopiaSshUser = "root"
-constant AtopiaDomain = "fedwiki.org"
+constant AtopiaDomain = "fedwiki.club"
 
 
 --> Atopia | Dangerous
@@ -55,12 +56,12 @@ function atopia_GetRemoteBash someShell
    Please contact your system administrator.
    Add correct host key in /root/.ssh/known_hosts to get rid of this message.
    Offending ECDSA key in /root/.ssh/known_hosts:4
-   remove with: ssh-keygen -f "/root/.ssh/known_hosts" -R fedwiki.org
-   ECDSA host key for fedwiki.org has changed and you have requested strict checking.
+   remove with: ssh-keygen -f "/root/.ssh/known_hosts" -R fedwiki.club
+   ECDSA host key for fedwiki.club has changed and you have requested strict checking.
    Host key verification failed.
    */
    
-   put "ssh -tt root@fedwiki.org 'bash -i -c" && kwote (someShell) & "'" into remoteShell
+   put "ssh -tt root@fedwiki.club 'bash -i -c" && kwote (someShell) & "'" into remoteShell
    --
    ssh_DoRemoteShell AtopiaDomain, remoteShell, AtopiaSshUser
    put the result into shellResult
@@ -166,7 +167,7 @@ end atopia_WikiRootFolder
 --> Atopia | Fetch
 -
 function atopia_FetchFiles wikiDomain
-   put "ssh root@fedwiki.org" into someShell
+   put "ssh root@fedwiki.club" into someShell
    put space & "ls -Rlap" after someShell
    put "/root/.wiki/" & wikiDomain into wikiFolder
    put space & kwote (wikiFolder) after someShell
@@ -182,7 +183,7 @@ function atopia_WikiHasPages wikiFolder, pMinNum
 end atopia_WikiHasPages
 
 function atopia_ListWikiPages wikiDomain
-   put "ssh root@fedwiki.org" into someShell
+   put "ssh root@fedwiki.club" into someShell
    put space & "ls -p" after someShell
    put "/root/.wiki/" & wikiDomain & "/pages/" into pagesFolder
    put space & kwote (pagesFolder) after someShell
@@ -208,7 +209,7 @@ function atopia_FetchData somePath
 end atopia_FetchData
 
 function atopia_FetchLsArray serverPath
-   put server_ListShortFiles ("fedwiki.org", serverPath, true, AtopiaSshUser) into lsResult
+   put server_ListShortFiles ("fedwiki.club", serverPath, true, AtopiaSshUser) into lsResult
    if char 1 of lsResult = "@" then return lsResult
    put shell_ConstructLSArray (lsResult, true) into infoArray
    return infoArray

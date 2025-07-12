@@ -38,7 +38,7 @@ end atopia_FetchNameServerType
 
 command atopia_BurnFarmDomains wikiDomain
    put atopia_FetchSubDomainFolders (wikiDomain) into subDomainFolders
-   put digitalOcean_FindDropletIP ("fedwiki.org") into someIP
+   put digitalOcean_FindDropletIP ("fedwiki.club") into someIP
    --
    put digitalocean_FetchArecordNames (wikiDomain) into oldNames
    repeat for each line oldName in oldNames

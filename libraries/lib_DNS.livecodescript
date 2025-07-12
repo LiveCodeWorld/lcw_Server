@@ -10,7 +10,7 @@ version: 0.8
 --> Dig
 -
 function dig_GetNS someDomain
-   -- dig fedwiki.org NS +noall +answer +short
+   -- dig fedwiki.club NS +noall +answer +short
    put url_GetTLD (someDomain) into someDomain
    put merge ("dig [[someDomain]] NS +noall +answer +short") into someShell
    put shell (someShell) into nameServers

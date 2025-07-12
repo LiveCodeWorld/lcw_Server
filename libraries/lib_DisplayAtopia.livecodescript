@@ -29,8 +29,8 @@ end _DisplayAtopia
 --> Check
 -
 function federation_FetchLastReportDate
-   put fedwiki_FetchSitemap ("history.fedwiki.org") into sitemapArray
-   display_Data sitemapArray, "history.fedwiki.org"
+   put fedwiki_FetchSitemap ("history.fedwiki.club") into sitemapArray
+   display_Data sitemapArray, "history.fedwiki.club"
 end federation_FetchLastReportDate
 
 function atopia_CheckDomain domainName

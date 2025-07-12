@@ -5,7 +5,7 @@ copyright: David Bovill
 license: GPLv3
 name: lib_AtopiaAuthorCreate
 type: library
-version: 0.1
+version: 0.2
 
 /*Some help*/
 
@@ -14,10 +14,10 @@ version: 0.1
 -
 function author_FetchUpdatedPageArray authorName, pSincePeriod, pAuthorTemplate
    if pAuthorTemplate is empty then
-      put federation_FetchTemplatePageArray ("author.fedwiki.org") into pageArray
+      put federation_FetchTemplatePageArray ("author.fedwiki.club") into pageArray
       pageArray_Rename pageArray, authorName
       pageArray_StripJournal pageArray
-      pageArray_AddFork pageArray, "fedwiki.org,server.fedwiki.org"
+      pageArray_AddFork pageArray, "fedwiki.club,server.fedwiki.club"
    else
       set the itemdelimiter to slash
       put item 1 of pAuthorTemplate into wikiDomain
@@ -32,7 +32,7 @@ function author_FetchUpdatedPageArray authorName, pSincePeriod, pAuthorTemplate
    put pageArray_FindItemType ("reference", pageArray) into itemNum
    if itemNum > 0 then
       put author_ConstructQuickPara (authorName, authorDomains, fedray) into statParagraph
-      put itemArray_ConstructReference (pageSlug, "author.fedwiki.org", statParagraph, authorName, "988ad6e34d9ba4c8") into refItemArray
+      put itemArray_ConstructReference (pageSlug, "author.fedwiki.club", statParagraph, authorName, "988ad6e34d9ba4c8") into refItemArray
       put refItemArray into pageArray ["story"][itemNum]
    end if
    --
@@ -148,7 +148,7 @@ end author_ConstructStatText
 --> Author | Create
 -
 command author_Create authorName, authorDomains, pSincePeriod
-   put "author.fedwiki.org" into wikiDomain
+   put "author.fedwiki.club" into wikiDomain
    put fedwiki_ConstructSlug (authorName) into pageSlug
    put pageArray_Fetch (wikiDomain, pageSlug) into pageArray
    --
@@ -156,7 +156,7 @@ command author_Create authorName, authorDomains, pSincePeriod
       put federation_FetchTemplatePageArray (wikiDomain) into pageArray
       pageArray_Rename pageArray, authorName
       pageArray_StripJournal pageArray
-      pageArray_AddFork pageArray, "fedwiki.org,server.fedwiki.org"
+      pageArray_AddFork pageArray, "fedwiki.club,server.fedwiki.club"
    end if
    
    put author_CurlyData (authorName, authorDomains, pSincePeriod) into curlyData
@@ -191,10 +191,10 @@ end author_UpdateRoster
 function atopia_FetchPodActivity rosterName, authorNames, authorNameData, pSincePeriod, pForkDomains
    
    if pSincePeriod is empty then put "1 week" into pSincePeriod
-   if pForkDomains is empty then put "fedwiki.org,server.fedwiki.org,author.fedwiki.org" into pForkDomains
+   if pForkDomains is empty then put "fedwiki.club,server.fedwiki.club,author.fedwiki.club" into pForkDomains
    put rosterName && "Activity" into newName
    
-   put pageArray_GetTemplate ("author.fedwiki.org", "Pod Activity Template", newName, pForkDomains) into pageArray
+   put pageArray_GetTemplate ("author.fedwiki.club", "Pod Activity Template", newName, pForkDomains) into pageArray
    put atopia_FetchPodDomains (authorNames, authorNameData, pSincePeriod) into wikiDomains
    --
    replace comma with CR in authorNames
@@ -222,15 +222,15 @@ function atopia_FetchPodActivity rosterName, authorNames, authorNameData, pSince
 end atopia_FetchPodActivity
 
 command atopia_CreateAuthorSitesPage authorName, authorDomains, pSitesBit
-   -- create a "David Bovill (sites)" page from the "Sites Template" of "author.fedwiki.org"
+   -- create a "David Bovill (sites)" page from the "Sites Template" of "author.fedwiki.club"
    
    if pSitesBit is empty then put "(sites)" into pSitesBit -- eg "recent sites"
    -- put atopia_ConstructAuthorSiteSlug (authorName, pSitesBit) into sitesPageSlug
    put atopia_ConstructAuthorSiteTitle (authorName, pSitesBit) into sitesPageTitle
    put fedwiki_ConstructSlug (sitesPageTitle) into sitesPageSlug
-   put "author.fedwiki.org" into authorWikiDomain
+   put "author.fedwiki.club" into authorWikiDomain
    --
-   put federation_FetchTemplatePageArray (authorWikiDomain, sitesPageTitle, "fedwiki.org,roster.fedwiki.org,sites.fedwiki.org", "Sites") into pageArray
+   put federation_FetchTemplatePageArray (authorWikiDomain, sitesPageTitle, "fedwiki.club,roster.fedwiki.club,sites.fedwiki.club", "Sites") into pageArray
    --
    author_SetSitesPageArray pageArray, authorName, authorDomains
    curly_ReplacePageArray pageArray, "AuthorName", authorName
@@ -242,7 +242,7 @@ end atopia_CreateAuthorSitesPage
 
 function atopia_ConstructRosterLink authorName, pSitesBit
    put atopia_ConstructAuthorSiteSlug (authorName, pSitesBit) into authorSiteSlug
-   put "ROSTER author.fedwiki.org/" & authorSiteSlug into rosterLink
+   put "ROSTER author.fedwiki.club/" & authorSiteSlug into rosterLink
    return rosterLink
 end atopia_ConstructRosterLink
 
@@ -285,12 +285,12 @@ end atopia_FetchEditedPageNum
 -
 function atopia_FetchAuthorPageArray authorName, pSitesBit
    put atopia_ConstructAuthorSiteSlug (authorName, pSitesBit) into sitesPageSlug
-   put pageArray_Fetch ("author.fedwiki.org", sitesPageSlug) into pageArray
+   put pageArray_Fetch ("author.fedwiki.club", sitesPageSlug) into pageArray
    return pageArray
 end atopia_FetchAuthorPageArray
 
 command atopia_StoreAuthorPageArray authorName, pageArray, pSitesBit
    put atopia_ConstructAuthorSiteSlug (authorName, pSitesBit) into sitesPageSlug
-   pageArray_Set "author.fedwiki.org", sitesPageSlug, pageArray
+   pageArray_Set "author.fedwiki.club", sitesPageSlug, pageArray
    return the result
 end atopia_StoreAuthorPageArray

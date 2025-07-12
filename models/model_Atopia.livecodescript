@@ -5,7 +5,7 @@ copyright: David Bovill
 license: GPLv3
 name: model_Atopia
 type: model
-version: 0.2
+version: 0.3
 
 /*
 In this library we interface with the following models:
@@ -72,7 +72,7 @@ end atopia_ListNewRosterFolders
 -
 function atopia_PluginJsonPath pageSlug, wikiDomain
    -- see fedwiki_ConstructPluginJsonUrl()
-   -- http://admin.fedwiki.org/plugin/json/atopia-fedwiki-sites
+   -- http://admin.fedwiki.club/plugin/json/atopia-fedwiki-sites
    put "http://" & wikiDomain & "/plugin/json/" & pageSlug into restURL
    return restURL
 end atopia_PluginJsonPath
@@ -105,12 +105,12 @@ end atopia_AddFedray
 -
 function atopia_FetchRoster
    -- fetch the one big domain index roster then filter
-   put roster_Fetch ("server.fedwiki.org", "atopia-domain-index", "741a0fcdd3ff76b2") into rosterText
+   put roster_Fetch ("server.fedwiki.club", "atopia-domain-index", "741a0fcdd3ff76b2") into rosterText
    return word 1 to -1 of rosterText
 end atopia_FetchRoster
 
 command atopia_StoreRoster rosterText
-   roster_Store "server.fedwiki.org", "atopia-domain-index", rosterText, "741a0fcdd3ff76b2"
+   roster_Store "server.fedwiki.club", "atopia-domain-index", rosterText, "741a0fcdd3ff76b2"
    put the result into pageArray
    return pageArray
 end atopia_StoreRoster

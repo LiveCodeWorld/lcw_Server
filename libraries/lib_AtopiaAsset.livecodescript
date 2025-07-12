@@ -1,7 +1,7 @@
 ﻿script "lib_AtopiaAsset"
 --> MetaData
 -
-copyright: Anonymous
+copyright: David Bovill
 license: GPLv3
 name: lib_AtopiaAsset
 type: library
@@ -79,7 +79,7 @@ command atopia_RsyncPushAssetFolder localFile, wikiDomain, pShortFolder
    put atopia_WikiAssetFile (wikiDomain, shortFile, pShortFolder) into fullPath
    atopia_CreateAssetFolder wikiDomain, pShortFolder
    --
-   put rsync_ConstructFolderPushShell (localFile, fullPath, "root", "fedwiki.org") into someShell
+   put rsync_ConstructFolderPushShell (localFile, fullPath, "root", "fedwiki.club") into someShell
    put shell (someShell) into shellResult
    return the result
 end atopia_RsyncPushAssetFolder

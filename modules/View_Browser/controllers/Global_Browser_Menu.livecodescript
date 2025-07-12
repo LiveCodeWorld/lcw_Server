@@ -44,11 +44,11 @@ command _NotWorking
    switch
       /*
       case "map"
-         put "http://livecode.world/assets/graph/graphviz.html" into someURL
+         put "http://livecode.wiki/assets/graph/graphviz.html" into someURL
          _BrowserScrollbars true, browserView
          break
       case "pretty wiki"
-         put "http://livecode.world/assets/graph/pretty_wiki.html" into someURL
+         put "http://livecode.wiki/assets/graph/pretty_wiki.html" into someURL
          _BrowserScrollbars true, browserView
          break
          */
@@ -86,24 +86,11 @@ end display_NestrBrowser
 -
 on menu_DisplayUrl pBrowserView, which
    switch which
-      case "Ttyd"
-         put "http://localhost:8080" into someURL
+      case "Hitchhikers"
+         put "https://hitchhikers.earth" into someURL
          break
-      case "Exodus"
-         get "https://cicolab.notion.site/British-Council-Exodus-94adff44064349b898a013d4eebe296e"
-         put it into someURL
-         break
-      case "Spark"
-         get "https://lucid.app/lucidspark/f3d00524-40d7-4fe6-a3ae-79acaed33cc9/edit?viewport_loc=-2161%2C-240%2C10593%2C5652%2C0_0&invitationId=inv_845a0744-dbda-4ca6-bd6a-ea787a4b7585"
-         put it into someURL
-         break
-      case "Notion"
-         put "https://www.notion.so/cicolab/Exodus-LARPs-d00dd528651a496d83cc710fabb7d44a" into someURL
-         break
-      case "Nestr"
-         display_NestrBrowser
-         return empty
       case "-"
+         break
       case "Infinitown"
          put "https://demos.littleworkshop.fr/infinitown" into someURL
          break
@@ -146,6 +133,26 @@ on menu_DisplayUrl pBrowserView, which
          put "https://chat.openai.com/chat" into someURL
          break
       case "-"
+         break
+      case "Ttyd"
+         put "http://localhost:8080" into someURL
+         break
+      case "Exodus"
+         get "https://cicolab.notion.site/British-Council-Exodus-94adff44064349b898a013d4eebe296e"
+         put it into someURL
+         break
+      case "Spark"
+         get "https://lucid.app/lucidspark/f3d00524-40d7-4fe6-a3ae-79acaed33cc9/edit?viewport_loc=-2161%2C-240%2C10593%2C5652%2C0_0&invitationId=inv_845a0744-dbda-4ca6-bd6a-ea787a4b7585"
+         put it into someURL
+         break
+      case "Notion"
+         put "https://www.notion.so/cicolab/Exodus-LARPs-d00dd528651a496d83cc710fabb7d44a" into someURL
+         break
+      case "Nestr"
+         display_NestrBrowser
+         return empty
+      case "-"
+         break
       case "ask"
          put lcw_Ask ("What url would you like to view...", "https://app.nestr.io/", displayedObject) into someURL
          _BrowserScrollbars true, browserView
