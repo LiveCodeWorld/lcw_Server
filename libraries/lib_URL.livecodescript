@@ -549,7 +549,7 @@ function url_EncodeUrlPaths someURL
    return someURL
 end url_EncodeUrlPaths
 
-on url_Deconstruct someUrl, @someProtocol, @urlDomain, @urlPath, @shortName, @fileExtension, @userName, @pissWord
+command url_Deconstruct someUrl, @someProtocol, @urlDomain, @urlPath, @shortName, @fileExtension, @userName, @pissWord
    set the itemDelimiter to ":"
    put item 1 of someUrl into someProtocol
    if someProtocol is among the items of "file:binFile:ftp:http:https" then
